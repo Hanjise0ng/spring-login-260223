@@ -1,0 +1,87 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.3'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.han'
+version = '0.0.1-SNAPSHOT'
+description = 'back'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    // ===================================================================================
+    // Spring Boot Core & Web (핵심 기능 및 웹 서비스)
+    // ===================================================================================
+    implementation 'org.springframework.boot:spring-boot-starter-web'           // 웹 애플리케이션 (REST API) 구축
+    implementation 'org.springframework.boot:spring-boot-starter-validation'    // 데이터 유효성 검증 (@Valid)
+
+    // ===================================================================================
+    // Data Persistence (데이터베이스 및 영속성)
+    // ===================================================================================
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'      // JPA 기반 ORM
+
+    // ===================================================================================
+    // Security & Auth (인증 및 보안)
+    // ===================================================================================
+    implementation 'org.springframework.boot:spring-boot-starter-security'      // Spring Security 핵심
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // OAuth 2.0 클라이언트 (소셜 로그인)
+
+    // ===================================================================================
+    // JWT (JSON Web Token) 라이브러리
+    // ===================================================================================
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.2'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.11.2'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.2'
+
+    // ===================================================================================
+    // Utility & Additional Features (유틸리티 및 기타 기능)
+    // ===================================================================================
+    implementation 'org.springframework.boot:spring-boot-starter-mail'          // 이메일 전송 기능 (인증 메일)
+
+    // ===================================================================================
+    // Lombok (편의성 라이브러리)
+    // ===================================================================================
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // ===================================================================================
+    // Development & Runtime (개발 환경 및 런타임 드라이버)
+    // ===================================================================================
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'                   // 개발 중 자동 재시작 및 Live Reload
+
+    // ===================================================================================
+    // 데이터베이스 드라이버
+    // ===================================================================================
+    runtimeOnly 'com.h2database:h2'                                                   // 인메모리 개발/테스트용 DB
+    runtimeOnly 'com.mysql:mysql-connector-j'                                         // MySQL 상용 DB 드라이버
+
+    // ===================================================================================
+    // Testing (테스트 환경)
+    // ===================================================================================
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'            // Spring Boot 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'   // JPA 테스트
+    testImplementation 'org.springframework.security:spring-security-test'            // Spring Security 테스트
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
