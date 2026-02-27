@@ -21,7 +21,7 @@ public enum BaseResponseStatus {
     // ================== 인증 오류 (401 Unauthorized) ==================
     SIGN_IN_FAIL(HttpStatus.UNAUTHORIZED, "SF", "Login information mismatch."),
     AUTHENTICATION_FAIL(HttpStatus.UNAUTHORIZED, "AUF", "Authentication failed."),
-
+    INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "IPW", "Invalid password."),
 
     // --- JWT Access Token 오류 ---
     INVALID_JWT_SIGNATURE(HttpStatus.UNAUTHORIZED, "IJS", "Invalid JWT signature."),
