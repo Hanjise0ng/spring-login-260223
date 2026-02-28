@@ -71,6 +71,7 @@ dependencies {
     // ===================================================================================
     runtimeOnly 'com.h2database:h2'                                                   // 인메모리 개발/테스트용 DB
     runtimeOnly 'com.mysql:mysql-connector-j'                                         // MySQL 상용 DB 드라이버
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'          // Redis
 
     // ===================================================================================
     // Testing (테스트 환경)
