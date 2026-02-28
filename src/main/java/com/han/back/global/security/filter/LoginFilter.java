@@ -70,8 +70,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String accessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, userId, role, AuthConst.ACCESS_EXPIRATION);
         String refreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, userId, role, AuthConst.REFRESH_EXPIRATION);
 
-        response.addHeader("Authorization", "Bearer " + accessToken);
-
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
                 .path("/api/v1/auth")
                 .maxAge(AuthConst.COOKIE_REFRESH_EXPIRATION)
@@ -100,11 +98,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         if (cause instanceof CustomAuthenticationException) {
             clientStatus = ((CustomAuthenticationException) cause).getStatus();
             logStatus = clientStatus;
-        }
-        else if (cause instanceof UsernameNotFoundException) {
+        } else if (cause instanceof UsernameNotFoundException) {
             logStatus = BaseResponseStatus.NOT_FOUND_USER;
-        }
-        else if (cause instanceof BadCredentialsException) {
+        } else if (cause instanceof BadCredentialsException) {
             logStatus = BaseResponseStatus.INVALID_PASSWORD;
         }
 
