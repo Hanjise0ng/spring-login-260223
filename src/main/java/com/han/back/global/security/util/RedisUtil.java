@@ -1,4 +1,4 @@
-package com.han.back.global.util;
+package com.han.back.global.security.util;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
