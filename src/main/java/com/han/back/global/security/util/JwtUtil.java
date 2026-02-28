@@ -6,6 +6,7 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -14,6 +15,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class JwtUtil {
 
@@ -27,10 +29,12 @@ public class JwtUtil {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (SecurityException | MalformedJwtException e) {
+            log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
         } catch (ExpiredJwtException e) {
             throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
         } catch (UnsupportedJwtException e) {
+            log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         } catch (IllegalArgumentException e) {
             throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
@@ -73,9 +77,25 @@ public class JwtUtil {
         return getCategory(validateAndGetPayload(token));
     }
 
+    public Role getRole(String token) {
+        return getRole(validateAndGetPayload(token));
+    }
+
     public long getExpiration(String token) {
         Claims claims = validateAndGetPayload(token);
         return Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
+    }
+
+    public boolean isExpired(String token) {
+        try {
+            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
+            return false;
+        } catch (ExpiredJwtException e) {
+            return true;
+        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+            log.warn("Invalid JWT Token (isExpired) - Error: {}", e.getMessage());
+            return true;
+        }
     }
 
     public String createJwt(String category, Long userId, Role role, long expiredMs) {
