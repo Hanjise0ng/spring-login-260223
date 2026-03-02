@@ -2,7 +2,7 @@ package com.han.back.global.security.service;
 
 import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.JwtUtil;
-import com.han.back.global.util.RedisUtil;
+import com.han.back.global.security.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
