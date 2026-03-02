@@ -6,6 +6,8 @@ public class AuthConst {
     public static final String TOKEN_TYPE_CATEGORY = "category";
     public static final String TOKEN_TYPE_ACCESS = "access";
     public static final String TOKEN_TYPE_REFRESH = "refresh";
+    public static final String HEADER_REFRESH_TOKEN_NAME = "Refresh-Token";
+    public static final String COOKIE_REFRESH_TOKEN_NAME = "refresh_token";
     public static final String TOKEN_TYPE_TEMP = "temp";
 
 
