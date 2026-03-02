@@ -19,6 +19,9 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
+    @Value("${spring.jwt.issuer}")
+    private String issuer;
+
     private final SecretKey secretKey;
 
     public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
@@ -103,7 +106,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .header().type("JWT").and()
-                .issuer("han-backend-server")
+                .issuer(issuer)
                 .id(UUID.randomUUID().toString())
                 .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
                 .claim(AuthConst.TOKEN_USER_ID, userId)
