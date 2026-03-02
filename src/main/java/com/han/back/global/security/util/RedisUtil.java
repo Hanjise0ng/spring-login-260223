@@ -2,7 +2,6 @@ package com.han.back.global.security.util;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -16,21 +15,16 @@ public class RedisUtil {
         this.redisTemplate = redisTemplate;
     }
 
-    public void setDataExpire(String key, String value, long duration) {
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        Duration expireDuration = Duration.ofMillis(duration);
-        valueOperations.set(key, value, expireDuration);
+    public void setDataExpire(String key, String value, long durationMillis) {
+        redisTemplate.opsForValue().set(key, value, Duration.ofMillis(durationMillis));
     }
 
-    public boolean setIfAbsent(String key, String value, long duration) {
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        Duration expireDuration = Duration.ofMillis(duration);
-        return Boolean.TRUE.equals(valueOperations.setIfAbsent(key, value, expireDuration));
+    public boolean setIfAbsent(String key, String value, long durationMillis) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofMillis(durationMillis)));
     }
 
     public String getData(String key) {
-        ValueOperations<String, String> valueOperations = redisTemplate.opsForValue();
-        return valueOperations.get(key);
+        return redisTemplate.opsForValue().get(key);
     }
 
     public void deleteData(String key) {
