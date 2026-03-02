@@ -47,7 +47,7 @@ public class SecurityConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         AuthenticationManager authenticationManager = authenticationManager();
         LoginFilter loginFilter = new LoginFilter(authenticationManager, objectMapper, jwtUtil, tokenService);
-        JwtFilter jwtFilter = new JwtFilter(jwtUtil);
+        JwtFilter jwtFilter = new JwtFilter(jwtUtil, tokenService);
         JwtExceptionFilter jwtExceptionFilter = new JwtExceptionFilter(objectMapper);
 
         http
@@ -61,9 +61,19 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/", "/api/v1/auth/**", "/oauth2/**").permitAll()
-                        .requestMatchers("/api/v1/user/**").hasRole(Role.USER.name())
-                        .requestMatchers("/api/v1/admin/**").hasRole(Role.ADMIN.name())
+                        .requestMatchers(
+                                "/",
+                                "/api/*/auth/**",
+                                "/oauth2/**",
+                                "/login/**",
+
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+                        .requestMatchers("/api/*/user/**").hasRole(Role.USER.name())
+                        .requestMatchers("/api/*/admin/**").hasRole(Role.ADMIN.name())
                         .anyRequest().authenticated()
                 )
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
