@@ -46,7 +46,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) {
         ObjectMapper objectMapper = new ObjectMapper();
         AuthenticationManager authenticationManager = authenticationManager();
-        LoginFilter loginFilter = new LoginFilter(authenticationManager, objectMapper, jwtUtil, tokenService);
+        LoginFilter loginFilter = new LoginFilter(authenticationManager, objectMapper, tokenService);
         JwtFilter jwtFilter = new JwtFilter(jwtUtil, tokenService);
         JwtExceptionFilter jwtExceptionFilter = new JwtExceptionFilter(objectMapper);
 
