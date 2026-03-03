@@ -5,6 +5,8 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
+import com.han.back.global.security.handler.CustomLogoutHandler;
+import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
 import com.han.back.global.security.handler.FailedAuthenticationEntryPoint;
 import com.han.back.global.security.service.TokenService;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +81,12 @@ public class SecurityConfig {
                 .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
                 .exceptionHandling(exceptionHandling -> exceptionHandling
                         .authenticationEntryPoint(new FailedAuthenticationEntryPoint())
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/api/v1/auth/logout")
+                        .addLogoutHandler(new CustomLogoutHandler(objectMapper, tokenService))
+                        .logoutSuccessHandler(new CustomLogoutSuccessHandler(objectMapper))
+                        .permitAll()
                 );
 
         return http.build();

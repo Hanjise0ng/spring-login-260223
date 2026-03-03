@@ -45,27 +45,30 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void invalidateTokens(AuthTokenDto oldTokens) {
+        if (oldTokens == null) return;
         if (!StringUtils.hasText(oldTokens.getAccessToken()) && !StringUtils.hasText(oldTokens.getRefreshToken())) {
             return;
         }
 
-        // Access Token 무효화
-        if (StringUtils.hasText(oldTokens.getAccessToken()) && !jwtUtil.isExpired(oldTokens.getAccessToken())) {
-            long ttl = jwtUtil.getExpiration(oldTokens.getAccessToken());
-            redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
-            log.info("Access Token Blacklisted - TTL: {}ms", ttl);
+        if (StringUtils.hasText(oldTokens.getAccessToken())) {
+            Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getAccessToken());
+            long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
+            if (ttl > 0) {
+                redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
+                log.info("Access Token Blacklisted - TTL: {}ms", ttl);
+            }
         }
 
-        // Refresh Token 무효화
-        if (StringUtils.hasText(oldTokens.getRefreshToken()) && !jwtUtil.isExpired(oldTokens.getRefreshToken())) {
-            Long userId = jwtUtil.getUserId(oldTokens.getRefreshToken());
-            redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + userId);
-            log.info("Refresh Token Deleted - UserId: {}", userId);
+        if (StringUtils.hasText(oldTokens.getRefreshToken())) {
+            Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getRefreshToken());
+            Long id = jwtUtil.getUserId(claims);
+            redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
+            log.info("Refresh Token Deleted - UserId: {}", id);
         }
     }
 
     @Override
-    public void verifyRefreshTokenOwnership(Long id, String refreshToken) {
+    public void validateRefreshToken(Long id, String refreshToken) {
         String storedToken = redisUtil.getData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
         if (storedToken == null || !storedToken.equals(refreshToken)) {
             log.error("Token Mismatch or Hijacking Suspected - UserId: {}", id);
@@ -79,27 +82,29 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public CustomUserDetails resolveAccessToken(String accessToken) {
-        // 만료 체크
-        if (jwtUtil.isExpired(accessToken)) {
-            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
-        }
-
-        // 블랙리스트 체크
+    public CustomUserDetails authenticateAccessToken(String accessToken) {
         if (isBlacklisted(accessToken)) {
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
 
-        // Claims 파싱 및 타입 검증
-        Claims claims = jwtUtil.validateAndGetPayload(accessToken);
+        Claims claims = jwtUtil.parseClaims(accessToken);
         if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         }
 
-        Long userId = jwtUtil.getUserId(claims);
-        Role role   = jwtUtil.getRole(claims);
+        return new CustomUserDetails(jwtUtil.getUserId(claims), jwtUtil.getRole(claims));
+    }
 
-        return new CustomUserDetails(userId, role);
+    @Override
+    public CustomUserDetails authenticateRefreshToken(String refreshToken) {
+        Claims claims = jwtUtil.parseClaims(refreshToken);
+
+        if (!AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(claims))) {
+            log.warn("Reissue Failed - Reason: Not a Refresh Token");
+            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+        }
+
+        return new CustomUserDetails(jwtUtil.getUserId(claims), jwtUtil.getRole(claims));
     }
 
 }

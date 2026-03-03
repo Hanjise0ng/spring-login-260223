@@ -52,7 +52,7 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        CustomUserDetails userDetails = tokenService.resolveAccessToken(accessToken);
+        CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken);
 
         Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
