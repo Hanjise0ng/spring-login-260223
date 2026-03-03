@@ -2,6 +2,8 @@ package com.han.back.global.security.service;
 
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.dto.CustomUserDetails;
+
 public interface TokenService {
 
     // 토큰 발급 (생성 + Redis 저장)
@@ -18,5 +20,8 @@ public interface TokenService {
 
     // Access Token 블랙리스트 확인
     boolean isBlacklisted(String accessToken);
+
+    // Access Token 검증
+    CustomUserDetails resolveAccessToken(String accessToken);
 
 }

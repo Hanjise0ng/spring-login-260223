@@ -1,20 +1,14 @@
 package com.han.back.global.security.filter;
 
-import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponseStatus;
-import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.AuthConst;
-import com.han.back.global.security.util.JwtUtil;
-import io.jsonwebtoken.Claims;
+import com.han.back.global.security.util.AuthHttpUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,9 +23,6 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-    private final TokenService tokenService;
-
     private static final String[] EXCLUDE_PATHS = {
             "/api/*/auth/**",
             "/oauth/**",
@@ -43,7 +34,8 @@ public class JwtFilter extends OncePerRequestFilter {
             "/webjars/**"
     };
 
-    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
+    private final TokenService tokenService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -53,48 +45,22 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String accessToken = resolveToken(request);
+        String accessToken = AuthHttpUtil.extractAccessToken(request);
 
         if (!StringUtils.hasText(accessToken)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        if (jwtUtil.isExpired(accessToken)) {
-            log.warn("Token Expired - Reason: Access Token Expired | ClientIP: {}", request.getRemoteAddr());
-            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
-        }
+        CustomUserDetails userDetails = tokenService.resolveAccessToken(accessToken);
 
-        if (tokenService.isBlacklisted(accessToken)) {
-            log.warn("Blacklist Access Attempt - Reason: Token is Blacklisted | ClientIP: {}", request.getRemoteAddr());
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
-        }
-
-        Claims claims = jwtUtil.validateAndGetPayload(accessToken);
-        if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
-            log.warn("Invalid Token Category - Reason: Not Access Token | ClientIP: {}", request.getRemoteAddr());
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
-        }
-
-        Long userId = jwtUtil.getUserId(claims);
-        Role role = jwtUtil.getRole(claims);
-
-        CustomUserDetails customUserDetails = new CustomUserDetails(userId, role);
-        Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
+        Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
         log.debug("JWT Context Setup - Id: {} | Role: {} | ClientIP: {}",
-                userId, role.name(), request.getRemoteAddr());
+                userDetails.getId(), userDetails.getRole().name(), request.getRemoteAddr());
 
         filterChain.doFilter(request, response);
-    }
-
-    private String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
     }
 
 }

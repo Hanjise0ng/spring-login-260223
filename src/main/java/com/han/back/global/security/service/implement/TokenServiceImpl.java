@@ -4,10 +4,12 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.JwtUtil;
 import com.han.back.global.security.util.RedisUtil;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -74,6 +76,30 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public boolean isBlacklisted(String accessToken) {
         return redisUtil.hasKey(AuthConst.TOKEN_BLACKLIST_PREFIX + accessToken);
+    }
+
+    @Override
+    public CustomUserDetails resolveAccessToken(String accessToken) {
+        // 만료 체크
+        if (jwtUtil.isExpired(accessToken)) {
+            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
+        }
+
+        // 블랙리스트 체크
+        if (isBlacklisted(accessToken)) {
+            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+        }
+
+        // Claims 파싱 및 타입 검증
+        Claims claims = jwtUtil.validateAndGetPayload(accessToken);
+        if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
+            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+        }
+
+        Long userId = jwtUtil.getUserId(claims);
+        Role role   = jwtUtil.getRole(claims);
+
+        return new CustomUserDetails(userId, role);
     }
 
 }
