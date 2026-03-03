@@ -7,7 +7,6 @@ import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
 import com.han.back.global.security.handler.FailedAuthenticationEntryPoint;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,7 +28,6 @@ public class SecurityConfig {
 
     private final CorsConfig corsConfig;
     private final AuthenticationConfiguration authConfig;
-    private final JwtUtil jwtUtil;
     private final TokenService tokenService;
 
     @Bean
@@ -47,7 +45,7 @@ public class SecurityConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         AuthenticationManager authenticationManager = authenticationManager();
         LoginFilter loginFilter = new LoginFilter(authenticationManager, objectMapper, tokenService);
-        JwtFilter jwtFilter = new JwtFilter(jwtUtil, tokenService);
+        JwtFilter jwtFilter = new JwtFilter(tokenService);
         JwtExceptionFilter jwtExceptionFilter = new JwtExceptionFilter(objectMapper);
 
         http
