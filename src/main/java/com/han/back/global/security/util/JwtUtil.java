@@ -6,6 +6,7 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -95,7 +96,8 @@ public class JwtUtil {
             return false;
         } catch (ExpiredJwtException e) {
             return true;
-        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+        } catch (SignatureException | SecurityException | MalformedJwtException | UnsupportedJwtException |
+                 IllegalArgumentException e) {
             log.warn("Invalid JWT Token (isExpired) - Error: {}", e.getMessage());
             return true;
         }

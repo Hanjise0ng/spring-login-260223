@@ -7,10 +7,9 @@ import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.AuthConst;
-import com.han.back.global.security.util.CookieUtil;
-import com.han.back.global.security.util.JwtUtil;
+import com.han.back.global.security.util.AuthHttpUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,13 +29,11 @@ import java.io.IOException;
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
     private final TokenService tokenService;
 
-    public LoginFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper, JwtUtil jwtUtil, TokenService tokenService) {
+    public LoginFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper, TokenService tokenService) {
         super.setAuthenticationManager(authenticationManager);
         this.objectMapper = objectMapper;
-        this.jwtUtil = jwtUtil;
         this.tokenService = tokenService;
         setFilterProcessesUrl("/api/v1/auth/sign-in");
     }
@@ -53,6 +50,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
             return this.getAuthenticationManager().authenticate(authToken);
         } catch (IOException e) {
+            log.error("Login Request Parsing Error - ClientIP: {}", request.getRemoteAddr(), e);
             throw new CustomAuthenticationException(BaseResponseStatus.INVALID_REQUEST_BODY);
         }
     }
@@ -60,22 +58,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Long userId = userDetails.getId();
+        Long id = userDetails.getId();
         Role role = userDetails.getRole();
 
-        String oldAccessToken = extractAccessToken(request);
-        String oldRefreshToken = extractRefreshToken(request);
-        tokenService.invalidatePreviousTokens(oldAccessToken, oldRefreshToken);
+        String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
+        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
+        tokenService.invalidateTokens(AuthTokenDto.builder()
+                .accessToken(oldAccessToken)
+                .refreshToken(oldRefreshToken)
+                .build());
 
-        String newAccessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, userId, role, AuthConst.ACCESS_EXPIRATION);
-        String newRefreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, userId, role, AuthConst.REFRESH_EXPIRATION);
-        tokenService.saveRefreshToken(userId, newRefreshToken);
-
-        response.setHeader("Authorization", "Bearer " + newAccessToken);
-        sendRefreshTokenByClientType(request, response, newRefreshToken);
+        AuthTokenDto tokenPair = tokenService.issueTokens(id, role);
+        AuthHttpUtil.setTokenResponse(request, response, tokenPair);
 
         setJsonResponse(response, BaseResponseStatus.SUCCESS);
-        recordSuccessLog(request, userId, role);
+        recordSuccessLog(request, id, role);
     }
 
     @Override
@@ -88,22 +85,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     // Success Helper Method
-    private void sendRefreshTokenByClientType(HttpServletRequest request, HttpServletResponse response, String refreshToken) {
-        String clientType = request.getHeader("X-Client-Type");
-        if ("APP".equalsIgnoreCase(clientType)) {
-            response.setHeader(AuthConst.HEADER_REFRESH_TOKEN_NAME, refreshToken);
-        } else {
-            CookieUtil.addSecureCookie(response, AuthConst.COOKIE_REFRESH_TOKEN_NAME, refreshToken, AuthConst.COOKIE_REFRESH_EXPIRATION);
-        }
-    }
-
-    private void recordSuccessLog(HttpServletRequest request, Long userId, Role role) {
+    private void recordSuccessLog(HttpServletRequest request, Long id, Role role) {
         String clientType = request.getHeader("X-Client-Type");
 
         log.info("Login Success - UserId: {} | Role: {} | ClientIP: {} | ClientType: {}",
-                userId,
-                role.name(),
-                request.getRemoteAddr(),
+                id, role.name(), request.getRemoteAddr(),
                 (clientType != null && !clientType.isBlank() ? clientType : "WEB"));
     }
 
@@ -132,15 +118,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {
         String attemptedUserId = (String) request.getAttribute("attemptedUserId");
-        if (attemptedUserId == null) {
-            attemptedUserId = "UNKNOWN";
-        }
+        if (attemptedUserId == null) attemptedUserId = "UNKNOWN";
 
         log.warn("Login Failed - UserId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
-                attemptedUserId,
-                logStatus.getCode(),
-                logStatus.getMessage(),
-                request.getRemoteAddr());
+                attemptedUserId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
     }
 
     // Common Utility Helper Method
@@ -149,30 +130,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        Object responseBody;
-        if (status == BaseResponseStatus.SUCCESS) {
-            responseBody = BaseResponse.success().getBody();
-        } else {
-            responseBody = BaseResponse.error(status).getBody();
-        }
+        Object responseBody = (status == BaseResponseStatus.SUCCESS)
+                ? BaseResponse.success().getBody()
+                : BaseResponse.error(status).getBody();
 
         objectMapper.writeValue(response.getWriter(), responseBody);
-    }
-
-    private String extractAccessToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
-
-    private String extractRefreshToken(HttpServletRequest request) {
-        String headerToken = request.getHeader(AuthConst.HEADER_REFRESH_TOKEN_NAME);
-        if (headerToken != null && !headerToken.isBlank()) {
-            return headerToken;
-        }
-        return CookieUtil.getCookieValue(request, AuthConst.COOKIE_REFRESH_TOKEN_NAME).orElse(null);
     }
 
 }
