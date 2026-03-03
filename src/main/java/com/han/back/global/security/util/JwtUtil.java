@@ -6,7 +6,6 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -29,7 +28,23 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public Claims validateAndGetPayload(String token) {
+    public String createJwt(String category, Long userId, Role role, long expiredMs) {
+        Date now = new Date();
+
+        return Jwts.builder()
+                .header().type("JWT").and()
+                .issuer(issuer)
+                .id(UUID.randomUUID().toString())
+                .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
+                .claim(AuthConst.TOKEN_USER_ID, userId)
+                .claim(AuthConst.TOKEN_ROLE, role.getAuthority())
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + expiredMs))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public Claims parseClaims(String token) {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (SecurityException | MalformedJwtException e) {
@@ -42,6 +57,14 @@ public class JwtUtil {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         } catch (IllegalArgumentException e) {
             throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
+        }
+    }
+
+    public Claims parseClaimsIgnoreExpiry(String token) {
+        try {
+            return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
         }
     }
 
@@ -73,50 +96,9 @@ public class JwtUtil {
         return claims.get(AuthConst.TOKEN_TYPE_CATEGORY, String.class);
     }
 
-    public Long getUserId(String token) {
-        return getUserId(validateAndGetPayload(token));
-    }
-
-    public String getCategory(String token) {
-        return getCategory(validateAndGetPayload(token));
-    }
-
-    public Role getRole(String token) {
-        return getRole(validateAndGetPayload(token));
-    }
-
     public long getExpiration(String token) {
-        Claims claims = validateAndGetPayload(token);
+        Claims claims = parseClaims(token);
         return Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
-    }
-
-    public boolean isExpired(String token) {
-        try {
-            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
-            return false;
-        } catch (ExpiredJwtException e) {
-            return true;
-        } catch (SignatureException | SecurityException | MalformedJwtException | UnsupportedJwtException |
-                 IllegalArgumentException e) {
-            log.warn("Invalid JWT Token (isExpired) - Error: {}", e.getMessage());
-            return true;
-        }
-    }
-
-    public String createJwt(String category, Long userId, Role role, long expiredMs) {
-        Date now = new Date();
-
-        return Jwts.builder()
-                .header().type("JWT").and()
-                .issuer(issuer)
-                .id(UUID.randomUUID().toString())
-                .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
-                .claim(AuthConst.TOKEN_USER_ID, userId)
-                .claim(AuthConst.TOKEN_ROLE, role.getAuthority())
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + expiredMs))
-                .signWith(secretKey)
-                .compact();
     }
 
 }

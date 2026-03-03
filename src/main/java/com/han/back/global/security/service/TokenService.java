@@ -16,12 +16,15 @@ public interface TokenService {
     void invalidateTokens(AuthTokenDto token);
 
     // Refresh Token 소유권 확인 (Redis 대조)
-    void verifyRefreshTokenOwnership(Long id, String refreshToken);
+    void validateRefreshToken(Long id, String refreshToken);
 
     // Access Token 블랙리스트 확인
     boolean isBlacklisted(String accessToken);
 
     // Access Token 검증
-    CustomUserDetails resolveAccessToken(String accessToken);
+    CustomUserDetails authenticateAccessToken(String accessToken);
+
+    // Refresh Token 검증
+    CustomUserDetails authenticateRefreshToken(String refreshToken);
 
 }

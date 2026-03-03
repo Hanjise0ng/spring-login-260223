@@ -53,6 +53,7 @@ public enum BaseResponseStatus {
     // ================== 서버 내부 오류 (500 Internal Server Error) ==================
     MAIL_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "MF", "Mail send failed."),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DBE", "Database error."),
+    REDIS_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "RE", "Redis operation failed."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "ISE", "Internal server error.");
 
 

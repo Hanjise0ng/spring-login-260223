@@ -3,18 +3,17 @@ package com.han.back.global.security.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
-import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthHttpUtil;
+import com.han.back.global.security.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -71,7 +70,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         AuthTokenDto tokenPair = tokenService.issueTokens(id, role);
         AuthHttpUtil.setTokenResponse(request, response, tokenPair);
 
-        setJsonResponse(response, BaseResponseStatus.SUCCESS);
+        HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.SUCCESS);
         recordSuccessLog(request, id, role);
     }
 
@@ -81,7 +80,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         BaseResponseStatus clientStatus = determineClientStatus(failed, logStatus);
 
         recordFailureLog(request, logStatus);
-        setJsonResponse(response, clientStatus);
+        HttpResponseUtil.writeResponse(response, objectMapper, clientStatus);
     }
 
     // Success Helper Method
@@ -122,19 +121,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         log.warn("Login Failed - UserId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
                 attemptedUserId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
-    }
-
-    // Common Utility Helper Method
-    private void setJsonResponse(HttpServletResponse response, BaseResponseStatus status) throws IOException {
-        response.setStatus(status.getHttpStatusCode());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
-
-        Object responseBody = (status == BaseResponseStatus.SUCCESS)
-                ? BaseResponse.success().getBody()
-                : BaseResponse.error(status).getBody();
-
-        objectMapper.writeValue(response.getWriter(), responseBody);
     }
 
 }

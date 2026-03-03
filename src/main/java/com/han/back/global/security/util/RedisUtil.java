@@ -1,5 +1,7 @@
 package com.han.back.global.security.util;
 
+import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.exception.CustomException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -16,23 +18,43 @@ public class RedisUtil {
     }
 
     public void setDataExpire(String key, String value, long durationMillis) {
-        redisTemplate.opsForValue().set(key, value, Duration.ofMillis(durationMillis));
+        try {
+            redisTemplate.opsForValue().set(key, value, Duration.ofMillis(durationMillis));
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
     public boolean setIfAbsent(String key, String value, long durationMillis) {
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofMillis(durationMillis)));
+        try {
+            return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofMillis(durationMillis)));
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
     public String getData(String key) {
-        return redisTemplate.opsForValue().get(key);
+        try {
+            return redisTemplate.opsForValue().get(key);
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
     public void deleteData(String key) {
-        redisTemplate.delete(key);
+        try {
+            redisTemplate.delete(key);
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
     public boolean hasKey(String key) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
 }
