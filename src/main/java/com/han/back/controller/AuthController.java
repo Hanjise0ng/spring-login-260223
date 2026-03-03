@@ -4,6 +4,10 @@ import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.Empty;
+import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.util.AuthHttpUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +27,24 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Empty>> signUp(
             @RequestBody @Valid SignUpRequestDto requestBody
     ) {
-        return authService.signUp(requestBody);
+        authService.signUp(requestBody);
+        return BaseResponse.success();
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<BaseResponse<Empty>> reissue(
+            HttpServletRequest request, HttpServletResponse response) {
+
+        String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
+        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
+        AuthTokenDto oldTokens = AuthTokenDto.builder()
+                .accessToken(oldAccessToken)
+                .refreshToken(oldRefreshToken)
+                .build();
+
+        AuthTokenDto token = authService.reissue(oldTokens);
+        AuthHttpUtil.setTokenResponse(request, response, token);
+        return BaseResponse.success();
     }
 
 }
