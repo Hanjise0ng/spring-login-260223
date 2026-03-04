@@ -1,6 +1,5 @@
 package com.han.back.global.security.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
@@ -21,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
@@ -83,7 +83,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         HttpResponseUtil.writeResponse(response, objectMapper, clientStatus);
     }
 
-    // Success Helper Method
     private void recordSuccessLog(HttpServletRequest request, Long id, Role role) {
         String clientType = request.getHeader("X-Client-Type");
 
@@ -92,7 +91,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 (clientType != null && !clientType.isBlank() ? clientType : "WEB"));
     }
 
-    // Unsuccess Helper Method
     private BaseResponseStatus determineLogStatus(AuthenticationException failed) {
         Throwable cause = (failed.getCause() != null) ? failed.getCause() : failed;
 
