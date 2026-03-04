@@ -26,7 +26,8 @@ spring:
           time_zone: Asia/Seoul
 
   jackson:
-    date-format: yyyy.MM.dd HH:mm:ss
+    deserialization:
+      fail-on-unknown-properties: false
     time-zone: Asia/Seoul
 
   mail:

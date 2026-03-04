@@ -1,13 +1,12 @@
 package com.han.back.global.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
 import com.han.back.global.security.handler.CustomLogoutHandler;
 import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
-import com.han.back.global.security.handler.FailedAuthenticationEntryPoint;
+import com.han.back.global.security.entrypoint.UnauthenticatedEntryPoint;
 import com.han.back.global.security.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableWebSecurity
@@ -31,6 +31,7 @@ public class SecurityConfig {
     private final CorsConfig corsConfig;
     private final AuthenticationConfiguration authConfig;
     private final TokenService tokenService;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -44,7 +45,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) {
-        ObjectMapper objectMapper = new ObjectMapper();
         AuthenticationManager authenticationManager = authenticationManager();
         LoginFilter loginFilter = new LoginFilter(authenticationManager, objectMapper, tokenService);
         JwtFilter jwtFilter = new JwtFilter(tokenService);
@@ -80,7 +80,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
                 .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint(new FailedAuthenticationEntryPoint())
+                        .authenticationEntryPoint(new UnauthenticatedEntryPoint(objectMapper))
                 )
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")

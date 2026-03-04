@@ -1,6 +1,5 @@
 package com.han.back.global.security.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.dto.Empty;
@@ -13,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 

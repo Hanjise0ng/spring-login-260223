@@ -1,11 +1,11 @@
 package com.han.back.global.security.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
