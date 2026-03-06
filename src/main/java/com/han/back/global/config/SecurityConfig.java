@@ -63,7 +63,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(
                                 "/",
-                                "/api/*/auth/**",
+                                "/api/v*/auth/**",
                                 "/oauth2/**",
                                 "/login/**",
 
@@ -83,7 +83,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new UnauthenticatedEntryPoint(objectMapper))
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/api/v1/auth/logout")
+                        .logoutUrl("/api/logout")
                         .addLogoutHandler(new CustomLogoutHandler(objectMapper, tokenService))
                         .logoutSuccessHandler(new CustomLogoutSuccessHandler(objectMapper))
                         .permitAll()
