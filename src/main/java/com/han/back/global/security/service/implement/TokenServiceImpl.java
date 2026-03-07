@@ -56,6 +56,8 @@ public class TokenServiceImpl implements TokenService {
             if (ttl > 0) {
                 redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
                 log.info("Access Token Blacklisted - TTL: {}ms", ttl);
+            } else {
+                log.info("Access Token already expired, skip blacklist - ExpiredAt: {}", claims.getExpiration());
             }
         }
 

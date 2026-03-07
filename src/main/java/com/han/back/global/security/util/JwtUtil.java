@@ -45,19 +45,11 @@ public class JwtUtil {
     }
 
     public Claims parseClaims(String token) {
-        try {
-            return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
-        } catch (SecurityException | MalformedJwtException e) {
-            log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
-        } catch (ExpiredJwtException e) {
+        Claims claims = parseClaimsIgnoreExpiry(token);
+        if (claims.getExpiration() != null && claims.getExpiration().before(new Date())) {
             throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
-        } catch (UnsupportedJwtException e) {
-            log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
-        } catch (IllegalArgumentException e) {
-            throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
         }
+        return claims;
     }
 
     public Claims parseClaimsIgnoreExpiry(String token) {
@@ -65,6 +57,14 @@ public class JwtUtil {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (ExpiredJwtException e) {
             return e.getClaims();
+        } catch (SecurityException | MalformedJwtException e) {
+            log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
+            throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
+        } catch (UnsupportedJwtException e) {
+            log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
+            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+        } catch (IllegalArgumentException e) {
+            throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
         }
     }
 
