@@ -8,6 +8,7 @@ public class AuthConst {
     public static final String BEARER_PREFIX = "Bearer ";
     public static final String HEADER_REFRESH_TOKEN_NAME = "Refresh-Token";
     public static final String HEADER_CLIENT_TYPE = "X-Client-Type";
+    public static final String HEADER_SET_COOKIE = "Set-Cookie";
 
 
     // JWT 페이로드 키 (Claims Keys)
