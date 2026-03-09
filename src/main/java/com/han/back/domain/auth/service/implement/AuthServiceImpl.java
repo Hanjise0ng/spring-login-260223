@@ -37,7 +37,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         dto.setPassword(passwordEncoder.encode(dto.getPassword()));
-        UserEntity user = userMapper.ofSignupDTO(dto);
+        UserEntity user = userMapper.fromSignUpRequest(dto);
 
         userRepository.save(user);
     }

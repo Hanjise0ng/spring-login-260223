@@ -36,7 +36,9 @@ public class UserEntity extends BaseTime {
     @Column(nullable = false)
     private Role role;
 
-    private String type;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider authProvider;
 
     public void updateUsername(String username) {
         this.username = username;
@@ -52,6 +54,10 @@ public class UserEntity extends BaseTime {
 
     public void changeRole(Role role) {
         this.role = role;
+    }
+
+    public boolean isLocalUser() {
+        return this.authProvider == AuthProvider.LOCAL;
     }
 
 }
