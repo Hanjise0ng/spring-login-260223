@@ -37,10 +37,7 @@ public class AuthController {
 
         String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
         String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
-        AuthTokenDto oldTokens = AuthTokenDto.builder()
-                .accessToken(oldAccessToken)
-                .refreshToken(oldRefreshToken)
-                .build();
+        AuthTokenDto oldTokens = AuthTokenDto.of(oldAccessToken, oldRefreshToken);
 
         AuthTokenDto token = authService.reissue(oldTokens);
         AuthHttpUtil.setTokenResponse(request, response, token);
