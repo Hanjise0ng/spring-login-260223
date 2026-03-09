@@ -17,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Optional;
+
 @Slf4j
 @RequiredArgsConstructor
 public class CustomLogoutHandler implements LogoutHandler {
@@ -26,15 +28,21 @@ public class CustomLogoutHandler implements LogoutHandler {
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        String accessToken = AuthHttpUtil.extractAccessToken(request);
-        String refreshToken = AuthHttpUtil.extractRefreshToken(request);
-        String userId = (authentication != null) ? authentication.getName() : "UNKNOWN";
+        String userId = Optional.ofNullable(authentication)
+                .map(Authentication::getName)
+                .orElse("UNKNOWN");
+
+        AuthTokenDto tokens = AuthTokenDto.of(
+                AuthHttpUtil.extractAccessToken(request).orElse(""),
+                AuthHttpUtil.extractRefreshToken(request).orElse("")
+        );
 
         try {
-            tokenService.invalidateTokens(AuthTokenDto.of(accessToken, refreshToken));
+            if (!tokens.isEmpty()) {
+                tokenService.invalidateTokens(tokens);
+            }
         } catch (CustomAuthenticationException e) {
             log.warn("Invalid token during logout - UserId: {} | Reason: {}", userId, e.getMessage());
-
         } catch (CustomException e) {
             log.error("Logout failed due to Redis error - UserId: {}", userId, e);
             HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.REDIS_ERROR);
