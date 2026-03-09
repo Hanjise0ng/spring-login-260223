@@ -31,10 +31,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         String userId = (authentication != null) ? authentication.getName() : "UNKNOWN";
 
         try {
-            tokenService.invalidateTokens(AuthTokenDto.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .build());
+            tokenService.invalidateTokens(AuthTokenDto.of(accessToken, refreshToken));
         } catch (CustomAuthenticationException e) {
             log.warn("Invalid token during logout - UserId: {} | Reason: {}", userId, e.getMessage());
 

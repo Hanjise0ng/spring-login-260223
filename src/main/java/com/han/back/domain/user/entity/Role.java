@@ -17,7 +17,7 @@ public enum Role implements GrantedAuthority {
     USER("USER"),
     ADMIN("ADMIN");
 
-    private final String description;
+    private final String value;
 
     private static final Map<String, Role> AUTHORITY_MAP =
             Collections.unmodifiableMap(
@@ -27,7 +27,7 @@ public enum Role implements GrantedAuthority {
 
     @Override
     public String getAuthority() {
-        return "ROLE_" + this.name();
+        return "ROLE_" + this.value;
     }
 
     public static Role fromAuthority(String authority) {

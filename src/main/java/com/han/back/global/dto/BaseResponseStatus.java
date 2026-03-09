@@ -28,6 +28,8 @@ public enum BaseResponseStatus {
     EXPIRED_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "EJT", "Expired JWT token."),
     UNSUPPORTED_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "UJT", "Unsupported JWT token."),
     EMPTY_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "EMT", "JWT token is empty."),
+    MISSING_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "MAT", "Access token is missing."),
+    MISSING_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "MRT", "Refresh token is missing."),
 
 
     // --- JWT Refresh Token 오류 ---
