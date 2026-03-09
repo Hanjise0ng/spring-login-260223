@@ -23,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
@@ -116,8 +117,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {
-        String attemptedUserId = (String) request.getAttribute("attemptedUserId");
-        if (attemptedUserId == null) attemptedUserId = "UNKNOWN";
+        String attemptedUserId = Optional.ofNullable(
+                (String) request.getAttribute("attemptedUserId")
+        ).orElse("UNIDENTIFIED");
 
         log.warn("Login Failed - UserId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
                 attemptedUserId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
