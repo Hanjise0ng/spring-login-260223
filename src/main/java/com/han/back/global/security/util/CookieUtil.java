@@ -24,7 +24,7 @@ public class CookieUtil {
                 .sameSite(AuthConst.COOKIE_SAME_SITE)
                 .build();
 
-        response.addHeader("Set-Cookie", cookie.toString());
+        response.addHeader(AuthConst.HEADER_SET_COOKIE, cookie.toString());
     }
 
 }
