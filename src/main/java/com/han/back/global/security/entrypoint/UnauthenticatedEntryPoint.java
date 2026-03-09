@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
+@Component
 @RequiredArgsConstructor
 public class UnauthenticatedEntryPoint implements AuthenticationEntryPoint {
 
