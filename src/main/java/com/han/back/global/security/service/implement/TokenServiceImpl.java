@@ -47,21 +47,19 @@ public class TokenServiceImpl implements TokenService {
         if (oldTokens == null || oldTokens.isEmpty()) return;
 
         if (oldTokens.hasAccessToken()) {
-            Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getAccessToken());
-            long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
-            if (ttl > 0) {
-                redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
-                log.info("Access Token Blacklisted - TTL: {}ms", ttl);
-            } else {
-                log.info("Access Token already expired, skip blacklist - ExpiredAt: {}", claims.getExpiration());
-            }
+            jwtUtil.extractClaimsForLogout(oldTokens.getAccessToken()).ifPresent(claims -> {
+                long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
+                if (ttl > 0) {
+                    redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
+                }
+            });
         }
 
         if (oldTokens.hasRefreshToken()) {
-            Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getRefreshToken());
-            Long id = jwtUtil.getUserId(claims);
-            redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
-            log.info("Refresh Token Deleted - UserId: {}", id);
+            jwtUtil.extractClaimsForLogout(oldTokens.getRefreshToken()).ifPresent(claims -> {
+                Long id = jwtUtil.getUserId(claims);
+                redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
+            });
         }
     }
 

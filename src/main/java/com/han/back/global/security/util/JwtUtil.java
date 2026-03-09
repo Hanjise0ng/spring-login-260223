@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -45,18 +46,10 @@ public class JwtUtil {
     }
 
     public Claims parseClaims(String token) {
-        Claims claims = parseClaimsIgnoreExpiry(token);
-        if (claims.getExpiration() != null && claims.getExpiration().before(new Date())) {
-            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
-        }
-        return claims;
-    }
-
-    public Claims parseClaimsIgnoreExpiry(String token) {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (ExpiredJwtException e) {
-            return e.getClaims();
+            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
         } catch (SecurityException | MalformedJwtException e) {
             log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
@@ -65,6 +58,18 @@ public class JwtUtil {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         } catch (IllegalArgumentException e) {
             throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
+        }
+    }
+
+    public Optional<Claims> extractClaimsForLogout(String token) {
+        try {
+            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
+            return Optional.of(claims);
+        } catch (ExpiredJwtException e) {
+            return Optional.ofNullable(e.getClaims());
+        } catch (Exception e) {
+            log.warn("Invalid JWT Token during Logout (Ignored) - Error: {}", e.getMessage());
+            return Optional.empty();
         }
     }
 
