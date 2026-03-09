@@ -20,7 +20,7 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
-@Entity(name = "user")
+@Entity(name = "users")
 public class UserEntity extends BaseTime {
 
     @Column(unique = true, nullable = false)
