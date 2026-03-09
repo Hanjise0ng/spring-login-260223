@@ -83,7 +83,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new UnauthenticatedEntryPoint(objectMapper))
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/api/logout")
+                        .logoutUrl("/api/v1/auth/logout")
                         .addLogoutHandler(new CustomLogoutHandler(objectMapper, tokenService))
                         .logoutSuccessHandler(new CustomLogoutSuccessHandler(objectMapper))
                         .permitAll()
