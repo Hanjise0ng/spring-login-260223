@@ -22,4 +22,16 @@ public class AuthTokenDto {
                 .build();
     }
 
+    public boolean hasAccessToken() {
+        return StringUtils.hasText(this.accessToken);
+    }
+
+    public boolean hasRefreshToken() {
+        return StringUtils.hasText(this.refreshToken);
+    }
+
+    public boolean isEmpty() {
+        return !hasAccessToken() && !hasRefreshToken();
+    }
+
 }

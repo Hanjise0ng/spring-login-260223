@@ -13,7 +13,6 @@ import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -45,12 +44,9 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void invalidateTokens(AuthTokenDto oldTokens) {
-        if (oldTokens == null) return;
-        if (!StringUtils.hasText(oldTokens.getAccessToken()) && !StringUtils.hasText(oldTokens.getRefreshToken())) {
-            return;
-        }
+        if (oldTokens == null || oldTokens.isEmpty()) return;
 
-        if (StringUtils.hasText(oldTokens.getAccessToken())) {
+        if (oldTokens.hasAccessToken()) {
             Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getAccessToken());
             long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
             if (ttl > 0) {
@@ -61,7 +57,7 @@ public class TokenServiceImpl implements TokenService {
             }
         }
 
-        if (StringUtils.hasText(oldTokens.getRefreshToken())) {
+        if (oldTokens.hasRefreshToken()) {
             Claims claims = jwtUtil.parseClaimsIgnoreExpiry(oldTokens.getRefreshToken());
             Long id = jwtUtil.getUserId(claims);
             redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
