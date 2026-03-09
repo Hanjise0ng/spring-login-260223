@@ -1,6 +1,7 @@
 package com.han.back.global.security.filter;
 
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
+import com.han.back.domain.user.entity.ClientType;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
@@ -91,7 +92,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         log.info("Login Success - UserId: {} | Role: {} | ClientIP: {} | ClientType: {}",
                 id, role.name(), request.getRemoteAddr(),
-                (clientType != null && !clientType.isBlank() ? clientType : "WEB"));
+                (clientType != null && !clientType.isBlank() ? clientType : ClientType.WEB.name()));
     }
 
     private BaseResponseStatus determineLogStatus(AuthenticationException failed) {
