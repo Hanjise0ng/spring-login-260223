@@ -19,6 +19,7 @@ public class AuthConst {
     public static final long REFRESH_EXPIRATION = 86400000L;
     public static final int COOKIE_ACCESS_EXPIRATION = 30 * 60;
     public static final int COOKIE_REFRESH_EXPIRATION = 24 * 60 * 60;
+    public static final String COOKIE_SAME_SITE = "Strict";
 
 
     // Redis 블랙리스트
