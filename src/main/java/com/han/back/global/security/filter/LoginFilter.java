@@ -8,6 +8,7 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.AuthHttpUtil;
 import com.han.back.global.security.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
@@ -88,7 +89,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void recordSuccessLog(HttpServletRequest request, Long id, Role role) {
-        String clientType = request.getHeader("X-Client-Type");
+        String clientType = request.getHeader(AuthConst.HEADER_CLIENT_TYPE);
 
         log.info("Login Success - UserId: {} | Role: {} | ClientIP: {} | ClientType: {}",
                 id, role.name(), request.getRemoteAddr(),
