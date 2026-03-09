@@ -1,5 +1,6 @@
 package com.han.back.global.security.util;
 
+import com.han.back.domain.user.entity.ClientType;
 import com.han.back.global.security.dto.AuthTokenDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,8 +28,9 @@ public class AuthHttpUtil {
     public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthTokenDto newTokens) {
         response.setHeader(HttpHeaders.AUTHORIZATION, AuthConst.BEARER_PREFIX + newTokens.getAccessToken());
 
-        String clientType = request.getHeader("X-Client-Type");
-        if ("APP".equalsIgnoreCase(clientType)) {
+        String headerValue = request.getHeader(AuthConst.HEADER_CLIENT_TYPE);
+        ClientType clientType = ClientType.fromHeader(headerValue);
+        if (clientType == ClientType.APP) {
             response.setHeader(AuthConst.HEADER_REFRESH_TOKEN_NAME, newTokens.getRefreshToken());
         } else {
             CookieUtil.addSecureCookie(response, AuthConst.COOKIE_REFRESH_TOKEN_NAME, newTokens.getRefreshToken(), AuthConst.COOKIE_REFRESH_EXPIRATION);
