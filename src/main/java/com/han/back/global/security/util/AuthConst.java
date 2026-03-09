@@ -3,6 +3,7 @@ package com.han.back.global.security.util;
 public class AuthConst {
 
     // 기본 토큰 타입
+    public static final String BEARER_PREFIX = "Bearer ";
     public static final String TOKEN_TYPE_CATEGORY = "category";
     public static final String TOKEN_TYPE_ACCESS = "access";
     public static final String TOKEN_TYPE_REFRESH = "refresh";

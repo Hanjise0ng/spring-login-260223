@@ -12,7 +12,7 @@ public class AuthHttpUtil {
 
     public static String extractAccessToken(HttpServletRequest request) {
         String bearerToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(AuthConst.BEARER_PREFIX)) {
             return bearerToken.substring(7);
         }
         return null;
@@ -25,7 +25,7 @@ public class AuthHttpUtil {
     }
 
     public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthTokenDto newTokens) {
-        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newTokens.getAccessToken());
+        response.setHeader(HttpHeaders.AUTHORIZATION, AuthConst.BEARER_PREFIX + newTokens.getAccessToken());
 
         String clientType = request.getHeader("X-Client-Type");
         if ("APP".equalsIgnoreCase(clientType)) {
