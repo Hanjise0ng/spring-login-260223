@@ -30,10 +30,7 @@ public class TokenServiceImpl implements TokenService {
         long ttl = jwtUtil.getExpiration(refreshToken);
         redisUtil.setDataExpire(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id, refreshToken, ttl);
 
-        return AuthTokenDto.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return AuthTokenDto.of(accessToken, refreshToken);
     }
 
     @Override
@@ -46,27 +43,17 @@ public class TokenServiceImpl implements TokenService {
     public void invalidateTokens(AuthTokenDto oldTokens) {
         if (oldTokens == null || oldTokens.isEmpty()) return;
 
-        if (oldTokens.hasAccessToken()) {
-            jwtUtil.extractClaimsForLogout(oldTokens.getAccessToken()).ifPresent(claims -> {
-                long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
-                if (ttl > 0) {
-                    redisUtil.setDataExpire(AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(), "logout", ttl);
-                }
-            });
-        }
-
-        if (oldTokens.hasRefreshToken()) {
-            jwtUtil.extractClaimsForLogout(oldTokens.getRefreshToken()).ifPresent(claims -> {
-                Long id = jwtUtil.getUserId(claims);
-                redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
-            });
-        }
+        blacklistAccessToken(oldTokens);
+        revokeRefreshToken(oldTokens);
     }
 
     @Override
     public void validateRefreshToken(Long id, String refreshToken) {
-        String storedToken = redisUtil.getData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
-        if (storedToken == null || !storedToken.equals(refreshToken)) {
+        boolean isValid = redisUtil.getData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id)
+                .filter(refreshToken::equals)
+                .isPresent();
+
+        if (!isValid) {
             log.error("Token Mismatch or Hijacking Suspected - UserId: {}", id);
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
@@ -101,6 +88,30 @@ public class TokenServiceImpl implements TokenService {
         }
 
         return new CustomUserDetails(jwtUtil.getUserId(claims), jwtUtil.getRole(claims));
+    }
+
+    private void blacklistAccessToken(AuthTokenDto oldTokens) {
+        if (!oldTokens.hasAccessToken()) return;
+
+        jwtUtil.extractClaimsForLogout(oldTokens.getAccessToken()).ifPresent(claims -> {
+            long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
+            if (ttl > 0) {
+                redisUtil.setDataExpire(
+                        AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(),
+                        "logout",
+                        ttl
+                );
+            }
+        });
+    }
+
+    private void revokeRefreshToken(AuthTokenDto oldTokens) {
+        if (!oldTokens.hasRefreshToken()) return;
+
+        jwtUtil.extractClaimsForLogout(oldTokens.getRefreshToken()).ifPresent(claims -> {
+            Long id = jwtUtil.getUserId(claims);
+            redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
+        });
     }
 
 }
