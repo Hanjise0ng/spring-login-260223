@@ -60,9 +60,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         Long id = userDetails.getId();
         Role role = userDetails.getRole();
 
-        String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
-        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
-        tokenService.invalidateTokens(AuthTokenDto.of(oldAccessToken, oldRefreshToken));
+        AuthTokenDto oldTokens = AuthTokenDto.of(
+                AuthHttpUtil.extractAccessToken(request).orElse(""),
+                AuthHttpUtil.extractRefreshToken(request).orElse("")
+        );
+
+        if (!oldTokens.isEmpty()) {
+            tokenService.invalidateTokens(oldTokens);
+        }
 
         AuthTokenDto tokenPair = tokenService.issueTokens(id, role);
         AuthHttpUtil.setTokenResponse(request, response, tokenPair);
