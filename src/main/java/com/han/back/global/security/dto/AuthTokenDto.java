@@ -17,8 +17,8 @@ public class AuthTokenDto {
 
     public static AuthTokenDto of(String accessToken, String refreshToken) {
         return AuthTokenDto.builder()
-                .accessToken(StringUtils.hasText(accessToken) ? accessToken : "")
-                .refreshToken(StringUtils.hasText(refreshToken) ? refreshToken : "")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 

@@ -3,7 +3,9 @@ package com.han.back.controller;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.global.dto.BaseResponse;
+import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.dto.Empty;
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.util.AuthHttpUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,12 +37,19 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Empty>> reissue(
             HttpServletRequest request, HttpServletResponse response) {
 
-        String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
-        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
-        AuthTokenDto oldTokens = AuthTokenDto.of(oldAccessToken, oldRefreshToken);
+        String oldAccessToken = AuthHttpUtil.extractAccessToken(request)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_ACCESS_TOKEN));
+        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
+
+        AuthTokenDto oldTokens = AuthTokenDto.builder()
+                .accessToken(oldAccessToken)
+                .refreshToken(oldRefreshToken)
+                .build();
 
         AuthTokenDto token = authService.reissue(oldTokens);
         AuthHttpUtil.setTokenResponse(request, response, token);
+
         return BaseResponse.success();
     }
 

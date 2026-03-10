@@ -31,13 +31,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void signUp(SignUpRequestDto dto) {
-        String userId = dto.getUserId();
-        if (userRepository.existsByUserId(userId)) {
+        String loginId = dto.getLoginId();
+        if (userRepository.existsByLoginId(loginId)) {
             throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
         }
 
         dto.setPassword(passwordEncoder.encode(dto.getPassword()));
-        UserEntity user = userMapper.ofSignupDTO(dto);
+        UserEntity user = userMapper.fromSignUpRequest(dto);
 
         userRepository.save(user);
     }
@@ -54,7 +54,7 @@ public class AuthServiceImpl implements AuthService {
         tokenService.validateRefreshToken(userDetails.getId(), oldTokens.getRefreshToken());
 
         AuthTokenDto newTokens = tokenService.rotateTokens(userDetails.getId(), userDetails.getRole(), oldTokens);
-        log.info("Token Reissue Success - UserId: {} | Role: {}", userDetails.getId(), userDetails.getRole().name());
+        log.info("Token Reissue Success - UserPK: {} | Role: {}", userDetails.getId(), userDetails.getRole().name());
         return newTokens;
     }
 

@@ -1,12 +1,14 @@
 package com.han.back.global.security.filter;
 
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
+import com.han.back.domain.user.entity.ClientType;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.AuthHttpUtil;
 import com.han.back.global.security.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
@@ -23,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
@@ -41,11 +44,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
         try {
             SignInRequestDto dto = objectMapper.readValue(request.getInputStream(), SignInRequestDto.class);
-            request.setAttribute("attemptedUserId", dto.getUserId());
-            log.info("Login Attempt - UserId: {} | ClientIP: {}", dto.getUserId(), request.getRemoteAddr());
+            request.setAttribute("attemptedLoginId", dto.getLoginId());
+            log.info("Login Attempt - LoginId: {} | ClientIP: {}", dto.getLoginId(), request.getRemoteAddr());
 
             UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(dto.getUserId(), dto.getPassword());
+                    new UsernamePasswordAuthenticationToken(dto.getLoginId(), dto.getPassword());
 
             return this.getAuthenticationManager().authenticate(authToken);
         } catch (IOException e) {
@@ -60,15 +63,20 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         Long id = userDetails.getId();
         Role role = userDetails.getRole();
 
-        String oldAccessToken = AuthHttpUtil.extractAccessToken(request);
-        String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request);
-        tokenService.invalidateTokens(AuthTokenDto.of(oldAccessToken, oldRefreshToken));
+        AuthTokenDto oldTokens = AuthTokenDto.of(
+                AuthHttpUtil.extractAccessToken(request).orElse(""),
+                AuthHttpUtil.extractRefreshToken(request).orElse("")
+        );
+
+        if (!oldTokens.isEmpty()) {
+            tokenService.invalidateTokens(oldTokens);
+        }
 
         AuthTokenDto tokenPair = tokenService.issueTokens(id, role);
         AuthHttpUtil.setTokenResponse(request, response, tokenPair);
 
         HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.SUCCESS);
-        recordSuccessLog(request, id, role);
+        recordSuccessLog(request, role);
     }
 
     @Override
@@ -80,12 +88,15 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         HttpResponseUtil.writeResponse(response, objectMapper, clientStatus);
     }
 
-    private void recordSuccessLog(HttpServletRequest request, Long id, Role role) {
-        String clientType = request.getHeader("X-Client-Type");
+    private void recordSuccessLog(HttpServletRequest request, Role role) {
+        String clientType = request.getHeader(AuthConst.HEADER_CLIENT_TYPE);
+        String loginId = Optional.ofNullable(
+                (String) request.getAttribute("attemptedLoginId")
+        ).orElse("UNIDENTIFIED");
 
-        log.info("Login Success - UserId: {} | Role: {} | ClientIP: {} | ClientType: {}",
-                id, role.name(), request.getRemoteAddr(),
-                (clientType != null && !clientType.isBlank() ? clientType : "WEB"));
+        log.info("Login Success - LoginId: {} | Role: {} | ClientIP: {} | ClientType: {}",
+                loginId, role.name(), request.getRemoteAddr(),
+                (clientType != null && !clientType.isBlank() ? clientType : ClientType.WEB.name()));
     }
 
     private BaseResponseStatus determineLogStatus(AuthenticationException failed) {
@@ -111,11 +122,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {
-        String attemptedUserId = (String) request.getAttribute("attemptedUserId");
-        if (attemptedUserId == null) attemptedUserId = "UNKNOWN";
+        String loginId = Optional.ofNullable(
+                (String) request.getAttribute("attemptedLoginId")
+        ).orElse("UNIDENTIFIED");
 
-        log.warn("Login Failed - UserId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
-                attemptedUserId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
+        log.warn("Login Failed - LoginId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
+                loginId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
     }
 
 }

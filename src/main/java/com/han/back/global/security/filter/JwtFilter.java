@@ -13,11 +13,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.AntPathMatcher;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -45,19 +45,18 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String accessToken = AuthHttpUtil.extractAccessToken(request);
+        Optional<String> accessToken = AuthHttpUtil.extractAccessToken(request);
 
-        if (!StringUtils.hasText(accessToken)) {
+        if (accessToken.isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken);
-
+        CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken.get());
         Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        log.debug("JWT Context Setup - Id: {} | Role: {} | ClientIP: {}",
+        log.debug("JWT Context Setup - UserPK: {} | Role: {} | ClientIP: {}",
                 userDetails.getId(), userDetails.getRole().name(), request.getRemoteAddr());
 
         filterChain.doFilter(request, response);

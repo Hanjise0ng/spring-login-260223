@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Optional;
 
 @Component
 public class RedisUtil {
@@ -33,9 +34,9 @@ public class RedisUtil {
         }
     }
 
-    public String getData(String key) {
+    public Optional<String> getData(String key) {
         try {
-            return redisTemplate.opsForValue().get(key);
+            return Optional.ofNullable(redisTemplate.opsForValue().get(key));
         } catch (Exception e) {
             throw new CustomException(BaseResponseStatus.REDIS_ERROR);
         }

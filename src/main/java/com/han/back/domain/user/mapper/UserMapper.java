@@ -1,6 +1,7 @@
 package com.han.back.domain.user.mapper;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
+import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import org.springframework.stereotype.Component;
@@ -8,14 +9,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserMapper {
 
-    public UserEntity ofSignupDTO(SignUpRequestDto dto) {
+    public UserEntity fromSignUpRequest(SignUpRequestDto dto) {
         return UserEntity.builder()
-                .userId(dto.getUserId())
+                .loginId(dto.getLoginId())
                 .password(dto.getPassword())
                 .email(dto.getEmail())
-                .username(dto.getUsername())
+                .nickname(dto.getNickname())
                 .role(Role.USER)
-                .type("app")
+                .authProvider(AuthProvider.LOCAL)
                 .build();
     }
 
