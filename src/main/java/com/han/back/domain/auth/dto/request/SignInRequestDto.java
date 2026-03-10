@@ -11,7 +11,7 @@ import lombok.Setter;
 public class SignInRequestDto {
 
     @NotBlank
-    private String userId;
+    private String loginId;
 
     @NotBlank
     private String password;

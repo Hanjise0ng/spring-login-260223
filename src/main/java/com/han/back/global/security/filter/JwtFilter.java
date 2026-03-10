@@ -56,7 +56,7 @@ public class JwtFilter extends OncePerRequestFilter {
         Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        log.debug("JWT Context Setup - Id: {} | Role: {} | ClientIP: {}",
+        log.debug("JWT Context Setup - UserPK: {} | Role: {} | ClientIP: {}",
                 userDetails.getId(), userDetails.getRole().name(), request.getRemoteAddr());
 
         filterChain.doFilter(request, response);

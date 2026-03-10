@@ -28,9 +28,10 @@ public class CustomLogoutHandler implements LogoutHandler {
     private final ObjectMapper objectMapper;
     private final TokenService tokenService;
 
+    // 로그아웃시 유저 아이디 못가져오는 문제 해결하기
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        String userId = Optional.ofNullable(authentication)
+        String userPk = Optional.ofNullable(authentication)
                 .map(Authentication::getName)
                 .orElse("UNKNOWN");
 
@@ -44,15 +45,15 @@ public class CustomLogoutHandler implements LogoutHandler {
                 tokenService.invalidateTokens(tokens);
             }
         } catch (CustomAuthenticationException e) {
-            log.warn("Invalid token during logout - UserId: {} | Reason: {}", userId, e.getMessage());
+            log.warn("Invalid token during logout - UserPK: {} | Reason: {}", userPk, e.getMessage());
         } catch (CustomException e) {
-            log.error("Logout failed due to Redis error - UserId: {}", userId, e);
+            log.error("Logout failed due to Redis error - UserPK: {}", userPk, e);
             HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.REDIS_ERROR);
             return;
         }
 
         CookieUtil.addSecureCookie(response, AuthConst.COOKIE_REFRESH_TOKEN_NAME, "", 0);
-        log.info("Logout Success - UserId: {} | ClientIP: {}", userId, request.getRemoteAddr());
+        log.info("Logout Success - UserPK: {} | ClientIP: {}", userPk, request.getRemoteAddr());
     }
 
 }

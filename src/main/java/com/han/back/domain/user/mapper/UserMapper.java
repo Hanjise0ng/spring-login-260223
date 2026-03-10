@@ -11,10 +11,10 @@ public class UserMapper {
 
     public UserEntity fromSignUpRequest(SignUpRequestDto dto) {
         return UserEntity.builder()
-                .userId(dto.getUserId())
+                .loginId(dto.getLoginId())
                 .password(dto.getPassword())
                 .email(dto.getEmail())
-                .username(dto.getUsername())
+                .nickname(dto.getNickname())
                 .role(Role.USER)
                 .authProvider(AuthProvider.LOCAL)
                 .build();

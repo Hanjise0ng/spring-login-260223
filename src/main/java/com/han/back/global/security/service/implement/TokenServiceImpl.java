@@ -75,7 +75,7 @@ public class TokenServiceImpl implements TokenService {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         }
 
-        return new CustomUserDetails(jwtUtil.getUserId(claims), jwtUtil.getRole(claims));
+        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims));
     }
 
     @Override
@@ -87,7 +87,7 @@ public class TokenServiceImpl implements TokenService {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         }
 
-        return new CustomUserDetails(jwtUtil.getUserId(claims), jwtUtil.getRole(claims));
+        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims));
     }
 
     private void blacklistAccessToken(AuthTokenDto oldTokens) {
@@ -109,7 +109,7 @@ public class TokenServiceImpl implements TokenService {
         if (!oldTokens.hasRefreshToken()) return;
 
         jwtUtil.extractClaimsForLogout(oldTokens.getRefreshToken()).ifPresent(claims -> {
-            Long id = jwtUtil.getUserId(claims);
+            Long id = jwtUtil.getId(claims);
             redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
         });
     }

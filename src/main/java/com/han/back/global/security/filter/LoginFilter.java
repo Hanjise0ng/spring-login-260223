@@ -44,11 +44,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
         try {
             SignInRequestDto dto = objectMapper.readValue(request.getInputStream(), SignInRequestDto.class);
-            request.setAttribute("attemptedUserId", dto.getUserId());
-            log.info("Login Attempt - UserId: {} | ClientIP: {}", dto.getUserId(), request.getRemoteAddr());
+            request.setAttribute("attemptedLoginId", dto.getLoginId());
+            log.info("Login Attempt - LoginId: {} | ClientIP: {}", dto.getLoginId(), request.getRemoteAddr());
 
             UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(dto.getUserId(), dto.getPassword());
+                    new UsernamePasswordAuthenticationToken(dto.getLoginId(), dto.getPassword());
 
             return this.getAuthenticationManager().authenticate(authToken);
         } catch (IOException e) {
@@ -76,7 +76,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         AuthHttpUtil.setTokenResponse(request, response, tokenPair);
 
         HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.SUCCESS);
-        recordSuccessLog(request, id, role);
+        recordSuccessLog(request, role);
     }
 
     @Override
@@ -88,11 +88,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         HttpResponseUtil.writeResponse(response, objectMapper, clientStatus);
     }
 
-    private void recordSuccessLog(HttpServletRequest request, Long id, Role role) {
+    private void recordSuccessLog(HttpServletRequest request, Role role) {
         String clientType = request.getHeader(AuthConst.HEADER_CLIENT_TYPE);
+        String loginId = Optional.ofNullable(
+                (String) request.getAttribute("attemptedLoginId")
+        ).orElse("UNIDENTIFIED");
 
-        log.info("Login Success - UserId: {} | Role: {} | ClientIP: {} | ClientType: {}",
-                id, role.name(), request.getRemoteAddr(),
+        log.info("Login Success - LoginId: {} | Role: {} | ClientIP: {} | ClientType: {}",
+                loginId, role.name(), request.getRemoteAddr(),
                 (clientType != null && !clientType.isBlank() ? clientType : ClientType.WEB.name()));
     }
 
@@ -119,12 +122,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {
-        String attemptedUserId = Optional.ofNullable(
-                (String) request.getAttribute("attemptedUserId")
+        String loginId = Optional.ofNullable(
+                (String) request.getAttribute("attemptedLoginId")
         ).orElse("UNIDENTIFIED");
 
-        log.warn("Login Failed - UserId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
-                attemptedUserId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
+        log.warn("Login Failed - LoginId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
+                loginId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
     }
 
 }

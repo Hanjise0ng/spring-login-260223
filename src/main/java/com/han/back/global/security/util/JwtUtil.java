@@ -29,7 +29,7 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public String createJwt(String category, Long userId, Role role, long expiredMs) {
+    public String createJwt(String category, Long id, Role role, long expiredMs) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -37,7 +37,7 @@ public class JwtUtil {
                 .issuer(issuer)
                 .id(UUID.randomUUID().toString())
                 .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
-                .claim(AuthConst.TOKEN_USER_ID, userId)
+                .claim(AuthConst.TOKEN_USER_PK, id)
                 .claim(AuthConst.TOKEN_ROLE, role.getAuthority())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiredMs))
@@ -73,12 +73,12 @@ public class JwtUtil {
         }
     }
 
-    public Long getUserId(Claims claims) {
-        Number userId = claims.get(AuthConst.TOKEN_USER_ID, Number.class);
-        if (userId == null) {
+    public Long getId(Claims claims) {
+        Number id = claims.get(AuthConst.TOKEN_USER_PK, Number.class);
+        if (id == null) {
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
-        return userId.longValue();
+        return id.longValue();
     }
 
     public Role getRole(Claims claims) {

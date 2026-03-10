@@ -13,7 +13,7 @@ public class AuthConst {
 
     // JWT 페이로드 키 (Claims Keys)
     public static final String TOKEN_TYPE_CATEGORY = "category";
-    public static final String TOKEN_USER_ID = "userId";
+    public static final String TOKEN_USER_PK = "id";
     public static final String TOKEN_ROLE = "role";
 
 
