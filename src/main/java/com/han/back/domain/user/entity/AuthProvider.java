@@ -11,10 +11,10 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public enum AuthProvider {
 
-    LOCAL("local"),
-    KAKAO("kakao"),
-    NAVER("naver"),
-    GOOGLE("google");
+    LOCAL("LOCAL"),
+    KAKAO("KAKAO"),
+    NAVER("NAVER"),
+    GOOGLE("GOOGLE");
 
     private final String value;
 
@@ -23,6 +23,10 @@ public enum AuthProvider {
                 .filter(provider -> provider.getValue().equalsIgnoreCase(registrationId))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.UNSUPPORTED_SOCIAL_PROVIDER));
+    }
+
+    public boolean isSocial() {
+        return this != LOCAL;
     }
 
 }
