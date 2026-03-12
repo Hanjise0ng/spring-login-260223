@@ -32,11 +32,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final ObjectMapper objectMapper;
     private final TokenService tokenService;
+    private final HttpResponseUtil httpResponseUtil;
 
-    public LoginFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper, TokenService tokenService) {
+    public LoginFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper, TokenService tokenService, HttpResponseUtil httpResponseUtil) {
         super.setAuthenticationManager(authenticationManager);
         this.objectMapper = objectMapper;
         this.tokenService = tokenService;
+        this.httpResponseUtil = httpResponseUtil;
         setFilterProcessesUrl("/api/v1/auth/sign-in");
     }
 
@@ -75,7 +77,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         AuthTokenDto tokenPair = tokenService.issueTokens(id, role);
         AuthHttpUtil.setTokenResponse(request, response, tokenPair);
 
-        HttpResponseUtil.writeResponse(response, objectMapper, BaseResponseStatus.SUCCESS);
+        httpResponseUtil.writeResponse(response, BaseResponseStatus.SUCCESS);
         recordSuccessLog(request, role);
     }
 
@@ -85,7 +87,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         BaseResponseStatus clientStatus = determineClientStatus(failed, logStatus);
 
         recordFailureLog(request, logStatus);
-        HttpResponseUtil.writeResponse(response, objectMapper, clientStatus);
+        httpResponseUtil.writeResponse(response, clientStatus);
     }
 
     private void recordSuccessLog(HttpServletRequest request, Role role) {

@@ -8,6 +8,7 @@ import com.han.back.global.security.filter.LoginFilter;
 import com.han.back.global.security.handler.CustomLogoutHandler;
 import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.util.HttpResponseUtil;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,9 +29,11 @@ import tools.jackson.databind.ObjectMapper;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final CorsConfigurationSource corsConfig;
     private final AuthenticationConfiguration authConfig;
-    private final CorsConfigurationSource corsConfigurationSource;
+
     private final TokenService tokenService;
+    private final HttpResponseUtil httpResponseUtil;
     private final ObjectMapper objectMapper;
 
     private final JwtFilter jwtFilter;
@@ -41,20 +44,22 @@ public class SecurityConfig {
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 
     public SecurityConfig(
+            @Qualifier("appCorsConfigurationSource") CorsConfigurationSource corsConfig,
             AuthenticationConfiguration authConfig,
-            @Qualifier("appCorsConfigurationSource") CorsConfigurationSource corsConfigurationSource,
-            TokenService tokenService,
             ObjectMapper objectMapper,
+            TokenService tokenService,
+            HttpResponseUtil httpResponseUtil,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
             UnauthenticatedEntryPoint unauthenticatedEntryPoint,
             CustomLogoutHandler customLogoutHandler,
             CustomLogoutSuccessHandler customLogoutSuccessHandler
     ) {
+        this.corsConfig = corsConfig;
         this.authConfig = authConfig;
-        this.corsConfigurationSource = corsConfigurationSource;
-        this.tokenService = tokenService;
         this.objectMapper = objectMapper;
+        this.tokenService = tokenService;
+        this.httpResponseUtil = httpResponseUtil;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
         this.unauthenticatedEntryPoint = unauthenticatedEntryPoint;
@@ -74,7 +79,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        LoginFilter loginFilter = new LoginFilter(authenticationManager(), objectMapper, tokenService);
+        LoginFilter loginFilter = new LoginFilter(
+                authenticationManager(), objectMapper, tokenService, httpResponseUtil
+        );
 
         configureCors(http);
         configureSecurity(http);
@@ -87,7 +94,7 @@ public class SecurityConfig {
     }
 
     private void configureCors(HttpSecurity http) {
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+        http.cors(cors -> cors.configurationSource(corsConfig));
     }
 
     private void configureSecurity(HttpSecurity http) {
