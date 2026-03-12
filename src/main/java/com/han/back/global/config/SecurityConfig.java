@@ -119,17 +119,17 @@ public class SecurityConfig {
                         "/swagger-resources/**",
                         "/webjars/**"
                 ).permitAll()
-                .requestMatchers("/api/*/user/**").hasRole(Role.USER.name())
-                .requestMatchers("/api/*/admin/**").hasRole(Role.ADMIN.name())
+                .requestMatchers("/api/*/user/**").hasAuthority(Role.USER.getAuthority())
+                .requestMatchers("/api/*/admin/**").hasAuthority(Role.ADMIN.getAuthority())
                 .anyRequest().authenticated()
         );
     }
 
     private void configureFilters(HttpSecurity http, LoginFilter loginFilter) {
         http
-                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtExceptionFilter, JwtFilter.class);
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
     }
 
     private void configureExceptionHandling(HttpSecurity http) {
