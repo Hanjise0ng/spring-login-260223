@@ -24,6 +24,8 @@ public class CustomLogoutHandler implements LogoutHandler {
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        // 정상 흐름에서 도달 불가 — SecurityConfig authenticated() + JwtFilter 보장
+        // AnonymousAuthenticationToken 등 예상치 못한 principal 타입 방어
         if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
             log.error("Logout reached with unexpected principal type: {} | ClientIP: {}",
                     authentication.getPrincipal().getClass().getSimpleName(), request.getRemoteAddr());
@@ -40,7 +42,7 @@ public class CustomLogoutHandler implements LogoutHandler {
             log.info("Logout Success - UserPK: {} | ClientIP: {}",
                     userDetails.getId(), request.getRemoteAddr());
 
-        } catch (CustomException e) { // Redis 장애 — 쿠키 미삭제, 클라이언트 재시도 보장
+        } catch (CustomException e) {
             LogoutContext.setResult(request, LogoutContext.Result.REDIS_ERROR);
             log.error("Logout Failed - UserPK: {} | Reason: {} | ClientIP: {}",
                     userDetails.getId(), e.getMessage(), request.getRemoteAddr(), e);

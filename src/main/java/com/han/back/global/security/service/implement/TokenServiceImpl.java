@@ -71,9 +71,9 @@ public class TokenServiceImpl implements TokenService {
             if (isBlacklisted(accessToken)) {
                 throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
             }
-        } catch (CustomAuthenticationException e) { // 블랙리스트 히트
+        } catch (CustomAuthenticationException e) { // 블랙리스트 히트 — 정상 인증 거부 흐름
             throw e;
-        } catch (CustomException e) { // Redis 장애 시 블랙리스트 확인 불가
+        } catch (CustomException e) { // Redis 장애 — 블랙리스트 확인 불가, 보안 우선으로 인증 거부
             log.error("Redis unavailable during blacklist check - denying access | Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }

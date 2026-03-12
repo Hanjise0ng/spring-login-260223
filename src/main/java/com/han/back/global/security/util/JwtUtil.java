@@ -48,15 +48,15 @@ public class JwtUtil {
     public Claims parseClaims(String token) {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
-        } catch (ExpiredJwtException e) {
+        } catch (ExpiredJwtException e) { // 토큰 만료
             throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
-        } catch (SecurityException | MalformedJwtException e) {
+        } catch (SecurityException | MalformedJwtException e) { // 서명 불일치 또는 토큰 구조 손상
             log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
-        } catch (UnsupportedJwtException e) {
+        } catch (UnsupportedJwtException e) { // 지원하지 않는 JWT 알고리즘 또는 형식
             log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) { // 토큰 문자열이 null 또는 빈 값
             throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
         }
     }
@@ -73,13 +73,6 @@ public class JwtUtil {
             log.warn("JWT parsing failed leniently (ignored) - Error: {}", e.getMessage());
             return Optional.empty();
         }
-    }
-
-    public Optional<String> extractUserPk(String token) {
-        return extractClaimsLeniently(token)
-                .map(claims -> claims.get(AuthConst.TOKEN_USER_PK, Number.class))
-                .map(Number::longValue)
-                .map(String::valueOf);
     }
 
     public Long getId(Claims claims) {
