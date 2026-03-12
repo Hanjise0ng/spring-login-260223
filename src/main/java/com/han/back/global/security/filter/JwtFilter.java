@@ -3,6 +3,7 @@ package com.han.back.global.security.filter;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthHttpUtil;
+import com.han.back.global.security.util.SecurityPathConst;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,23 +24,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
-    private static final String[] EXCLUDE_PATHS = {
-            "/api/*/auth/**",
-            "/oauth/**",
-            "/login/**",
-            "/docs/**",
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
-            "/swagger-resources/**",
-            "/webjars/**"
-    };
-
     private static final AntPathMatcher pathMatcher = new AntPathMatcher();
     private final TokenService tokenService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return Arrays.stream(EXCLUDE_PATHS)
+        return Arrays.stream(SecurityPathConst.PUBLIC_PATHS)
                 .anyMatch(pattern -> pathMatcher.match(pattern, request.getRequestURI()));
     }
 
