@@ -61,6 +61,15 @@ public class JwtUtil {
         }
     }
 
+    public Optional<String> extractUserPk(String token) {
+        if (!StringUtils.hasText(token)) return Optional.empty();
+
+        return extractClaimsForLogout(token)
+                .map(claims -> claims.get(AuthConst.TOKEN_USER_PK, Number.class))
+                .map(Number::longValue)
+                .map(String::valueOf);
+    }
+
     public Optional<Claims> extractClaimsForLogout(String token) {
         try {
             Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();

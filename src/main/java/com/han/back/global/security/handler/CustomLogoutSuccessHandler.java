@@ -16,8 +16,15 @@ public class CustomLogoutSuccessHandler implements LogoutSuccessHandler {
     private final HttpResponseUtil httpResponseUtil;
 
     @Override
-    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        httpResponseUtil.writeResponse(response, BaseResponseStatus.SUCCESS);
+    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response,
+                                Authentication authentication) {
+
+        BaseResponseStatus status = switch (LogoutContext.getResult(request)) {
+            case REDIS_ERROR -> BaseResponseStatus.REDIS_ERROR;
+            default          -> BaseResponseStatus.SUCCESS;
+        };
+
+        httpResponseUtil.writeResponse(response, status);
     }
 
 }
