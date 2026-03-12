@@ -61,25 +61,25 @@ public class JwtUtil {
         }
     }
 
-    public Optional<String> extractUserPk(String token) {
-        if (!StringUtils.hasText(token)) return Optional.empty();
-
-        return extractClaimsForLogout(token)
-                .map(claims -> claims.get(AuthConst.TOKEN_USER_PK, Number.class))
-                .map(Number::longValue)
-                .map(String::valueOf);
-    }
-
-    public Optional<Claims> extractClaimsForLogout(String token) {
+    public Optional<Claims> extractClaimsLeniently(String token) {
         try {
-            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
-            return Optional.of(claims);
+            return Optional.of(
+                    Jwts.parser().verifyWith(secretKey).build()
+                            .parseSignedClaims(token).getPayload()
+            );
         } catch (ExpiredJwtException e) {
             return Optional.ofNullable(e.getClaims());
         } catch (Exception e) {
-            log.warn("Invalid JWT Token during Logout (Ignored) - Error: {}", e.getMessage());
+            log.warn("JWT parsing failed leniently (ignored) - Error: {}", e.getMessage());
             return Optional.empty();
         }
+    }
+
+    public Optional<String> extractUserPk(String token) {
+        return extractClaimsLeniently(token)
+                .map(claims -> claims.get(AuthConst.TOKEN_USER_PK, Number.class))
+                .map(Number::longValue)
+                .map(String::valueOf);
     }
 
     public Long getId(Claims claims) {

@@ -93,7 +93,7 @@ public class TokenServiceImpl implements TokenService {
     private void blacklistAccessToken(AuthTokenDto oldTokens) {
         if (!oldTokens.hasAccessToken()) return;
 
-        jwtUtil.extractClaimsForLogout(oldTokens.getAccessToken()).ifPresent(claims -> {
+        jwtUtil.extractClaimsLeniently(oldTokens.getAccessToken()).ifPresent(claims -> {
             long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
             if (ttl > 0) {
                 redisUtil.setDataExpire(
@@ -108,7 +108,7 @@ public class TokenServiceImpl implements TokenService {
     private void revokeRefreshToken(AuthTokenDto oldTokens) {
         if (!oldTokens.hasRefreshToken()) return;
 
-        jwtUtil.extractClaimsForLogout(oldTokens.getRefreshToken()).ifPresent(claims -> {
+        jwtUtil.extractClaimsLeniently(oldTokens.getRefreshToken()).ifPresent(claims -> {
             Long id = jwtUtil.getId(claims);
             redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
         });
