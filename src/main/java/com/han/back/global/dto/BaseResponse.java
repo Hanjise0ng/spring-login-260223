@@ -22,28 +22,46 @@ public class BaseResponse<T> {
         this.result = null;
     }
 
+    // Spring MVC (Controller)
     public static ResponseEntity<BaseResponse<Empty>> success() {
         return ResponseEntity
                 .status(BaseResponseStatus.SUCCESS.getHttpStatus())
-                .body(new BaseResponse<>(BaseResponseStatus.SUCCESS, Empty.getInstance()));
+                .body(successBody());
     }
 
     public static <T> ResponseEntity<BaseResponse<T>> success(T result) {
         return ResponseEntity
                 .status(BaseResponseStatus.SUCCESS.getHttpStatus())
-                .body(new BaseResponse<>(BaseResponseStatus.SUCCESS, result));
+                .body(successBody(result));
     }
 
     public static ResponseEntity<BaseResponse<Empty>> error(BaseResponseStatus status) {
         return ResponseEntity
                 .status(status.getHttpStatus())
-                .body(new BaseResponse<>(status, Empty.getInstance()));
+                .body(errorBody(status));
     }
 
     public static ResponseEntity<BaseResponse<Empty>> error(BaseResponseStatus status, String customMessage) {
         return ResponseEntity
                 .status(status.getHttpStatus())
-                .body(new BaseResponse<>(status, customMessage));
+                .body(errorBody(status, customMessage));
+    }
+
+    // Servlet Filter / Handler (ResponseEntity 생성 없이 body만)
+    public static BaseResponse<Empty> successBody() {
+        return new BaseResponse<>(BaseResponseStatus.SUCCESS, Empty.getInstance());
+    }
+
+    public static <T> BaseResponse<T> successBody(T result) {
+        return new BaseResponse<>(BaseResponseStatus.SUCCESS, result);
+    }
+
+    public static BaseResponse<Empty> errorBody(BaseResponseStatus status) {
+        return new BaseResponse<>(status, Empty.getInstance());
+    }
+
+    public static BaseResponse<Empty> errorBody(BaseResponseStatus status, String customMessage) {
+        return new BaseResponse<>(status, customMessage);
     }
 
 }

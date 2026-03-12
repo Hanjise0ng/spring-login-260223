@@ -2,6 +2,7 @@ package com.han.back.global.security.util;
 
 import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.dto.Empty;
 import com.han.back.global.exception.CustomException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
@@ -19,9 +20,9 @@ public class HttpResponseUtil {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
 
-            Object body = (status == BaseResponseStatus.SUCCESS)
-                    ? BaseResponse.success().getBody()
-                    : BaseResponse.error(status).getBody();
+            BaseResponse<Empty> body = (status == BaseResponseStatus.SUCCESS)
+                    ? BaseResponse.successBody()
+                    : BaseResponse.errorBody(status);
 
             objectMapper.writeValue(response.getWriter(), body);
 
