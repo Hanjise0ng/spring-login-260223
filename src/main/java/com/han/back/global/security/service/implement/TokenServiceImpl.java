@@ -3,6 +3,7 @@ package com.han.back.global.security.service.implement;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
@@ -66,7 +67,14 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public CustomUserDetails authenticateAccessToken(String accessToken) {
-        if (isBlacklisted(accessToken)) {
+        try {
+            if (isBlacklisted(accessToken)) {
+                throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            }
+        } catch (CustomAuthenticationException e) { // 블랙리스트 히트
+            throw e;
+        } catch (CustomException e) { // Redis 장애 시 블랙리스트 확인 불가
+            log.error("Redis unavailable during blacklist check - denying access | Error: {}", e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
 
