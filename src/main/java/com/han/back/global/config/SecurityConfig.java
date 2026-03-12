@@ -9,6 +9,7 @@ import com.han.back.global.security.handler.CustomLogoutHandler;
 import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.HttpResponseUtil;
+import com.han.back.global.security.util.SecurityPathConst;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -109,18 +110,10 @@ public class SecurityConfig {
 
     private void configureAuthorization(HttpSecurity http) {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                        "/",
-                        "/api/v*/auth/**",
-                        "/oauth2/**",
-                        "/login/**",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/swagger-resources/**",
-                        "/webjars/**"
-                ).permitAll()
-                .requestMatchers("/api/*/user/**").hasAuthority(Role.USER.getAuthority())
-                .requestMatchers("/api/*/admin/**").hasAuthority(Role.ADMIN.getAuthority())
+                .requestMatchers(SecurityPathConst.PUBLIC_PATHS).permitAll()
+                .requestMatchers("/api/v*/auth/logout").authenticated()
+                .requestMatchers("/api/v*/user/**").hasAuthority(Role.USER.getAuthority())
+                .requestMatchers("/api/v*/admin/**").hasAuthority(Role.ADMIN.getAuthority())
                 .anyRequest().authenticated()
         );
     }
