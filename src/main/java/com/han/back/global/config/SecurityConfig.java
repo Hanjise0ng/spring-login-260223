@@ -23,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
@@ -111,7 +112,6 @@ public class SecurityConfig {
     private void configureAuthorization(HttpSecurity http) {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(SecurityPathConst.PUBLIC_PATHS).permitAll()
-                .requestMatchers("/api/v*/auth/logout").authenticated()
                 .requestMatchers("/api/v*/user/**").hasAuthority(Role.USER.getAuthority())
                 .requestMatchers("/api/v*/admin/**").hasAuthority(Role.ADMIN.getAuthority())
                 .anyRequest().authenticated()
@@ -120,8 +120,8 @@ public class SecurityConfig {
 
     private void configureFilters(HttpSecurity http, LoginFilter loginFilter) {
         http
+                .addFilterBefore(jwtFilter, LogoutFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
     }
 
@@ -136,7 +136,6 @@ public class SecurityConfig {
                 .logoutUrl("/api/v1/auth/logout")
                 .addLogoutHandler(customLogoutHandler)
                 .logoutSuccessHandler(customLogoutSuccessHandler)
-                .permitAll()
         );
     }
 
