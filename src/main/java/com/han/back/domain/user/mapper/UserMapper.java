@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserMapper {
 
-    public UserEntity fromSignUpRequest(SignUpRequestDto dto) {
+    public UserEntity fromSignUpRequest(SignUpRequestDto dto, String encodedPassword) {
         return UserEntity.builder()
                 .loginId(dto.getLoginId())
-                .password(dto.getPassword())
+                .password(encodedPassword)
                 .email(dto.getEmail())
                 .nickname(dto.getNickname())
                 .role(Role.USER)

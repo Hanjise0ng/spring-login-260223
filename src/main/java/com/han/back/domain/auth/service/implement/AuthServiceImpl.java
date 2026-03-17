@@ -36,9 +36,7 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
         }
 
-        dto.setPassword(passwordEncoder.encode(dto.getPassword()));
-        UserEntity user = userMapper.fromSignUpRequest(dto);
-
+        UserEntity user = userMapper.fromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
         userRepository.save(user);
     }
 
