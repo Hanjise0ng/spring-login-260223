@@ -68,11 +68,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         );
 
         if (!oldTokens.isEmpty()) {
-            tokenService.invalidateTokens(oldTokens);
+            tokenService.invalidateTokens(userDetails.getId(), oldTokens);
         }
 
-        AuthTokenDto tokenPair = tokenService.issueTokens(userDetails.getId(), userDetails.getRole());
-        AuthHttpUtil.setTokenResponse(request, response, tokenPair);
+        AuthTokenDto newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole());
+        AuthHttpUtil.setTokenResponse(request, response, newTokens);
         httpResponseUtil.writeResponse(response, BaseResponseStatus.SUCCESS);
 
         recordSuccessLog(request, userDetails.getRole());

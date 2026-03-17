@@ -37,7 +37,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         String refreshToken = AuthHttpUtil.extractRefreshToken(request).orElse("");
 
         try {
-            invalidateIfPresent(accessToken, refreshToken);
+            invalidateIfPresent(userDetails.getId(), accessToken, refreshToken);
             clearRefreshCookie(response);
             log.info("Logout Success - UserPK: {} | ClientIP: {}",
                     userDetails.getId(), request.getRemoteAddr());
@@ -49,10 +49,10 @@ public class CustomLogoutHandler implements LogoutHandler {
         }
     }
 
-    private void invalidateIfPresent(String accessToken, String refreshToken) {
+    private void invalidateIfPresent(Long id, String accessToken, String refreshToken) {
         AuthTokenDto tokens = AuthTokenDto.of(accessToken, refreshToken);
         if (tokens.isEmpty()) return;
-        tokenService.invalidateTokens(tokens);
+        tokenService.invalidateTokens(id, tokens);
     }
 
     private void clearRefreshCookie(HttpServletResponse response) {

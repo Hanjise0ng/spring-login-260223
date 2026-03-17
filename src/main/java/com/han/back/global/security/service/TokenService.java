@@ -13,7 +13,7 @@ public interface TokenService {
     AuthTokenDto rotateTokens(Long id, Role role, AuthTokenDto oldToken);
 
     // 토큰 무효화 (로그아웃 등, AT 블랙리스트 + RT 삭제)
-    void invalidateTokens(AuthTokenDto token);
+    void invalidateTokens(Long id, AuthTokenDto token);
 
     // Refresh Token 소유권 확인 (Redis 대조)
     void validateRefreshToken(Long id, String refreshToken);

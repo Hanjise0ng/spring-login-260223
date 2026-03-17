@@ -36,16 +36,16 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public AuthTokenDto rotateTokens(Long id, Role role, AuthTokenDto oldTokens) {
-        invalidateTokens(oldTokens);
+        invalidateTokens(id, oldTokens);
         return issueTokens(id, role);
     }
 
     @Override
-    public void invalidateTokens(AuthTokenDto oldTokens) {
+    public void invalidateTokens(Long id, AuthTokenDto oldTokens) {
         if (oldTokens == null || oldTokens.isEmpty()) return;
 
         blacklistAccessToken(oldTokens);
-        revokeRefreshToken(oldTokens);
+        revokeRefreshToken(id, oldTokens);
     }
 
     @Override
@@ -113,12 +113,18 @@ public class TokenServiceImpl implements TokenService {
         });
     }
 
-    private void revokeRefreshToken(AuthTokenDto oldTokens) {
+    private void revokeRefreshToken(Long ownerId, AuthTokenDto oldTokens) {
         if (!oldTokens.hasRefreshToken()) return;
 
         jwtUtil.extractClaimsLeniently(oldTokens.getRefreshToken()).ifPresent(claims -> {
-            Long id = jwtUtil.getId(claims);
-            redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id);
+            Long tokenOwnerId = jwtUtil.getId(claims);
+
+            if (ownerId.equals(tokenOwnerId)) {
+                redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + tokenOwnerId);
+            } else {
+                log.warn("RT revocation skipped - owner mismatch | ownerId: {} | tokenOwnerId: {}",
+                        ownerId, tokenOwnerId);
+            }
         });
     }
 
