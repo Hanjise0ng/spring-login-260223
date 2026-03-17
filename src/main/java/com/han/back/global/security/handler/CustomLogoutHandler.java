@@ -1,6 +1,7 @@
 package com.han.back.global.security.handler;
 
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.security.context.LogoutContext;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;

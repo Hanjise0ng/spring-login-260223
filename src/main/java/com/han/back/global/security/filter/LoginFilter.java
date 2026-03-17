@@ -5,6 +5,7 @@ import com.han.back.domain.user.entity.ClientType;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
+import com.han.back.global.security.context.LoginContext;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
