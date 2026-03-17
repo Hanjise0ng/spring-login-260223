@@ -15,6 +15,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,65 +28,45 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public AuthTokenDto issueTokens(Long id, Role role) {
-        String accessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, id, role, AuthConst.ACCESS_EXPIRATION);
-        String refreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, id, role, AuthConst.REFRESH_EXPIRATION);
-
-        long ttl = jwtUtil.getExpiration(refreshToken);
-        redisUtil.setDataExpire(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id, refreshToken, ttl);
-
-        return AuthTokenDto.of(accessToken, refreshToken);
+        String sessionId = UUID.randomUUID().toString();
+        return createAndStoreTokens(id, role, sessionId);
     }
 
     @Override
-    public AuthTokenDto rotateTokens(Long id, Role role, AuthTokenDto oldTokens) {
-        invalidateTokens(id, oldTokens);
-        return issueTokens(id, role);
+    public AuthTokenDto rotateTokens(Long id, Role role, String sessionId, AuthTokenDto oldTokens) {
+        invalidateSession(id, sessionId);
+        return createAndStoreTokens(id, role, sessionId);
     }
 
     @Override
-    public void invalidateTokens(Long id, AuthTokenDto oldTokens) {
-        if (oldTokens == null || oldTokens.isEmpty()) return;
-
-        blacklistAccessToken(oldTokens);
-        revokeRefreshToken(id, oldTokens);
-    }
-
-    @Override
-    public void validateRefreshToken(Long id, String refreshToken) {
-        boolean isValid = redisUtil.getData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id)
-                .filter(refreshToken::equals)
-                .isPresent();
-
-        if (!isValid) {
-            log.error("Token Mismatch or Hijacking Suspected - UserId: {}", id);
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
-        }
-    }
-
-    @Override
-    public boolean isBlacklisted(String accessToken) {
-        return redisUtil.hasKey(AuthConst.TOKEN_BLACKLIST_PREFIX + accessToken);
+    public void invalidateSession(Long id, String sessionId) {
+        blacklistSession(sessionId);
+        revokeRefreshToken(id, sessionId);
     }
 
     @Override
     public CustomUserDetails authenticateAccessToken(String accessToken) {
+        Claims claims = jwtUtil.parseClaims(accessToken);
+
+        if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
+            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+        }
+
+        String sessionId = jwtUtil.getSessionId(claims);
+
         try {
-            if (isBlacklisted(accessToken)) {
+            if (isSessionBlacklisted(sessionId)) {
                 throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
             }
         } catch (CustomAuthenticationException e) { // 블랙리스트 히트 — 정상 인증 거부 흐름
             throw e;
         } catch (CustomException e) { // Redis 장애 — 블랙리스트 확인 불가, 보안 우선으로 인증 거부
-            log.error("Redis unavailable during blacklist check - denying access | Error: {}", e.getMessage());
+            log.error("Redis unavailable during session blacklist check - denying access | SessionId: {} | Error: {}",
+                    sessionId, e.getMessage());
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
 
-        Claims claims = jwtUtil.parseClaims(accessToken);
-        if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
-        }
-
-        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims));
+        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), sessionId);
     }
 
     @Override
@@ -95,37 +78,66 @@ public class TokenServiceImpl implements TokenService {
             throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
         }
 
-        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims));
+        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims));
     }
 
-    private void blacklistAccessToken(AuthTokenDto oldTokens) {
-        if (!oldTokens.hasAccessToken()) return;
+    @Override
+    public void validateRefreshToken(Long id, String sessionId, String refreshToken) {
+        String redisKey = buildRefreshKey(id, sessionId);
 
-        jwtUtil.extractClaimsLeniently(oldTokens.getAccessToken()).ifPresent(claims -> {
-            long ttl = Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
-            if (ttl > 0) {
-                redisUtil.setDataExpire(
-                        AuthConst.TOKEN_BLACKLIST_PREFIX + oldTokens.getAccessToken(),
-                        "logout",
-                        ttl
-                );
-            }
-        });
+        boolean isValid = redisUtil.getData(redisKey)
+                .filter(refreshToken::equals)
+                .isPresent();
+
+        if (!isValid) {
+            log.error("Token Mismatch or Hijacking Suspected - UserPK: {} | SessionId: {}", id, sessionId);
+            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+        }
     }
 
-    private void revokeRefreshToken(Long ownerId, AuthTokenDto oldTokens) {
-        if (!oldTokens.hasRefreshToken()) return;
+    @Override
+    public boolean isSessionBlacklisted(String sessionId) {
+        return redisUtil.hasKey(AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX + sessionId);
+    }
 
-        jwtUtil.extractClaimsLeniently(oldTokens.getRefreshToken()).ifPresent(claims -> {
-            Long tokenOwnerId = jwtUtil.getId(claims);
+    @Override
+    public Optional<CustomUserDetails> extractUserFromTokens(String accessToken, String refreshToken) {
+        Optional<Claims> rtClaims = jwtUtil.extractClaimsLeniently(refreshToken);
+        if (rtClaims.isEmpty()) return Optional.empty();
 
-            if (ownerId.equals(tokenOwnerId)) {
-                redisUtil.deleteData(AuthConst.TOKEN_REFRESH_REDIS_PREFIX + tokenOwnerId);
-            } else {
-                log.warn("RT revocation skipped - owner mismatch | ownerId: {} | tokenOwnerId: {}",
-                        ownerId, tokenOwnerId);
-            }
-        });
+        Claims rt = rtClaims.get();
+        if (!AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(rt))) {
+            return Optional.empty();
+        }
+
+        Long id = jwtUtil.getId(rt);
+        Role role = jwtUtil.getRole(rt);
+
+        String sessionId = jwtUtil.extractClaimsLeniently(accessToken)
+                .map(jwtUtil::getSessionId)
+                .orElseGet(() -> jwtUtil.getSessionId(rt));
+
+        return Optional.of(new CustomUserDetails(id, role, sessionId));
+    }
+
+    private AuthTokenDto createAndStoreTokens(Long id, Role role, String sessionId) {
+        String accessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, id, role, sessionId, AuthConst.ACCESS_EXPIRATION);
+        String refreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, id, role, sessionId, AuthConst.REFRESH_EXPIRATION);
+
+        redisUtil.setDataExpire(buildRefreshKey(id, sessionId), refreshToken, AuthConst.REFRESH_EXPIRATION);
+        return AuthTokenDto.of(accessToken, refreshToken);
+    }
+
+    private void blacklistSession(String sessionId) {
+        redisUtil.setDataExpire(AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX + sessionId, "revoked", AuthConst.ACCESS_EXPIRATION);
+    }
+
+    private void revokeRefreshToken(Long id, String sessionId) {
+        redisUtil.deleteData(buildRefreshKey(id, sessionId));
+    }
+
+    private String buildRefreshKey(Long id, String sessionId) {
+        return AuthConst.TOKEN_REFRESH_REDIS_PREFIX + id + ":" + sessionId;
     }
 
 }

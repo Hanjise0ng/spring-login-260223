@@ -15,12 +15,12 @@ public class AuthConst {
     public static final String TOKEN_TYPE_CATEGORY = "category";
     public static final String TOKEN_USER_PK = "id";
     public static final String TOKEN_ROLE = "role";
+    public static final String TOKEN_SESSION_ID = "sid";
 
 
     // JWT 토큰 카테고리 값 (Token Types)
     public static final String TOKEN_TYPE_ACCESS = "access";
     public static final String TOKEN_TYPE_REFRESH = "refresh";
-    public static final String TOKEN_TYPE_TEMP = "temp";
 
 
     // 임시 토큰 전용 페이로드 키
@@ -43,7 +43,7 @@ public class AuthConst {
 
     // Redis 키 접두사 (Redis Prefixes)
     public static final String TOKEN_REFRESH_REDIS_PREFIX = "refresh:";
-    public static final String TOKEN_BLACKLIST_PREFIX = "blacklist:";
+    public static final String TOKEN_SESSION_BLACKLIST_PREFIX = "blacklist:session:";
 
 
 }

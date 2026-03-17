@@ -4,27 +4,32 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 
+import java.util.Optional;
+
 public interface TokenService {
 
-    // 토큰 발급 (생성 + Redis 저장)
+    /** 신규 세션 생성 + 토큰 쌍 발급 (로그인 시) */
     AuthTokenDto issueTokens(Long id, Role role);
 
-    // 토큰 재발급 (기존 무효화 + 신규 발급 및 저장)
-    AuthTokenDto rotateTokens(Long id, Role role, AuthTokenDto oldToken);
+    /** 기존 세션 유지 + 토큰 쌍 재발급 (reissue 시) */
+    AuthTokenDto rotateTokens(Long id, Role role, String sessionId, AuthTokenDto oldTokens);
 
-    // 토큰 무효화 (로그아웃 등, AT 블랙리스트 + RT 삭제)
-    void invalidateTokens(Long id, AuthTokenDto token);
+    /** 세션 단위 무효화 — 세션 블랙리스트 등록 + RT 삭제 */
+    void invalidateSession(Long id, String sessionId);
 
-    // Refresh Token 소유권 확인 (Redis 대조)
-    void validateRefreshToken(Long id, String refreshToken);
-
-    // Access Token 블랙리스트 확인
-    boolean isBlacklisted(String accessToken);
-
-    // Access Token 검증
+    /** AT 검증 — 블랙리스트 확인 + claims 파싱 */
     CustomUserDetails authenticateAccessToken(String accessToken);
 
-    // Refresh Token 검증
+    /** RT 검증 — claims 파싱 + 카테고리 확인 */
     CustomUserDetails authenticateRefreshToken(String refreshToken);
+
+    /** RT 소유권 확인 — Redis 저장값과 대조 */
+    void validateRefreshToken(Long id, String sessionId, String refreshToken);
+
+    /** 세션 블랙리스트 확인 */
+    boolean isSessionBlacklisted(String sessionId);
+
+    /** AT/RT에서 사용자 정보 추출 — 로그아웃 시 AT 만료 fallback용 */
+    Optional<CustomUserDetails> extractUserFromTokens(String accessToken, String refreshToken);
 
 }

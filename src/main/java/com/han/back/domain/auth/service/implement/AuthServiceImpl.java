@@ -48,11 +48,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         CustomUserDetails userDetails = tokenService.authenticateRefreshToken(oldTokens.getRefreshToken());
+        tokenService.validateRefreshToken(userDetails.getId(), userDetails.getSessionId(), oldTokens.getRefreshToken());
+        AuthTokenDto newTokens = tokenService.rotateTokens(userDetails.getId(), userDetails.getRole(), userDetails.getSessionId(), oldTokens);
 
-        tokenService.validateRefreshToken(userDetails.getId(), oldTokens.getRefreshToken());
+        log.info("Token Reissue Success - UserPK: {} | SessionId: {} | Role: {}",
+                userDetails.getId(), userDetails.getSessionId(), userDetails.getRole().name());
 
-        AuthTokenDto newTokens = tokenService.rotateTokens(userDetails.getId(), userDetails.getRole(), oldTokens);
-        log.info("Token Reissue Success - UserPK: {} | Role: {}", userDetails.getId(), userDetails.getRole().name());
         return newTokens;
     }
 

@@ -1,5 +1,6 @@
 package com.han.back.global.security.filter;
 
+import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthHttpUtil;
@@ -42,14 +43,31 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken.get());
-        Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        SecurityContextHolder.getContext().setAuthentication(authToken);
+        try {
+            CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken.get());
+            Authentication authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities()
+            );
+            SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        log.debug("JWT Context Setup - UserPK: {} | Role: {} | ClientIP: {}",
-                userDetails.getId(), userDetails.getRole().name(), request.getRemoteAddr());
+            log.debug("JWT Context Setup - UserPK: {} | SessionId: {} | ClientIP: {}",
+                    userDetails.getId(), userDetails.getSessionId(), request.getRemoteAddr());
+
+        } catch (CustomAuthenticationException e) {
+            if (isLogoutRequest(request)) { // 로그아웃 요청은 AT 만료·블랙리스트 시에도 통과, LogoutHandler에서 RT 기반 fallback으로 사용자 식별
+                log.debug("JWT auth failed on logout path - deferring to LogoutHandler | ClientIP: {}",
+                        request.getRemoteAddr());
+                filterChain.doFilter(request, response);
+                return;
+            }
+            throw e;
+        }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isLogoutRequest(HttpServletRequest request) {
+        return SecurityPathConst.LOGOUT_PATH.equals(request.getRequestURI());
     }
 
 }

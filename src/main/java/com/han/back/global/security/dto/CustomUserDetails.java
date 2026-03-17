@@ -13,19 +13,22 @@ public class CustomUserDetails implements UserDetails {
     private final Long id;
     private final String password;
     private final Role role;
+    private final String sessionId;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(Long id, String password, Role role) {
+        this(id, password, role, null);
+    }
+
+    public CustomUserDetails(Long id, Role role, String sessionId) {
+        this(id, null, role, sessionId);
+    }
+
+    private CustomUserDetails(Long id, String password, Role role, String sessionId) {
         this.id = id;
         this.password = password;
         this.role = role;
-        this.authorities = Collections.singletonList(new SimpleGrantedAuthority(role.getAuthority()));
-    }
-
-    public CustomUserDetails(Long id, Role role) {
-        this.id = id;
-        this.password = null;
-        this.role = role;
+        this.sessionId = sessionId;
         this.authorities = Collections.singletonList(new SimpleGrantedAuthority(role.getAuthority()));
     }
 
@@ -35,6 +38,10 @@ public class CustomUserDetails implements UserDetails {
 
     public Role getRole() {
         return this.role;
+    }
+
+    public String getSessionId() {
+        return this.sessionId;
     }
 
     @Override

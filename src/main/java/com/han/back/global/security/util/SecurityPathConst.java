@@ -4,6 +4,8 @@ public final class SecurityPathConst {
 
     private SecurityPathConst() {}
 
+    public static final String LOGOUT_PATH = "/api/v1/auth/logout";
+
     public static final String[] PUBLIC_PATHS = {
             "/",
             "/api/v*/auth/sign-up",

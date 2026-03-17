@@ -60,17 +60,10 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException {
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        AuthTokenDto oldTokens = AuthTokenDto.of(
-                AuthHttpUtil.extractAccessToken(request).orElse(""),
-                AuthHttpUtil.extractRefreshToken(request).orElse("")
-        );
-
-        if (!oldTokens.isEmpty()) {
-            tokenService.invalidateTokens(userDetails.getId(), oldTokens);
-        }
+        invalidatePreviousSessionIfPresent(request, userDetails.getId());
 
         AuthTokenDto newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole());
         AuthHttpUtil.setTokenResponse(request, response, newTokens);
@@ -80,12 +73,25 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException {
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) {
         BaseResponseStatus logStatus = determineLogStatus(failed);
         BaseResponseStatus clientStatus = determineClientStatus(failed);
 
         recordFailureLog(request, logStatus);
         httpResponseUtil.writeResponse(response, clientStatus);
+    }
+
+    private void invalidatePreviousSessionIfPresent(HttpServletRequest request, Long userId) {
+        String accessToken = AuthHttpUtil.extractAccessToken(request).orElse("");
+        String refreshToken = AuthHttpUtil.extractRefreshToken(request).orElse("");
+
+        tokenService.extractUserFromTokens(accessToken, refreshToken)
+                .filter(prev -> prev.getSessionId() != null)
+                .ifPresent(prev -> {
+                    tokenService.invalidateSession(userId, prev.getSessionId());
+                    log.debug("Previous session invalidated on re-login - UserPK: {} | OldSessionId: {}",
+                            userId, prev.getSessionId());
+                });
     }
 
     private void recordSuccessLog(HttpServletRequest request, Role role) {

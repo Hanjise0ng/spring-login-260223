@@ -29,7 +29,7 @@ public class JwtUtil {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public String createJwt(String category, Long id, Role role, long expiredMs) {
+    public String createJwt(String category, Long id, Role role, String sessionId, long expiredMs) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -39,6 +39,7 @@ public class JwtUtil {
                 .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
                 .claim(AuthConst.TOKEN_USER_PK, id)
                 .claim(AuthConst.TOKEN_ROLE, role.getAuthority())
+                .claim(AuthConst.TOKEN_SESSION_ID, sessionId)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiredMs))
                 .signWith(secretKey)
@@ -62,14 +63,16 @@ public class JwtUtil {
     }
 
     public Optional<Claims> extractClaimsLeniently(String token) {
+        if (!StringUtils.hasText(token)) return Optional.empty();
+
         try {
             return Optional.of(
                     Jwts.parser().verifyWith(secretKey).build()
                             .parseSignedClaims(token).getPayload()
             );
-        } catch (ExpiredJwtException e) {
+        } catch (ExpiredJwtException e) { // 만료된 토큰 (claims는 추출 가능)
             return Optional.ofNullable(e.getClaims());
-        } catch (Exception e) {
+        } catch (Exception e) { // 위조 또는 손상되어 복구 불가
             log.warn("JWT parsing failed leniently (ignored) - Error: {}", e.getMessage());
             return Optional.empty();
         }
@@ -103,8 +106,15 @@ public class JwtUtil {
         return claims.get(AuthConst.TOKEN_TYPE_CATEGORY, String.class);
     }
 
-    public long getExpiration(String token) {
-        Claims claims = parseClaims(token);
+    public String getSessionId(Claims claims) {
+        String sessionId = claims.get(AuthConst.TOKEN_SESSION_ID, String.class);
+        if (!StringUtils.hasText(sessionId)) {
+            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+        }
+        return sessionId;
+    }
+
+    public long getRemainingExpiration(Claims claims) {
         return Math.max(claims.getExpiration().getTime() - System.currentTimeMillis(), 0);
     }
 
