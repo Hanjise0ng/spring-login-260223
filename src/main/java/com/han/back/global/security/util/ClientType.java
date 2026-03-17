@@ -1,4 +1,4 @@
-package com.han.back.domain.user.entity;
+package com.han.back.global.security.util;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

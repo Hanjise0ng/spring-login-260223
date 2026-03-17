@@ -1,6 +1,5 @@
 package com.han.back.global.security.util;
 
-import com.han.back.domain.user.entity.ClientType;
 import com.han.back.global.security.dto.AuthTokenDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
