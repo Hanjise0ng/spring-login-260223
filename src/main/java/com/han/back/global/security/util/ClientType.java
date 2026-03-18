@@ -2,9 +2,6 @@ package com.han.back.global.security.util;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.StringUtils;
-
-import java.util.Arrays;
 
 @Getter
 @RequiredArgsConstructor
@@ -15,14 +12,8 @@ public enum ClientType {
     private final String value;
 
     public static ClientType fromHeader(String headerValue) {
-        if (!StringUtils.hasText(headerValue)) {
-            return WEB;
-        }
-
-        return Arrays.stream(values())
-                .filter(type -> type.getValue().equalsIgnoreCase(headerValue))
-                .findFirst()
-                .orElse(WEB);
+        if ("APP".equalsIgnoreCase(headerValue)) return APP;
+        return WEB;
     }
 
 }
