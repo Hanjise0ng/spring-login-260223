@@ -21,6 +21,7 @@ public enum BaseResponseStatus {
     VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "VE", "Verification code has expired."),
     VERIFICATION_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "VNC", "Verification has not been completed."),
     SOCIAL_ONLY_ACCOUNT(HttpStatus.BAD_REQUEST, "SOA", "Social-only accounts cannot perform this action."),
+    SELF_DEVICE_FORCE_LOGOUT(HttpStatus.BAD_REQUEST, "SDL", "Cannot force logout current device. Use normal logout."),
 
 
     // ================== 인증 오류 (401 Unauthorized) ==================
@@ -52,6 +53,7 @@ public enum BaseResponseStatus {
     NOT_FOUND_USER(HttpStatus.NOT_FOUND, "NFU", "User not found."),
     NOT_FOUND_RESOURCE(HttpStatus.NOT_FOUND, "NFR", "Requested resource not found."),
     SOCIAL_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "SNF", "Social account not found."),
+    NOT_FOUND_DEVICE(HttpStatus.NOT_FOUND, "NFD", "Device not found."),
 
 
     // ================== 데이터 충돌 및 논리 오류 (409 Conflict) ==================
