@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface TokenService {
 
     /** 신규 세션 생성 + 토큰 쌍 발급 (로그인 시) */
-    AuthTokenDto issueTokens(Long id, Role role);
+    AuthTokenDto issueTokens(Long id, Role role, String sessionId);
 
     /** 기존 세션 유지 + 토큰 쌍 재발급 (reissue 시) */
     AuthTokenDto rotateTokens(Long id, Role role, String sessionId, AuthTokenDto oldTokens);

@@ -1,5 +1,6 @@
 package com.han.back.global.config;
 
+import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.entrypoint.UnauthenticatedEntryPoint;
 import com.han.back.global.security.filter.JwtExceptionFilter;
@@ -10,6 +11,7 @@ import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.HttpResponseUtil;
 import com.han.back.global.security.util.SecurityPathConst;
+import com.han.back.global.security.util.UserAgentUtil;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +37,8 @@ public class SecurityConfig {
     private final AuthenticationConfiguration authConfig;
 
     private final TokenService tokenService;
+    private final DeviceService deviceService;
+    private final UserAgentUtil userAgentUtil;
     private final HttpResponseUtil httpResponseUtil;
     private final ObjectMapper objectMapper;
 
@@ -50,6 +54,8 @@ public class SecurityConfig {
             AuthenticationConfiguration authConfig,
             ObjectMapper objectMapper,
             TokenService tokenService,
+            DeviceService deviceService,
+            UserAgentUtil userAgentUtil,
             HttpResponseUtil httpResponseUtil,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
@@ -61,6 +67,8 @@ public class SecurityConfig {
         this.authConfig = authConfig;
         this.objectMapper = objectMapper;
         this.tokenService = tokenService;
+        this.deviceService = deviceService;
+        this.userAgentUtil = userAgentUtil;
         this.httpResponseUtil = httpResponseUtil;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
@@ -82,7 +90,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         LoginFilter loginFilter = new LoginFilter(
-                authenticationManager(), objectMapper, tokenService, httpResponseUtil
+                authenticationManager(), objectMapper, tokenService, deviceService, userAgentUtil, httpResponseUtil
         );
 
         configureCors(http);

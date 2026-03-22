@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -27,8 +26,7 @@ public class TokenServiceImpl implements TokenService {
     private final JwtUtil jwtUtil;
 
     @Override
-    public AuthTokenDto issueTokens(Long id, Role role) {
-        String sessionId = UUID.randomUUID().toString();
+    public AuthTokenDto issueTokens(Long id, Role role, String sessionId) {
         return createAndStoreTokens(id, role, sessionId);
     }
 

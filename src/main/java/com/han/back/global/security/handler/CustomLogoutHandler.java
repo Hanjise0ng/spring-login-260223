@@ -1,5 +1,6 @@
 package com.han.back.global.security.handler;
 
+import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.context.LogoutContext;
 import com.han.back.global.security.dto.CustomUserDetails;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class CustomLogoutHandler implements LogoutHandler {
 
     private final TokenService tokenService;
+    private final DeviceService deviceService;
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -38,11 +40,12 @@ public class CustomLogoutHandler implements LogoutHandler {
 
         try {
             tokenService.invalidateSession(user.getId(), user.getSessionId());
+            deviceService.deactivateSession(user.getId(), user.getSessionId());
             clearRefreshCookie(response);
             log.info("Logout Success - UserPK: {} | SessionId: {} | ClientIP: {}",
                     user.getId(), user.getSessionId(), request.getRemoteAddr());
 
-        } catch (CustomException e) { // Redis 장애
+        } catch (CustomException e) { // Redis 장애 또는 DB 오류
             LogoutContext.setResult(request, LogoutContext.Result.REDIS_ERROR);
             log.error("Logout Failed - UserPK: {} | Reason: {} | ClientIP: {}",
                     user.getId(), e.getMessage(), request.getRemoteAddr(), e);
