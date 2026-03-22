@@ -46,4 +46,14 @@ public class AuthConst {
     public static final String TOKEN_SESSION_BLACKLIST_PREFIX = "blacklist:session:";
 
 
+    // 디바이스 관련 헤더 (Device Headers)
+    public static final String HEADER_DEVICE_ID = "X-Device-Id";
+    public static final String HEADER_DEVICE_OS = "X-Device-Os";
+
+
+    // 디바이스 쿠키 (Device Cookie)
+    public static final String COOKIE_DEVICE_ID_NAME = "device_id";
+    public static final int COOKIE_DEVICE_ID_MAX_AGE = 365 * 24 * 60 * 60;  // 1년 (초)
+
+
 }

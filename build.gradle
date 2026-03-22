@@ -54,6 +54,7 @@ dependencies {
     // Utility & Additional Features (유틸리티 및 기타 기능)
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-mail'          // 이메일 전송 기능 (인증 메일)
+    implementation 'com.github.ua-parser:uap-java:1.6.1'                        // User-Agent 문자열 파싱 (브라우저, OS 정보 추출)
 
     // ===================================================================================
     // Lombok (편의성 라이브러리)
