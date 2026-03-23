@@ -19,4 +19,13 @@ public final class SecurityPathConst {
             "/webjars/**"
     };
 
+    public static final String[] USER_PATHS = {
+            "/api/v*/user/**",
+            "/api/v*/devices/**"
+    };
+
+    public static final String[] ADMIN_PATHS = {
+            "/api/v*/admin/**"
+    };
+
 }

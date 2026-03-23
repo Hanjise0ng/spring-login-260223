@@ -120,8 +120,8 @@ public class SecurityConfig {
     private void configureAuthorization(HttpSecurity http) {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(SecurityPathConst.PUBLIC_PATHS).permitAll()
-                .requestMatchers("/api/v*/user/**").hasAuthority(Role.USER.getAuthority())
-                .requestMatchers("/api/v*/admin/**").hasAuthority(Role.ADMIN.getAuthority())
+                .requestMatchers(SecurityPathConst.USER_PATHS).hasAuthority(Role.USER.getAuthority())
+                .requestMatchers(SecurityPathConst.ADMIN_PATHS).hasAuthority(Role.ADMIN.getAuthority())
                 .anyRequest().authenticated()
         );
     }
