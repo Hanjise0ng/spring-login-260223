@@ -17,6 +17,9 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     // 사용자의 특정 디바이스 조회 (소유권 검증 포함)
     Optional<DeviceEntity> findByIdAndUserId(Long id, Long userId);
 
+    // 특정 세션 ID를 가진 디바이스 조회 (재발급 시 기기 식별용)
+    Optional<DeviceEntity> findByUserIdAndSessionId(Long userId, String sessionId);
+
     // 사용자의 전체 디바이스 목록 — 최근 로그인 순 정렬
     @Query("SELECT d FROM DeviceEntity d WHERE d.user.id = :userId ORDER BY d.lastLoginAt DESC")
     List<DeviceEntity> findAllByUserIdOrderByLastLoginAtDesc(@Param("userId") Long userId);

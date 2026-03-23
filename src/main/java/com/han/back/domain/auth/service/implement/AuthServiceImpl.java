@@ -2,6 +2,7 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.service.AuthService;
+import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
@@ -27,6 +28,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final DeviceService deviceService;
 
     @Override
     @Transactional
@@ -41,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public AuthTokenDto reissue(AuthTokenDto oldTokens) {
         if (!StringUtils.hasText(oldTokens.getRefreshToken())) {
             log.warn("Reissue Failed - Reason: Refresh Token is missing");
@@ -48,8 +51,15 @@ public class AuthServiceImpl implements AuthService {
         }
 
         CustomUserDetails userDetails = tokenService.authenticateRefreshToken(oldTokens.getRefreshToken());
-        tokenService.validateRefreshToken(userDetails.getId(), userDetails.getSessionId(), oldTokens.getRefreshToken());
-        AuthTokenDto newTokens = tokenService.rotateTokens(userDetails.getId(), userDetails.getRole(), userDetails.getSessionId(), oldTokens);
+        Long userId = userDetails.getId();
+        String oldSessionId = userDetails.getSessionId();
+
+        tokenService.validateRefreshToken(
+                userDetails.getId(), userDetails.getSessionId(), oldTokens.getRefreshToken()
+        );
+
+        String newSessionId = deviceService.rotateDeviceSession(userId, oldSessionId);
+        AuthTokenDto newTokens = tokenService.rotateTokens(userId, userDetails.getRole(), oldSessionId, newSessionId);
 
         log.info("Token Reissue Success - UserPK: {} | SessionId: {} | Role: {}",
                 userDetails.getId(), userDetails.getSessionId(), userDetails.getRole().name());

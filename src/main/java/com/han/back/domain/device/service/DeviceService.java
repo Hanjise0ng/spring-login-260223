@@ -18,6 +18,15 @@ public interface DeviceService {
     DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfoDto deviceInfo);
 
     /**
+     * 재발급 시 디바이스의 세션 ID를 교체하고 새로운 세션 ID를 반환
+     *
+     * @param userId         로그인 사용자 PK
+     * @param oldSessionId   해당 디바이스의 기존 sessionId
+     * @return 해당 디바이스의 새로운 sessionId
+     */
+    String rotateDeviceSession(Long userId, String oldSessionId);
+
+    /**
      * 세션 비활성화 — 로그아웃 시 DeviceEntity의 sessionId를 제거.
      * TokenService.invalidateSession()과 별도로 호출되어야 한다.
      */

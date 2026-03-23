@@ -12,7 +12,7 @@ public interface TokenService {
     AuthTokenDto issueTokens(Long id, Role role, String sessionId);
 
     /** 기존 세션 유지 + 토큰 쌍 재발급 (reissue 시) */
-    AuthTokenDto rotateTokens(Long id, Role role, String sessionId, AuthTokenDto oldTokens);
+    AuthTokenDto rotateTokens(Long id, Role role, String oldSessionId, String newSessionId);
 
     /** 세션 단위 무효화 — 세션 블랙리스트 등록 + RT 삭제 */
     void invalidateSession(Long id, String sessionId);

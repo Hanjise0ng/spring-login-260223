@@ -42,14 +42,11 @@ public class AuthController {
         String oldRefreshToken = AuthHttpUtil.extractRefreshToken(request)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
 
-        AuthTokenDto oldTokens = AuthTokenDto.builder()
-                .accessToken(oldAccessToken)
-                .refreshToken(oldRefreshToken)
-                .build();
+        AuthTokenDto token = authService.reissue(
+                AuthTokenDto.of(oldAccessToken, oldRefreshToken)
+        );
 
-        AuthTokenDto token = authService.reissue(oldTokens);
         AuthHttpUtil.setTokenResponse(request, response, token);
-
         return BaseResponse.success();
     }
 

@@ -69,6 +69,12 @@ public class DeviceEntity extends BaseTime {
         this.lastLoginAt = LocalDateTime.now();
     }
 
+    // 토큰 재발급 시 세션 교체
+    public void rotateSession(String newSessionId) {
+        this.sessionId = newSessionId;
+        this.lastLoginAt = LocalDateTime.now();
+    }
+
     // 로그아웃 시 세션 비활성화
     public void deactivateSession() {
         this.sessionId = null;

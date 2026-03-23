@@ -31,9 +31,9 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public AuthTokenDto rotateTokens(Long id, Role role, String sessionId, AuthTokenDto oldTokens) {
-        invalidateSession(id, sessionId);
-        return createAndStoreTokens(id, role, sessionId);
+    public AuthTokenDto rotateTokens(Long id, Role role, String oldSessionId, String newSessionId) {
+        invalidateSession(id, oldSessionId);
+        return createAndStoreTokens(id, role, newSessionId);
     }
 
     @Override
