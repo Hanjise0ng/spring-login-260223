@@ -49,4 +49,17 @@ public class DeviceController {
         return BaseResponse.success();
     }
 
+    /**
+     * 비활성 디바이스를 목록에서 제거.
+     * 활성 세션이 있는 디바이스는 삭제 불가.
+     */
+    @DeleteMapping("/{deviceId}")
+    public ResponseEntity<BaseResponse<Empty>> deleteDevice(
+            @PathVariable Long deviceId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        deviceService.deleteDevice(userDetails.getId(), deviceId);
+        return BaseResponse.success();
+    }
+
 }

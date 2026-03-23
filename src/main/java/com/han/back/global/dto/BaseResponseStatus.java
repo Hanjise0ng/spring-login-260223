@@ -61,6 +61,7 @@ public enum BaseResponseStatus {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DE", "Duplicate Email."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "AD", "The resource is already deleted."),
     SOCIAL_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "SAL", "This social account is already linked."),
+    ACTIVE_DEVICE_CANNOT_DELETE(HttpStatus.CONFLICT, "ACD", "Active device cannot be deleted. Force logout first."),
 
 
     // ================== 요청 처리 불가 (422 Unprocessable Content) ==================

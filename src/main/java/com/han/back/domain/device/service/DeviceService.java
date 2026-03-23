@@ -51,4 +51,13 @@ public interface DeviceService {
      */
     void forceLogoutDevice(Long userId, Long deviceId, String currentSessionId);
 
+    /**
+     * 비활성 디바이스를 목록에서 제거한다.
+     * 활성 세션이 남아있는 디바이스는 삭제 불가 — 강제 로그아웃 후 삭제해야 한다.
+     *
+     * @param userId   요청 사용자 PK (소유권 검증)
+     * @param deviceId 대상 디바이스 PK
+     */
+    void deleteDevice(Long userId, Long deviceId);
+
 }

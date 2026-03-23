@@ -123,6 +123,22 @@ public class DeviceServiceImpl implements DeviceService {
                 userId, deviceId, targetSessionId);
     }
 
+    @Override
+    @Transactional
+    public void deleteDevice(Long userId, Long deviceId) {
+        DeviceEntity device = deviceRepository.findByIdAndUserId(deviceId, userId)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+
+        if (device.hasActiveSession()) {
+            throw new CustomException(BaseResponseStatus.ACTIVE_DEVICE_CANNOT_DELETE);
+        }
+
+        deviceRepository.delete(device);
+
+        log.info("Device Removed - UserPK: {} | DeviceId: {} | Type: {}",
+                userId, deviceId, device.getDeviceType().name());
+    }
+
     /**
      * 최대 세션 수 초과 시 가장 오래된 세션을 자동 무효화한다.
      *
