@@ -1,5 +1,7 @@
 package com.han.back.global.security.util;
 
+import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +28,20 @@ public class AuthHttpUtil {
             return Optional.of(headerToken);
         }
         return CookieUtil.getCookieValue(request, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
+    }
+
+    public static AuthTokenDto extractRequiredTokenPair(HttpServletRequest request) {
+        String accessToken = extractAccessToken(request)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_ACCESS_TOKEN));
+        String refreshToken = extractRefreshToken(request)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
+        return AuthTokenDto.of(accessToken, refreshToken);
+    }
+
+    public static AuthTokenDto extractTokenPairLeniently(HttpServletRequest request) {
+        String accessToken = extractAccessToken(request).orElse("");
+        String refreshToken = extractRefreshToken(request).orElse("");
+        return AuthTokenDto.of(accessToken, refreshToken);
     }
 
     public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthTokenDto newTokens) {

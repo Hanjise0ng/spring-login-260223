@@ -141,7 +141,7 @@ public class SecurityConfig {
 
     private void configureLogout(HttpSecurity http) {
         http.logout(logout -> logout
-                .logoutUrl("/api/v1/auth/logout")
+                .logoutUrl(SecurityPathConst.LOGOUT_PATH)
                 .addLogoutHandler(customLogoutHandler)
                 .logoutSuccessHandler(customLogoutSuccessHandler)
         );

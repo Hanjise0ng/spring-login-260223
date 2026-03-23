@@ -3,6 +3,7 @@ package com.han.back.global.security.handler;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.context.LogoutContext;
+import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthConst;
@@ -62,10 +63,8 @@ public class CustomLogoutHandler implements LogoutHandler {
         log.debug("SecurityContext authentication unavailable - attempting RT fallback | ClientIP: {}",
                 request.getRemoteAddr());
 
-        String accessToken = AuthHttpUtil.extractAccessToken(request).orElse("");
-        String refreshToken = AuthHttpUtil.extractRefreshToken(request).orElse("");
-
-        return tokenService.extractUserFromTokens(accessToken, refreshToken);
+        AuthTokenDto tokens = AuthHttpUtil.extractTokenPairLeniently(request);
+        return tokenService.extractUserFromTokens(tokens.getAccessToken(), tokens.getRefreshToken());
     }
 
     private void clearRefreshCookie(HttpServletResponse response) {
