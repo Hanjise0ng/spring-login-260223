@@ -4,6 +4,6 @@ public final class DeviceConst {
 
     private DeviceConst() {}
 
-    public static final int MAX_SESSIONS_PER_USER = 10;
+    public static final int MAX_SESSIONS_PER_USER = 2;
 
 }

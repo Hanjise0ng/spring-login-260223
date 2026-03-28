@@ -40,7 +40,6 @@ public class DeviceServiceImpl implements DeviceService {
                 .findByUserIdAndDeviceFingerprint(userId, deviceInfo.getDeviceFingerprint())
                 .orElseGet(() -> createNewDevice(userId, deviceInfo));
 
-        // 디바이스 정보 갱신 + 세션 활성화
         device.activateSession(
                 sessionId,
                 deviceInfo.getDeviceType(),
@@ -50,8 +49,6 @@ public class DeviceServiceImpl implements DeviceService {
         );
 
         deviceRepository.save(device);
-
-        // 최대 세션 정책 적용 (현재 세션 제외)
         enforceMaxSessionPolicy(userId, sessionId);
 
         log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {}",
@@ -101,22 +98,14 @@ public class DeviceServiceImpl implements DeviceService {
         DeviceEntity device = deviceRepository.findByIdAndUserId(deviceId, userId)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
 
-        // 이미 로그아웃 상태 → 의도한 결과 달성, DELETE 멱등성 원칙에 따라 성공 처리
-        if (!device.hasActiveSession()) {
-            return;
-        }
+        if (!device.hasActiveSession()) return;
 
-        // 현재 접속 중인 기기는 강제 로그아웃 불가 (일반 로그아웃 사용)
         if (device.getSessionId().equals(currentSessionId)) {
             throw new CustomException(BaseResponseStatus.SELF_DEVICE_FORCE_LOGOUT);
         }
 
         String targetSessionId = device.getSessionId();
-
-        // Redis: 세션 블랙리스트 등록 + RT 삭제
         tokenService.invalidateSession(userId, targetSessionId);
-
-        // DB: 디바이스 세션 비활성화
         device.deactivateSession();
 
         log.info("Force Logout - UserPK: {} | DeviceId: {} | TargetSessionId: {}",
@@ -139,36 +128,28 @@ public class DeviceServiceImpl implements DeviceService {
                 userId, deviceId, device.getDeviceType().name());
     }
 
-    /**
-     * 최대 세션 수 초과 시 가장 오래된 세션을 자동 무효화한다.
-     *
-     * @param userId           사용자 PK
-     * @param currentSessionId 방금 생성된 세션 (무효화 대상에서 제외)
-     */
     private void enforceMaxSessionPolicy(Long userId, String currentSessionId) {
         List<DeviceEntity> activeDevices = deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
-        // 최대 세션 수 이하면 조치 불필요
         if (activeDevices.size() <= DeviceConst.MAX_SESSIONS_PER_USER) {
             return;
         }
 
-        // 초과분만큼 가장 오래된 세션부터 무효화
         int excessCount = activeDevices.size() - DeviceConst.MAX_SESSIONS_PER_USER;
 
-        for (int i = 0; i < excessCount; i++) {
-            DeviceEntity oldestDevice = activeDevices.get(i);
+        List<DeviceEntity> evictionTargets = activeDevices.stream()
+                .filter(device -> !device.getSessionId().equals(currentSessionId))
+                .limit(excessCount)
+                .toList();
 
-            // 방금 생성된 세션은 건너뛰기
-            if (oldestDevice.getSessionId().equals(currentSessionId)) {
-                continue;
-            }
+        for (DeviceEntity target : evictionTargets) {
+            String evictedSessionId = target.getSessionId();
 
-            tokenService.invalidateSession(userId, oldestDevice.getSessionId());
-            oldestDevice.deactivateSession();
+            tokenService.invalidateSession(userId, evictedSessionId);
+            target.deactivateSession();
 
             log.info("Max Session Policy - Evicted oldest session | UserPK: {} | DeviceId: {} | EvictedSessionId: {}",
-                    userId, oldestDevice.getId(), oldestDevice.getSessionId());
+                    userId, target.getId(), evictedSessionId);
         }
     }
 
