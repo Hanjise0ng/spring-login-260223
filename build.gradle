@@ -38,6 +38,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'      // JPA 기반 ORM
 
     // ===================================================================================
+    // 데이터베이스 드라이버
+    // ===================================================================================
+    runtimeOnly 'com.h2database:h2'                                                   // 인메모리 개발/테스트용 DB
+    implementation 'org.springframework.boot:spring-boot-h2console'                   // H2 웹 콘솔
+    runtimeOnly 'com.mysql:mysql-connector-j'                                         // MySQL 상용 DB 드라이버
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'          // Redis
+
+    // ===================================================================================
     // Security & Auth (인증 및 보안)
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-security'      // Spring Security 핵심
@@ -46,9 +54,9 @@ dependencies {
     // ===================================================================================
     // JWT (JSON Web Token) 라이브러리
     // ===================================================================================
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
-    implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
-    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
     // ===================================================================================
     // Utility & Additional Features (유틸리티 및 기타 기능)
@@ -68,18 +76,12 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'                   // 개발 중 자동 재시작 및 Live Reload
 
     // ===================================================================================
-    // 데이터베이스 드라이버
-    // ===================================================================================
-    runtimeOnly 'com.h2database:h2'                                                   // 인메모리 개발/테스트용 DB
-    runtimeOnly 'com.mysql:mysql-connector-j'                                         // MySQL 상용 DB 드라이버
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'          // Redis
-
-    // ===================================================================================
     // Testing (테스트 환경)
     // ===================================================================================
     testImplementation 'org.springframework.boot:spring-boot-starter-test'            // Spring Boot 테스트
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'   // JPA 테스트
     testImplementation 'org.springframework.security:spring-security-test'            // Spring Security 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'   // JPA 테스트
+    testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'                  // 내장 Redis 테스트
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 }
