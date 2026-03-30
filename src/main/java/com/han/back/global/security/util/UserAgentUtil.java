@@ -13,18 +13,29 @@ import ua_parser.Parser;
 import java.util.Set;
 
 /**
- * HTTP 요청에서 디바이스 정보를 추출하는 유틸리티.
-
- * 분류 우선순위:
- * 1. X-Client-Type == APP → X-Device-Os 기반으로 APP_ANDROID / APP_IOS
- * 2. X-Client-Type == WEB 또는 헤더 없음 → User-Agent 파싱
- * a. device.family가 태블릿 키워드 포함 → WEB_TABLET
- * b. device.family == "Other" → WEB_DESKTOP (uap-core 기본값)
- * c. os.family가 모바일 OS → WEB_MOBILE
- * d. 해당 없음 → UNKNOWN
-
- * uap-java 라이브러리(BrowserScope 파생)를 사용하며,
- * regexes.yaml 기반 패턴 매칭으로 User-Agent를 구조화한다.
+ * HTTP 요청에서 디바이스 정보 추출
+ *
+ * <p>X-Client-Type 헤더가 {@code APP} 이면 X-Device-Os 헤더로 분류 <br/>
+ * 없거나 {@code WEB} 이면 User-Agent 를 파싱해 아래 순서로 분류 </p>
+ *
+ * <ol>
+ *   <li>device.family 가 태블릿 키워드(iPad 등) → {@code WEB_TABLET}</li>
+ *   <li>os.family 가 iOS / Android → {@code WEB_MOBILE}</li>
+ *   <li>device.family 가 "Other" · null, 또는 os.family 가 데스크탑 OS → {@code WEB_DESKTOP}
+ *       <br><small>※ macOS Safari 는 device.family = "Mac" 으로 오므로 os.family 로 보완</small></li>
+ *   <li>그 외(Bot 등) → {@code UNKNOWN}</li>
+ * </ol>
+ *
+ * <pre>
+ * UA              device.family    os.family    결과
+ * ─────────────────────────────────────────────────
+ * Windows Chrome  Other            Windows      WEB_DESKTOP
+ * macOS Safari    Mac              Mac OS X     WEB_DESKTOP
+ * iPad            iPad             iOS          WEB_TABLET
+ * iPhone          iPhone           iOS          WEB_MOBILE
+ * Android Chrome  Pixel 8          Android      WEB_MOBILE
+ * Bot             Spider           Other        UNKNOWN
+ * </pre>
  */
 @Slf4j
 @Component
@@ -33,6 +44,7 @@ public class UserAgentUtil {
     private static final String FALLBACK_VALUE = "알 수 없음";
     private static final Set<String> TABLET_FAMILIES = Set.of("iPad", "Kindle", "Kindle Fire", "Nexus 10", "Galaxy Tab");
     private static final Set<String> MOBILE_OS_FAMILIES = Set.of("iOS", "Android");
+    private static final Set<String> DESKTOP_OS_FAMILIES = Set.of("Windows", "Mac OS X", "Linux", "Chrome OS", "Ubuntu", "Fedora");
     private static final String DESKTOP_DEVICE_FAMILY = "Other";
 
     private final Parser parser;
@@ -41,12 +53,6 @@ public class UserAgentUtil {
         this.parser = new Parser();
     }
 
-    /**
-     * HTTP 요청에서 디바이스 정보를 추출한다.
-     *
-     * @param request HTTP 요청 (User-Agent, X-Client-Type, X-Device-Id, X-Device-Os 헤더 포함)
-     * @return 파싱된 디바이스 정보
-     */
     public DeviceInfoDto parse(HttpServletRequest request) {
         ClientType clientType = ClientType.fromHeader(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
         String loginIp = extractClientIp(request);
@@ -76,7 +82,6 @@ public class UserAgentUtil {
             osName = StringUtils.hasText(deviceOs) ? deviceOs : FALLBACK_VALUE;
         }
 
-        // 앱 User-Agent에서 OS 버전 추출 시도
         if (StringUtils.hasText(userAgent)) {
             Client client = parser.parse(userAgent);
             if (StringUtils.hasText(client.os.major)) {
@@ -87,7 +92,6 @@ public class UserAgentUtil {
             }
         }
 
-        // 앱의 browserName은 앱 이름으로 설정 (User-Agent에서 추출하거나 기본값)
         String browserName = extractAppName(userAgent);
 
         return DeviceInfoDto.of(deviceType, osName, browserName, fingerprint, loginIp);
@@ -112,19 +116,18 @@ public class UserAgentUtil {
     private DeviceType classifyWebDeviceType(Client client) {
         String deviceFamily = client.device.family;
 
-        // 태블릿 판별
         if (TABLET_FAMILIES.stream().anyMatch(tablet -> tablet.equalsIgnoreCase(deviceFamily))) {
             return DeviceType.WEB_TABLET;
         }
 
-        // 데스크탑 판별 (uap-core에서 "Other"는 식별되지 않은 기기 = 데스크탑 브라우저)
-        if (DESKTOP_DEVICE_FAMILY.equals(deviceFamily)) {
-            return DeviceType.WEB_DESKTOP;
-        }
-
-        // 모바일 OS 판별
         if (MOBILE_OS_FAMILIES.contains(client.os.family)) {
             return DeviceType.WEB_MOBILE;
+        }
+
+        if (!StringUtils.hasText(deviceFamily)
+                || DESKTOP_DEVICE_FAMILY.equals(deviceFamily)
+                || DESKTOP_OS_FAMILIES.contains(client.os.family)) {
+            return DeviceType.WEB_DESKTOP;
         }
 
         return DeviceType.UNKNOWN;
@@ -151,11 +154,6 @@ public class UserAgentUtil {
         return client.userAgent.family;
     }
 
-    /**
-     * 앱 이름 추출.
-     * 앱 User-Agent가 "AppName/1.0.0 (...)" 형태인 경우 앱 이름 부분을 추출한다.
-     * 파싱 실패 시 기본값 반환.
-     */
     private String extractAppName(String userAgent) {
         if (!StringUtils.hasText(userAgent)) {
             return FALLBACK_VALUE;
@@ -171,20 +169,17 @@ public class UserAgentUtil {
 
     private String extractFingerprint(HttpServletRequest request, ClientType clientType) {
         if (clientType == ClientType.APP) {
-            // 앱: X-Device-Id 헤더에서 추출
             String deviceId = request.getHeader(AuthConst.HEADER_DEVICE_ID);
             if (StringUtils.hasText(deviceId)) {
                 return deviceId;
             }
         }
 
-        // 웹: device_id 쿠키에서 추출
         return CookieUtil.getCookieValue(request, AuthConst.COOKIE_DEVICE_ID_NAME)
                 .orElse(UuidUtil.generateString());
     }
 
     private String extractClientIp(HttpServletRequest request) {
-        // 프록시/로드밸런서 환경에서 실제 클라이언트 IP 추출
         String ip = request.getHeader("X-Forwarded-For");
         if (StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip)) {
             return ip.split(",")[0].trim();
