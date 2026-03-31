@@ -13,6 +13,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 import redis.embedded.RedisServer;
 
 import java.io.IOException;
+import java.net.Socket;
 
 @Profile("test")
 @Configuration
@@ -28,14 +29,24 @@ public class TestRedisConfig {
 
     @PostConstruct
     public void startRedis() throws IOException {
-        redisServer = new RedisServer(port);
-        redisServer.start();
+        if (!isPortInUse(host, port)) {
+            redisServer = new RedisServer(port);
+            redisServer.start();
+        }
     }
 
     @PreDestroy
     public void stopRedis() throws IOException {
         if (redisServer != null && redisServer.isActive()) {
             redisServer.stop();
+        }
+    }
+
+    private boolean isPortInUse(String host, int port) {
+        try (Socket socket = new Socket(host, port)) {
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 

@@ -80,6 +80,7 @@ dependencies {
     // ===================================================================================
     testImplementation 'org.springframework.boot:spring-boot-starter-test'            // Spring Boot 테스트
     testImplementation 'org.springframework.security:spring-security-test'            // Spring Security 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'     // Spring MVC 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'   // JPA 테스트
     testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'                  // 내장 Redis 테스트
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
