@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,6 +32,48 @@ class DeviceRepositoryTest {
     @BeforeEach
     void setUp() {
         user = em.persistAndFlush(UserFixture.localUser());
+    }
+
+    @Nested
+    @DisplayName("findByPublicIdAndUserId()")
+    class FindByPublicIdAndUserId {
+
+        @Test
+        @DisplayName("publicId + userId 일치 → 디바이스를 반환한다")
+        void matchingPublicIdAndUserId_returnsDevice() {
+            DeviceEntity device = em.persistAndFlush(DeviceFixture.activeWebDevice(user));
+            String publicId = device.getPublicId();
+
+            Optional<DeviceEntity> result =
+                    deviceRepository.findByPublicIdAndUserId(publicId, user.getId());
+
+            assertThat(result).isPresent();
+            assertThat(result.get().getPublicId()).isEqualTo(publicId);
+        }
+
+        @Test
+        @DisplayName("publicId는 일치하지만 userId가 다르면 반환하지 않는다 (IDOR 방어)")
+        void publicIdMatches_butUserIdDiffers_returnsEmpty() {
+            UserEntity otherUser = em.persistAndFlush(UserFixture.adminUser());
+            DeviceEntity otherDevice = em.persistAndFlush(
+                    DeviceFixture.activeWebDevice(otherUser)
+            );
+            String otherPublicId = otherDevice.getPublicId();
+
+            Optional<DeviceEntity> result =
+                    deviceRepository.findByPublicIdAndUserId(otherPublicId, user.getId());
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 publicId → Optional.empty()를 반환한다")
+        void nonExistentPublicId_returnsEmpty() {
+            Optional<DeviceEntity> result =
+                    deviceRepository.findByPublicIdAndUserId("non-existent-uuid", user.getId());
+
+            assertThat(result).isEmpty();
+        }
     }
 
     @Nested
