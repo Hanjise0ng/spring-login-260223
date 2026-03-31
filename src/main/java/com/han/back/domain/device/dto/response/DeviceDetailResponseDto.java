@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DeviceDetailResponseDto {
 
-    private final Long deviceId;
+    private final String publicId;
     private final String deviceType;
     private final String deviceTypeName;
     private final String osName;
@@ -29,7 +29,7 @@ public class DeviceDetailResponseDto {
         boolean isCurrent = isActive && device.getSessionId().equals(currentSessionId);
 
         return DeviceDetailResponseDto.builder()
-                .deviceId(device.getId())
+                .publicId(device.getPublicId())
                 .deviceType(device.getDeviceType().name())
                 .deviceTypeName(device.getDeviceType().getDisplayName())
                 .osName(device.getOsName())

@@ -38,13 +38,13 @@ public class DeviceController {
      * 대상 디바이스의 세션을 무효화한다.
      * 현재 접속 중인 기기는 강제 로그아웃 불가.
      */
-    @PostMapping("/{deviceId}/logout")
+    @PostMapping("/{devicePublicId}/logout")
     public ResponseEntity<BaseResponse<Empty>> forceLogoutDevice(
-            @PathVariable Long deviceId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String devicePublicId) {
 
         deviceService.forceLogoutDevice(
-                userDetails.getId(), deviceId, userDetails.getSessionId()
+                userDetails.getId(), devicePublicId, userDetails.getSessionId()
         );
         return BaseResponse.success();
     }
@@ -53,12 +53,12 @@ public class DeviceController {
      * 비활성 디바이스를 목록에서 제거.
      * 활성 세션이 있는 디바이스는 삭제 불가.
      */
-    @DeleteMapping("/{deviceId}")
+    @DeleteMapping("/{devicePublicId}")
     public ResponseEntity<BaseResponse<Empty>> deleteDevice(
-            @PathVariable Long deviceId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String devicePublicId) {
 
-        deviceService.deleteDevice(userDetails.getId(), deviceId);
+        deviceService.deleteDevice(userDetails.getId(), devicePublicId);
         return BaseResponse.success();
     }
 

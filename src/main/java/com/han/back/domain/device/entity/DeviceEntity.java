@@ -2,11 +2,9 @@ package com.han.back.domain.device.entity;
 
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.global.entity.BaseTime;
+import com.han.back.global.security.util.UuidUtil;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
@@ -32,9 +30,12 @@ import java.time.LocalDateTime;
 public class DeviceEntity extends BaseTime {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_devices_user_id"))
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_devices_user_id"))
     private UserEntity user;
+
+    @Builder.Default
+    @Column(name = "public_id", nullable = false, unique = true, updatable = false, length = 36)
+    private String publicId = UuidUtil.generateString();
 
     @Column(name = "device_fingerprint", nullable = false, length = 64)
     private String deviceFingerprint;

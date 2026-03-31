@@ -94,8 +94,8 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public void forceLogoutDevice(Long userId, Long deviceId, String currentSessionId) {
-        DeviceEntity device = deviceRepository.findByIdAndUserId(deviceId, userId)
+    public void forceLogoutDevice(Long userId, String devicePublicId, String currentSessionId) {
+        DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
 
         if (!device.hasActiveSession()) return;
@@ -108,14 +108,14 @@ public class DeviceServiceImpl implements DeviceService {
         tokenService.invalidateSession(userId, targetSessionId);
         device.deactivateSession();
 
-        log.info("Force Logout - UserPK: {} | DeviceId: {} | TargetSessionId: {}",
-                userId, deviceId, targetSessionId);
+        log.info("Force Logout - UserPK: {} | DevicePublicId: {} | TargetSessionId: {}",
+                userId, devicePublicId, targetSessionId);
     }
 
     @Override
     @Transactional
-    public void deleteDevice(Long userId, Long deviceId) {
-        DeviceEntity device = deviceRepository.findByIdAndUserId(deviceId, userId)
+    public void deleteDevice(Long userId, String devicePublicId){
+        DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
 
         if (device.hasActiveSession()) {
@@ -124,8 +124,8 @@ public class DeviceServiceImpl implements DeviceService {
 
         deviceRepository.delete(device);
 
-        log.info("Device Removed - UserPK: {} | DeviceId: {} | Type: {}",
-                userId, deviceId, device.getDeviceType().name());
+        log.info("Device Removed - UserPK: {} | DevicePublicId: {} | Type: {}",
+                userId, devicePublicId, device.getDeviceType().name());
     }
 
     private void enforceMaxSessionPolicy(Long userId, String currentSessionId) {

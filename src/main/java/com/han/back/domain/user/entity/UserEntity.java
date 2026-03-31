@@ -3,11 +3,9 @@ package com.han.back.domain.user.entity;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.entity.BaseTime;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.security.util.UuidUtil;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Getter
@@ -26,6 +24,10 @@ import lombok.experimental.SuperBuilder;
         }
 )
 public class UserEntity extends BaseTime {
+
+    @Builder.Default
+    @Column(name = "public_id", nullable = false, unique = true, updatable = false, length = 36)
+    private String publicId = UuidUtil.generateString();
 
     @Column(name = "login_id", unique = true, nullable = false, length = 30)
     private String loginId;

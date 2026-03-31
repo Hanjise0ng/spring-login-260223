@@ -46,18 +46,18 @@ public interface DeviceService {
      * 대상 디바이스의 세션을 무효화하고 DB에서 비활성화한다.
      *
      * @param userId           요청 사용자 PK (소유권 검증)
-     * @param deviceId         대상 디바이스 PK
+     * @param devicePublicId   대상 디바이스 PublicId
      * @param currentSessionId 현재 요청자의 세션 ID (자기 자신 강제 로그아웃 방지)
      */
-    void forceLogoutDevice(Long userId, Long deviceId, String currentSessionId);
+    void forceLogoutDevice(Long userId, String devicePublicId, String currentSessionId);
 
     /**
      * 비활성 디바이스를 목록에서 제거한다.
      * 활성 세션이 남아있는 디바이스는 삭제 불가 — 강제 로그아웃 후 삭제해야 한다.
      *
-     * @param userId   요청 사용자 PK (소유권 검증)
-     * @param deviceId 대상 디바이스 PK
+     * @param userId           요청 사용자 PK (소유권 검증)
+     * @param devicePublicId   대상 디바이스 PublicId
      */
-    void deleteDevice(Long userId, Long deviceId);
+    void deleteDevice(Long userId, String devicePublicId);
 
 }

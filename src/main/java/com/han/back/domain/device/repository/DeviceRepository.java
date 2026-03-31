@@ -15,7 +15,7 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     Optional<DeviceEntity> findByUserIdAndDeviceFingerprint(Long userId, String deviceFingerprint);
 
     // 사용자의 특정 디바이스 조회 (소유권 검증 포함)
-    Optional<DeviceEntity> findByIdAndUserId(Long id, Long userId);
+    Optional<DeviceEntity> findByPublicIdAndUserId(String publicId, Long userId);
 
     // 특정 세션 ID를 가진 디바이스 조회 (재발급 시 기기 식별용)
     Optional<DeviceEntity> findByUserIdAndSessionId(Long userId, String sessionId);
@@ -24,15 +24,11 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     @Query("SELECT d FROM DeviceEntity d WHERE d.user.id = :userId ORDER BY d.lastLoginAt DESC")
     List<DeviceEntity> findAllByUserIdOrderByLastLoginAtDesc(@Param("userId") Long userId);
 
-    // 사용자의 활성 세션 디바이스 목록 — 최근 로그인 순 정렬 (가장 오래된 세션 = 마지막 원소)
+    // 사용자의 활성 세션 디바이스 목록 — 오래된 순 정렬 (최대 세션 정책용)
     @Query("SELECT d FROM DeviceEntity d " +
             "WHERE d.user.id = :userId AND d.sessionId IS NOT NULL " +
             "ORDER BY d.lastLoginAt ASC")
     List<DeviceEntity> findActiveDevicesByUserIdOldestFirst(@Param("userId") Long userId);
-
-    // 사용자의 활성 세션 수 카운트
-    @Query("SELECT COUNT(d) FROM DeviceEntity d WHERE d.user.id = :userId AND d.sessionId IS NOT NULL")
-    long countActiveSessionsByUserId(@Param("userId") Long userId);
 
     // 특정 세션 ID로 디바이스 세션 비활성화 — LogoutHandler, 강제 로그아웃에서 사용
     @Modifying(clearAutomatically = true)
