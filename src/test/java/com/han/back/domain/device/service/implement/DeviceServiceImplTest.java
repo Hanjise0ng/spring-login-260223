@@ -323,7 +323,7 @@ class DeviceServiceImplTest {
     @DisplayName("forceLogoutDevice()")
     class ForceLogoutDevice {
 
-        private static final Long DEVICE_ID = 10L;
+        private static final String DEVICE_PUBLIC_ID = "device-public-uuid-001";
 
         @Test
         @DisplayName("다른 활성 디바이스 → invalidateSession + deactivateSession 이 호출된다")
@@ -332,27 +332,26 @@ class DeviceServiceImplTest {
                     .sessionId("other-session")
                     .fingerprint("fp-other")
                     .build();
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.of(otherDevice));
 
-            deviceService.forceLogoutDevice(USER_ID, DEVICE_ID, SESSION_ID);
+            deviceService.forceLogoutDevice(USER_ID, DEVICE_PUBLIC_ID, SESSION_ID);
 
             then(tokenService).should(times(1))
                     .invalidateSession(USER_ID, "other-session");
-            // deactivateSession() 결과는 Repository verify 불가 → Entity 상태로 검증
             assertThat(otherDevice.hasActiveSession()).isFalse();
         }
 
         @Test
         @DisplayName("비활성 디바이스 → invalidateSession 을 호출하지 않는다 (멱등 처리)")
         void inactiveDevice_doesNothing() {
-            // hasActiveSession() = false → 즉시 return, invalidateSession 미호출
             DeviceEntity inactiveDevice = DeviceFixture.inactiveDevice(user);
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.of(inactiveDevice));
 
             assertThatCode(() ->
-                    deviceService.forceLogoutDevice(USER_ID, DEVICE_ID, SESSION_ID))
+                    deviceService.forceLogoutDevice(USER_ID, DEVICE_PUBLIC_ID, SESSION_ID))
                     .doesNotThrowAnyException();
 
             then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
@@ -361,29 +360,28 @@ class DeviceServiceImplTest {
         @Test
         @DisplayName("자기 자신의 디바이스를 강제 로그아웃 시도 → SELF_DEVICE_FORCE_LOGOUT 예외")
         void currentDevice_throwsSelfDeviceForceLogout() {
-            // 대상 sessionId = SESSION_ID(현재) → 자기 자신 강제 로그아웃 시나리오
             DeviceEntity selfDevice = DeviceFixture.builder(user)
                     .sessionId(SESSION_ID)
                     .fingerprint("fp-self")
                     .build();
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.of(selfDevice));
 
             assertThatThrownBy(() ->
-                    deviceService.forceLogoutDevice(USER_ID, DEVICE_ID, SESSION_ID))
+                    deviceService.forceLogoutDevice(USER_ID, DEVICE_PUBLIC_ID, SESSION_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SELF_DEVICE_FORCE_LOGOUT);
         }
 
         @Test
-        @DisplayName("존재하지 않는 deviceId → NOT_FOUND_DEVICE 예외를 던진다")
+        @DisplayName("존재하지 않는 publicId → NOT_FOUND_DEVICE 예외를 던진다")
         void notFoundDevice_throwsNotFoundDevice() {
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    deviceService.forceLogoutDevice(USER_ID, DEVICE_ID, SESSION_ID))
+                    deviceService.forceLogoutDevice(USER_ID, DEVICE_PUBLIC_ID, SESSION_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
@@ -394,17 +392,16 @@ class DeviceServiceImplTest {
     @DisplayName("deleteDevice()")
     class DeleteDevice {
 
-        private static final Long DEVICE_ID = 20L;
+        private static final String DEVICE_PUBLIC_ID = "device-public-uuid-002";
 
         @Test
-        @DisplayName("비활성 디바이스 → delete가 정확히 1번 호출된다")
+        @DisplayName("비활성 디바이스 → delete 정확히 1번 호출된다")
         void inactiveDevice_deletesSuccessfully() {
-            // sessionId = null → hasActiveSession() = false → 삭제 가능 조건 충족
             DeviceEntity inactiveDevice = DeviceFixture.inactiveDevice(user);
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.of(inactiveDevice));
 
-            deviceService.deleteDevice(USER_ID, DEVICE_ID);
+            deviceService.deleteDevice(USER_ID, DEVICE_PUBLIC_ID);
 
             then(deviceRepository).should(times(1)).delete(inactiveDevice);
         }
@@ -412,27 +409,25 @@ class DeviceServiceImplTest {
         @Test
         @DisplayName("활성 세션이 있는 디바이스 삭제 시도 → ACTIVE_DEVICE_CANNOT_DELETE 예외")
         void activeDevice_throwsActiveDeviceCannotDelete() {
-            // sessionId 존재 → hasActiveSession() = true → 삭제 불가 조건
             DeviceEntity activeDevice = DeviceFixture.activeWebDevice(user);
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.of(activeDevice));
 
-            assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_ID))
+            assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_PUBLIC_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.ACTIVE_DEVICE_CANNOT_DELETE);
 
-            // 예외 발생 후에도 delete가 실행되는 버그 방어 검증
             then(deviceRepository).should(never()).delete(any());
         }
 
         @Test
-        @DisplayName("존재하지 않는 deviceId → NOT_FOUND_DEVICE 예외를 던진다")
+        @DisplayName("존재하지 않는 publicId → NOT_FOUND_DEVICE 예외를 던진다")
         void notFoundDevice_throwsNotFoundDevice() {
-            given(deviceRepository.findByIdAndUserId(DEVICE_ID, USER_ID))
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PUBLIC_ID, USER_ID))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_ID))
+            assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_PUBLIC_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
