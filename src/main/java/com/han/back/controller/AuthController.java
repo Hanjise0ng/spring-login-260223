@@ -1,6 +1,7 @@
 package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
+import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.global.dto.BaseResponse;
 import com.han.back.global.dto.Empty;
@@ -9,12 +10,10 @@ import com.han.back.global.security.util.AuthHttpUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -22,6 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+
+    @GetMapping("/check-login-id")
+    public ResponseEntity<BaseResponse<LoginIdCheckResponseDto>> checkLoginId(
+            @RequestParam @NotBlank String loginId) {
+
+        LoginIdCheckResponseDto response = authService.checkLoginId(loginId);
+        return BaseResponse.success(response);
+    }
 
     @PostMapping("/sign-up")
     public ResponseEntity<BaseResponse<Empty>> signUp(
@@ -37,7 +44,6 @@ public class AuthController {
 
         AuthTokenDto oldTokens = AuthHttpUtil.extractRequiredTokenPair(request);
         AuthTokenDto newTokens = authService.reissue(oldTokens);
-
         AuthHttpUtil.setTokenResponse(request, response, newTokens);
         return BaseResponse.success();
     }

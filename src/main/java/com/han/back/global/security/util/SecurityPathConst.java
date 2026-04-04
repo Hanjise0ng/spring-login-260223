@@ -11,6 +11,8 @@ public final class SecurityPathConst {
             "/api/v*/auth/sign-up",
             "/api/v*/auth/sign-in",
             "/api/v*/auth/reissue",
+            "/api/v*/verification/send",
+            "/api/v*/verification/confirm",
             "/oauth2/**",
             "/login/**",
             "/swagger-ui/**",

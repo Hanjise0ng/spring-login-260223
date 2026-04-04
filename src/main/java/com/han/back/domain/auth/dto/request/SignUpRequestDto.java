@@ -13,19 +13,22 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SignUpRequestDto {
 
-    @NotBlank
+    @NotBlank(message = "Login ID is required.")
     private String loginId;
 
-    @NotBlank
+    @NotBlank(message = "Password is required.")
     @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9!@#$%^&*]{8,13}$")
     private String password;
 
-    @Email
-    @NotBlank
+    @NotBlank(message = "Email is required.")
+    @Email(message = "Invalid email format.")
     private String email;
 
-    @NotBlank
+    @NotBlank(message = "Nickname is required.")
     @Size(min = 2, max = 20)
     private String nickname;
+
+    @NotBlank(message = "Login ID check token is required.")
+    private String loginIdToken;
 
 }

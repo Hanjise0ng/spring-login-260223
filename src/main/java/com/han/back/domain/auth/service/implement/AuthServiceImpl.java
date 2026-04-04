@@ -1,17 +1,21 @@
 package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
+import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
+import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.util.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,17 +33,39 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final DeviceService deviceService;
+    private final VerificationService verificationService;
+    private final LoginIdTokenUtil loginIdTokenUtil;
 
     @Override
-    @Transactional
-    public void signUp(SignUpRequestDto dto) {
-        String loginId = dto.getLoginId();
+    @Transactional(readOnly = true)
+    public LoginIdCheckResponseDto checkLoginId(String loginId) {
         if (userRepository.existsByLoginId(loginId)) {
             throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
         }
 
+        String token = loginIdTokenUtil.issue(loginId);
+        return LoginIdCheckResponseDto.of(token);
+    }
+
+    @Override
+    @Transactional
+    public void signUp(SignUpRequestDto dto) {
+        loginIdTokenUtil.validate(dto.getLoginId(), dto.getLoginIdToken());
+        verificationService.validateConfirmed(dto.getEmail(), VerificationType.SIGN_UP);
+
+        if (userRepository.existsByLoginId(dto.getLoginId())) {
+            throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
+        }
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
+        }
+
         UserEntity user = userMapper.fromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
         userRepository.save(user);
+
+        verificationService.consumeConfirmation(dto.getEmail(), VerificationType.SIGN_UP);
+
+        log.info("Sign Up Success - LoginId: {}", dto.getLoginId());
     }
 
     @Override

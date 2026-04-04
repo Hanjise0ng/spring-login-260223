@@ -34,6 +34,7 @@ public class AuthConst {
     public static final long REFRESH_EXPIRATION = 86400000L;        // JWT 용 (24시간)
     public static final int COOKIE_ACCESS_EXPIRATION = 30 * 60;     // 쿠키 용 (30분)
     public static final int COOKIE_REFRESH_EXPIRATION = 24 * 60 * 60; // 쿠키 용 (24시간)
+    public static final long LOGIN_ID_TOKEN_TTL = 1_800_000L; // 30분
 
 
     // 쿠키 설정 (Cookie Configs)

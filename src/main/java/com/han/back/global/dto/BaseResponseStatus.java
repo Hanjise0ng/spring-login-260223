@@ -14,8 +14,9 @@ public enum BaseResponseStatus {
 
     // ================== 잘못된 요청 (400 Bad Request) ==================
     VALIDATION_FAIL(HttpStatus.BAD_REQUEST, "VF", "Validation failed."),
-    CERTIFICATION_FAIL(HttpStatus.BAD_REQUEST, "CF", "Certification failed."),
+    VERIFICATION_FAIL(HttpStatus.BAD_REQUEST, "CF", "Verification code does not match."),
     INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST, "IRB", "Invalid request body format."),
+    LOGIN_ID_CHECK_REQUIRED(HttpStatus.BAD_REQUEST, "LICR", "Login ID availability check is required before sign-up."),
     SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "SCP", "New password must be different from current password."),
     PASSWORD_CONFIRM_MISMATCH(HttpStatus.BAD_REQUEST, "PCM", "Password confirmation does not match."),
     VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "VE", "Verification code has expired."),
@@ -66,6 +67,7 @@ public enum BaseResponseStatus {
 
     // ================== 요청 처리 불가 (422 Unprocessable Content) ==================
     UNSUPPORTED_SOCIAL_PROVIDER(HttpStatus.UNPROCESSABLE_CONTENT, "USP", "Unsupported social provider."),
+    UNSUPPORTED_NOTIFICATION_CHANNEL(HttpStatus.UNPROCESSABLE_CONTENT, "UNC", "Unsupported notification channel."),
 
 
     // ================== 요청 과다 (429 Too Many Requests) ==================
@@ -73,6 +75,7 @@ public enum BaseResponseStatus {
 
 
     // ================== 서버 내부 오류 (500 Internal Server Error) ==================
+    MAIL_TEMPLATE_LOAD_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "MTF", "Failed to load mail template."),
     MAIL_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "MF", "Mail send failed."),
     SMS_SEND_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "SSF", "SMS send failed."),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DBE", "Database error."),
