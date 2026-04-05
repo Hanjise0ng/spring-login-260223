@@ -5,12 +5,14 @@ import com.han.back.global.dto.BaseResponseStatus;
 import com.han.back.global.dto.Empty;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.util.stream.Collectors;
 
@@ -33,6 +35,18 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         log.warn("Validation failed at {}: {}", request.getRequestURI(), detailMessage);
+        return BaseResponse.error(BaseResponseStatus.VALIDATION_FAIL, detailMessage);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<BaseResponse<Empty>> handleHandlerMethodValidationException(
+            HandlerMethodValidationException e, HttpServletRequest request) {
+        // @RequestParam, @PathVariable 등 메서드 파라미터 레벨 검증 실패
+        String detailMessage = e.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream())
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        log.warn("Handler method validation failed at {}: {}", request.getRequestURI(), detailMessage);
         return BaseResponse.error(BaseResponseStatus.VALIDATION_FAIL, detailMessage);
     }
 
