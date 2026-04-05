@@ -22,7 +22,7 @@ public class ExistingEmailPolicy implements VerificationPolicy {
     }
 
     @Override
-    public void validate(String target) {
+    public void check(String target) {
         if (!userRepository.existsByEmail(target)) {
             throw new CustomException(BaseResponseStatus.NOT_FOUND_USER);
         }
