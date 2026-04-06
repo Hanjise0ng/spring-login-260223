@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,7 +32,8 @@ public class VerificationServiceImpl implements VerificationService {
     private final Map<VerificationType, VerificationPolicy> policyMap;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public VerificationServiceImpl(RedisUtil redisUtil, MailTemplateUtil mailTemplateUtil, List<NotificationSender> senders, List<VerificationPolicy> preValidators) {
+    public VerificationServiceImpl(RedisUtil redisUtil, MailTemplateUtil mailTemplateUtil,
+                                   List<NotificationSender> senders, List<VerificationPolicy> policies) {
         this.redisUtil = redisUtil;
         this.mailTemplateUtil = mailTemplateUtil;
         this.senderMap = senders.stream()
@@ -41,7 +41,7 @@ public class VerificationServiceImpl implements VerificationService {
                         NotificationSender::getChannel,
                         Function.identity()
                 ));
-        this.policyMap = preValidators.stream()
+        this.policyMap = policies.stream()
                 .flatMap(v -> v.getSupportedTypes().stream()
                         .map(type -> Map.entry(type, v)))
                 .collect(Collectors.toUnmodifiableMap(
@@ -56,12 +56,18 @@ public class VerificationServiceImpl implements VerificationService {
         VerificationType type = request.getType();
         NotificationChannel channel = request.getChannel();
 
-        runPreValidation(type, target);
+        channel.validateSupported();
+
+        NotificationSender sender = resolveSender(channel);
+
+        runPolicyCheck(type, target);
         validateCooldown(type, target);
 
         String code = generateCode();
         storeCodeAndCooldown(type, target, code);
-        dispatchNotification(channel, target, type, code);
+
+        String content = buildContent(channel, type, code);
+        sender.send(target, type.getEmailSubject(), content);
 
         log.info("Verification code sent - Type: {} | Channel: {} | Target: {}",
                 type, channel, maskTarget(target));
@@ -105,9 +111,11 @@ public class VerificationServiceImpl implements VerificationService {
         redisUtil.deleteData(VerificationConst.confirmedKey(type, target));
     }
 
-    private void runPreValidation(VerificationType type, String target) {
-        Optional.ofNullable(policyMap.get(type))
-                .ifPresent(validator -> validator.validate(target));
+    private void runPolicyCheck(VerificationType type, String target) {
+        VerificationPolicy policy = policyMap.get(type);
+        if (policy != null) {
+            policy.check(target);
+        }
     }
 
     private void validateCooldown(VerificationType type, String target) {
@@ -121,15 +129,13 @@ public class VerificationServiceImpl implements VerificationService {
         redisUtil.setDataExpire(VerificationConst.cooldownKey(type, target), "ACTIVE", VerificationConst.COOLDOWN_TTL);
     }
 
-    private void dispatchNotification(NotificationChannel channel, String target, VerificationType type, String code) {
-        NotificationSender sender = resolveSender(channel);
-        String content = buildContent(channel, type, code);
-        sender.send(target, type.getEmailSubject(), content);
-    }
-
     private NotificationSender resolveSender(NotificationChannel channel) {
-        return Optional.ofNullable(senderMap.get(channel))
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL));
+        NotificationSender sender = senderMap.get(channel);
+        if (sender == null) {
+            log.error("NotificationSender implementation not found for channel: {}", channel);
+            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+        }
+        return sender;
     }
 
     private String buildContent(NotificationChannel channel, VerificationType type, String code) {

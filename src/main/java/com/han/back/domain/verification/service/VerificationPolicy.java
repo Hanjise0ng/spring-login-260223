@@ -8,6 +8,6 @@ public interface VerificationPolicy {
 
     Set<VerificationType> getSupportedTypes();
 
-    void validate(String target);
+    void check(String target);
 
 }
