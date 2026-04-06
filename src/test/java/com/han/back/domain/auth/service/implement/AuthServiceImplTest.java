@@ -1,11 +1,14 @@
 package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
+import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
+import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.fixture.TokenFixture;
 import com.han.back.fixture.UserFixture;
 import com.han.back.global.dto.BaseResponseStatus;
@@ -14,6 +17,7 @@ import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.dto.AuthTokenDto;
 import com.han.back.global.security.dto.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.util.LoginIdTokenUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,25 +40,106 @@ class AuthServiceImplTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenService tokenService;
     @Mock private DeviceService deviceService;
+    @Mock private VerificationService verificationService;
+    @Mock private LoginIdTokenUtil loginIdTokenUtil;
 
     @InjectMocks private AuthServiceImpl authService;
 
     private static final Long   USER_PK        = 1L;
     private static final Role   ROLE           = Role.USER;
     private static final String LOGIN_ID       = UserFixture.DEFAULT_LOGIN_ID;
+    private static final String EMAIL          = "test@test.com";
+    private static final String LOGIN_ID_TOKEN = "valid.loginid.token";
     private static final String SESSION_ID     = "session-abc-123";
     private static final String NEW_SESSION_ID = "new-session-xyz-456";
     private static final String ENCODED_PW     = "$2a$10$encodedPasswordForTest";
+
+    @Nested
+    @DisplayName("checkLoginId()")
+    class CheckLoginId {
+
+        @Test
+        @DisplayName("이미 존재하는 loginId → DUPLICATE_ID 예외를 던지고 토큰을 발급하지 않는다")
+        void existingLoginId_throwsDuplicateId() {
+            given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(true);
+
+            assertThatThrownBy(() -> authService.checkLoginId(LOGIN_ID))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
+
+            // 중복이면 토큰 발급까지 도달하지 않아야 함
+            then(loginIdTokenUtil).should(never()).issue(anyString());
+        }
+
+        @Test
+        @DisplayName("사용 가능한 loginId → loginIdToken이 담긴 LoginIdCheckResponseDto를 반환한다")
+        void availableLoginId_returnsLoginIdCheckResponseDto() {
+            given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
+            given(loginIdTokenUtil.issue(LOGIN_ID)).willReturn(LOGIN_ID_TOKEN);
+
+            LoginIdCheckResponseDto result = authService.checkLoginId(LOGIN_ID);
+
+            assertThat(result.getLoginIdToken()).isEqualTo(LOGIN_ID_TOKEN);
+            then(loginIdTokenUtil).should(times(1)).issue(LOGIN_ID);
+        }
+    }
 
     @Nested
     @DisplayName("signUp()")
     class SignUp {
 
         @Test
-        @DisplayName("중복 loginId → DUPLICATE_ID 예외를 던진다")
-        void duplicateLoginId_throwsDuplicateId() {
+        @DisplayName("loginIdToken 검증 실패 → LOGIN_ID_CHECK_REQUIRED를 던지고 이후 로직을 실행하지 않는다")
+        void invalidLoginIdToken_throwsLoginIdCheckRequired() {
+            // validate()는 loginId + loginIdToken 두 인자를 받음
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            willThrow(new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED))
+                    .given(loginIdTokenUtil).validate(LOGIN_ID, LOGIN_ID_TOKEN);
+
+            assertThatThrownBy(() -> authService.signUp(dto))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+
+            // 토큰 검증 실패 시 이후 모든 로직 미호출
+            then(verificationService).should(never()).validateConfirmed(anyString(), any());
+            then(userRepository).should(never()).existsByLoginId(anyString());
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("이메일 인증 미완료 → VERIFICATION_NOT_COMPLETED를 던지고 DB 접근을 하지 않는다")
+        void emailNotVerified_throwsVerificationNotCompleted() {
+            // loginIdToken 검증 통과 (void 메서드 — @Mock 기본 동작: 아무것도 안 함)
+            // validateConfirmed()는 email + type 두 인자를 받음
+            SignUpRequestDto dto = mock(SignUpRequestDto.class);
+            given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            given(dto.getEmail()).willReturn(EMAIL);
+            willThrow(new CustomException(BaseResponseStatus.VERIFICATION_NOT_COMPLETED))
+                    .given(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
+
+            assertThatThrownBy(() -> authService.signUp(dto))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.VERIFICATION_NOT_COMPLETED);
+
+            // 이메일 인증 실패 → DB 조회 및 저장 미호출
+            then(userRepository).should(never()).existsByLoginId(anyString());
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("중복 loginId → DUPLICATE_ID 예외를 던지고 저장하지 않는다")
+        void duplicateLoginId_throwsDuplicateId() {
+            // loginIdToken 검증 + 이메일 인증 모두 통과, DB에서 loginId 중복 발견
+            SignUpRequestDto dto = mock(SignUpRequestDto.class);
+            given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            given(dto.getEmail()).willReturn(EMAIL);
             given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(true);
 
             assertThatThrownBy(() -> authService.signUp(dto))
@@ -62,19 +147,39 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
 
-            // 중복 확인 후 즉시 throw → save 미호출
             then(userRepository).should(never()).save(any());
         }
 
         @Test
-        @DisplayName("신규 loginId → 비밀번호 인코딩 후 UserEntity를 저장한다")
-        void newLoginId_savesUser() {
+        @DisplayName("중복 email → DUPLICATE_EMAIL 예외를 던지고 저장하지 않는다")
+        void duplicateEmail_throwsDuplicateEmail() {
+            // loginId는 통과, email 중복
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            given(dto.getEmail()).willReturn(EMAIL);
+            given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
+            given(userRepository.existsByEmail(EMAIL)).willReturn(true);
+
+            assertThatThrownBy(() -> authService.signUp(dto))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
+
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("정상 회원가입 → 비밀번호 인코딩 후 저장하고 인증 상태를 소비한다")
+        void validSignUp_savesUserAndConsumesConfirmation() {
+            SignUpRequestDto dto = mock(SignUpRequestDto.class);
+            given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            given(dto.getEmail()).willReturn(EMAIL);
             given(dto.getPassword()).willReturn(UserFixture.RAW_PASSWORD);
             given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
+            given(userRepository.existsByEmail(EMAIL)).willReturn(false);
             given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
-
             UserEntity newUser = UserFixture.localUser();
             given(userMapper.fromSignUpRequest(dto, ENCODED_PW)).willReturn(newUser);
 
@@ -83,6 +188,34 @@ class AuthServiceImplTest {
             then(passwordEncoder).should(times(1)).encode(UserFixture.RAW_PASSWORD);
             then(userMapper).should(times(1)).fromSignUpRequest(dto, ENCODED_PW);
             then(userRepository).should(times(1)).save(newUser);
+            // 저장 후 인증 상태 소비 — 동일 토큰으로 재가입 방지
+            then(verificationService).should(times(1))
+                    .consumeConfirmation(EMAIL, VerificationType.SIGN_UP);
+        }
+
+        @Test
+        @DisplayName("정상 회원가입 → 검증 순서가 토큰→이메일인증→DB중복→저장→인증소비 임을 확인한다")
+        void validSignUp_executesInCorrectOrder() {
+            SignUpRequestDto dto = mock(SignUpRequestDto.class);
+            given(dto.getLoginId()).willReturn(LOGIN_ID);
+            given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
+            given(dto.getEmail()).willReturn(EMAIL);
+            given(dto.getPassword()).willReturn(UserFixture.RAW_PASSWORD);
+            given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
+            given(userRepository.existsByEmail(EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
+            given(userMapper.fromSignUpRequest(dto, ENCODED_PW)).willReturn(UserFixture.localUser());
+
+            authService.signUp(dto);
+
+            // InOrder: 호출 순서 위반 시 테스트 실패
+            var inOrder = inOrder(loginIdTokenUtil, verificationService, userRepository);
+            inOrder.verify(loginIdTokenUtil).validate(LOGIN_ID, LOGIN_ID_TOKEN);
+            inOrder.verify(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
+            inOrder.verify(userRepository).existsByLoginId(LOGIN_ID);
+            inOrder.verify(userRepository).existsByEmail(EMAIL);
+            inOrder.verify(userRepository).save(any());
+            inOrder.verify(verificationService).consumeConfirmation(EMAIL, VerificationType.SIGN_UP);
         }
     }
 
