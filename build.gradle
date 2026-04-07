@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '4.0.3'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
 }
 
 group = 'com.han'
@@ -59,6 +60,11 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
     // ===================================================================================
+    // API Documentation (API 문서화)
+    // ===================================================================================
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'   // Springdoc OpenAPI + Swagger UI
+
+    // ===================================================================================
     // Utility & Additional Features (유틸리티 및 기타 기능)
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-mail'          // 이메일 전송 기능 (인증 메일)
@@ -91,6 +97,90 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs << '-parameters'
 }
 
+// ===================================================================================
+// JaCoCo — 코드 커버리지 설정
+// ===================================================================================
+
+jacoco {
+    toolVersion = '0.8.14'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport   // 테스트 완료 후 자동으로 리포트 생성
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        html.required = true       // 로컬에서 브라우저로 확인
+        xml.required = true        // CI/CD (SonarQube, GitHub Actions 등) 연동용
+        csv.required = true        // CSV 형식으로 확인
+    }
+
+    // 커버리지 측정에서 제외할 클래스
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/config/**',
+                    '**/dto/**',
+                    '**/entity/**',
+                    '**/mapper/**',
+                    '**/exception/**',
+                    '**/Q*.class',
+                    '**/*Const.class',
+                    '**/*Const$*.class',
+                    '**/BackApplication.class',
+                    '**/fixture/**'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        // 라인 커버리지 — 서비스/유틸/필터/핸들러 대상
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                minimum = 0.70   // 70%
+            }
+            excludes = [
+                    '**.config.**',
+                    '**.dto.**',
+                    '**.entity.**',
+                    '**.mapper.**',
+                    '**.exception.**',
+                    '**.Q*',
+                    '**.*Const',
+                    '**.BackApplication'
+            ]
+        }
+
+        // 분기 커버리지 — if/else, switch 등 조건 분기 검증
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.60   // 60%
+            }
+            excludes = [
+                    '**.config.**',
+                    '**.dto.**',
+                    '**.entity.**',
+                    '**.mapper.**',
+                    '**.exception.**',
+                    '**.Q*',
+                    '**.*Const',
+                    '**.BackApplication'
+            ]
+        }
+    }
+}
+
+// ./gradlew check 실행 시 커버리지 기준 미달이면 빌드 실패
+tasks.named('check') {
+    dependsOn jacocoTestCoverageVerification
 }

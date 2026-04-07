@@ -17,6 +17,7 @@ public final class SecurityPathConst {
             "/login/**",
             "/swagger-ui/**",
             "/v3/api-docs/**",
+            "/v3/api-docs.yaml",
             "/swagger-resources/**",
             "/webjars/**"
     };

@@ -4,10 +4,6 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-/**
- * DeviceService.registerLoginDevice() 결과.
- * LoginFilter에서 토큰 발급 및 쿠키 설정에 사용.
- */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DeviceSignInResponseDto {

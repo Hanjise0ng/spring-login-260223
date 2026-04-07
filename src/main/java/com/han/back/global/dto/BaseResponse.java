@@ -1,13 +1,20 @@
 package com.han.back.global.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import org.springframework.http.ResponseEntity;
 
+@Schema(description = "공통 응답 래퍼")
 @Getter
 public class BaseResponse<T> {
 
+    @Schema(description = "응답 코드", example = "SU")
     private final String code;
+
+    @Schema(description = "응답 메시지", example = "Success.")
     private final String message;
+
+    @Schema(description = "응답 데이터 (없으면 빈 객체)")
     private final T result;
 
     private BaseResponse(BaseResponseStatus status, T result) {
