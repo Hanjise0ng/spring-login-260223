@@ -112,6 +112,24 @@ class LogoutIntegrationTest extends IntegrationTestBase {
             reuse.andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("AUF"));
         }
+
+        @Test
+        @DisplayName("로그아웃 후 동일 RT로 재발급 시도하면 401이 반환된다")
+        void logoutThenReissueWithOldRt_returns401() throws Exception {
+            UserEntity user = signUp();
+            ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+            String at = getAt(login);
+            String rt = getCookieValue(login, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
+
+            mockMvc.perform(post(SecurityPathConst.LOGOUT_PATH)
+                            .header("Authorization", "Bearer " + at))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/v1/auth/reissue")
+                            .header("Authorization", "Bearer " + at)
+                            .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     @Nested
@@ -125,6 +143,14 @@ class LogoutIntegrationTest extends IntegrationTestBase {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.message").exists());
+        }
+
+        @Test
+        @DisplayName("위조된 RT 쿠키만으로 로그아웃 시도하면 401을 반환한다")
+        void logoutWithTamperedRt_returns401() throws Exception {
+            mockMvc.perform(post(SecurityPathConst.LOGOUT_PATH)
+                            .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, "tampered.rt.value")))
+                    .andExpect(status().isUnauthorized());
         }
     }
 

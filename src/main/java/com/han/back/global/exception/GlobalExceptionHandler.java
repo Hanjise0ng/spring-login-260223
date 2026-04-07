@@ -71,4 +71,12 @@ public class GlobalExceptionHandler {
         return BaseResponse.error(BaseResponseStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(CustomAuthenticationException.class)
+    public ResponseEntity<BaseResponse<Empty>> handleCustomAuthenticationException(
+            CustomAuthenticationException e, HttpServletRequest request) {
+        log.warn("AuthenticationException occurred at {}: [{}] {}",
+                request.getRequestURI(), e.getStatus().getCode(), e.getStatus().getMessage());
+        return BaseResponse.error(e.getStatus());
+    }
+
 }

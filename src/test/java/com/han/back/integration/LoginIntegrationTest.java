@@ -200,4 +200,27 @@ class LoginIntegrationTest extends IntegrationTestBase {
         }
     }
 
+    @Test
+    @DisplayName("재발급 후 이전 RT로 다시 재발급 시도하면 401 AUF가 반환된다")
+    void usedRt_reissueAgain_returns401() throws Exception {
+        UserEntity user = signUp();
+        ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+
+        String at = getAt(login);
+        String rt = getCookieValue(login, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
+
+        // 1차 재발급 성공
+        mockMvc.perform(post("/api/v1/auth/reissue")
+                        .header("Authorization", "Bearer " + at)
+                        .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
+                .andExpect(status().isOk());
+
+        // 동일 RT로 2차 재발급 시도 → 거부
+        mockMvc.perform(post("/api/v1/auth/reissue")
+                        .header("Authorization", "Bearer " + at)
+                        .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUF"));
+    }
+
 }

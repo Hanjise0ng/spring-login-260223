@@ -42,11 +42,18 @@ public abstract class IntegrationTestBase {
     @Qualifier("customStringRedisTemplate")
     protected RedisTemplate<String, String> redisTemplate;
 
+    // 테스트가 생성하는 Redis 키 접두사 목록
+    private static final String[] TEST_KEY_PREFIXES = {
+            AuthConst.TOKEN_REFRESH_REDIS_PREFIX,
+            AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX,
+            "verification:",
+    };
+
     @AfterEach
     void cleanUp() {
         deviceRepository.deleteAll();
         userRepository.deleteAll();
-        flushRedis();
+        cleanUpRedisTestKeys();
     }
 
     protected void flushRedis() {
@@ -54,6 +61,19 @@ public abstract class IntegrationTestBase {
                 .getConnection()
                 .serverCommands()
                 .flushAll();
+    }
+
+    /**
+     * flushAll() 대신 테스트가 생성한 키만 선택적으로 삭제.
+     * 테스트 병렬 실행 시 다른 테스트의 Redis 데이터를 보호한다.
+     */
+    private void cleanUpRedisTestKeys() {
+        for (String prefix : TEST_KEY_PREFIXES) {
+            Set<String> keys = redisTemplate.keys(prefix + "*");
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+            }
+        }
     }
 
     protected UserEntity signUp() {
