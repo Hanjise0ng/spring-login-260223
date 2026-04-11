@@ -1,6 +1,6 @@
 package com.han.back.domain.user.entity;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

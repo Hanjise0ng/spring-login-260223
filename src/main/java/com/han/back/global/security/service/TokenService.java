@@ -1,18 +1,18 @@
 package com.han.back.global.security.service;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 
 import java.util.Optional;
 
 public interface TokenService {
 
     /** 신규 세션 생성 + 토큰 쌍 발급 (로그인 시) */
-    AuthTokenDto issueTokens(Long id, Role role, String sessionId);
+    AuthToken issueTokens(Long id, Role role, String sessionId);
 
     /** 기존 세션 유지 + 토큰 쌍 재발급 (reissue 시) */
-    AuthTokenDto rotateTokens(Long id, Role role, String oldSessionId, String newSessionId);
+    AuthToken rotateTokens(Long id, Role role, String oldSessionId, String newSessionId);
 
     /** 세션 단위 무효화 — 세션 블랙리스트 등록 + RT 삭제 */
     void invalidateSession(Long id, String sessionId);

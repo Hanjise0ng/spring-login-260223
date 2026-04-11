@@ -7,12 +7,12 @@ import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.domain.verification.service.VerificationService;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.notification.NotificationChannel;
-import com.han.back.global.notification.NotificationSender;
-import com.han.back.global.notification.template.MailTemplateUtil;
-import com.han.back.global.security.util.RedisUtil;
+import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationSender;
+import com.han.back.global.infra.notification.template.MailTemplateUtil;
+import com.han.back.global.infra.redis.util.RedisUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

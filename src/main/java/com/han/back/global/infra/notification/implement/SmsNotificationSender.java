@@ -1,7 +1,7 @@
-package com.han.back.global.notification.implement;
+package com.han.back.global.infra.notification.implement;
 
-import com.han.back.global.notification.NotificationChannel;
-import com.han.back.global.notification.NotificationSender;
+import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

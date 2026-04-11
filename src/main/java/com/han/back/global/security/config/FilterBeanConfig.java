@@ -1,4 +1,4 @@
-package com.han.back.global.config;
+package com.han.back.global.security.config;
 
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;

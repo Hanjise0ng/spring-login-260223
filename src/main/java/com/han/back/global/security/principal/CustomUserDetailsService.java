@@ -1,9 +1,8 @@
-package com.han.back.global.security.service.implement;
+package com.han.back.global.security.principal;
 
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.global.dto.BaseResponseStatus;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.response.BaseResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

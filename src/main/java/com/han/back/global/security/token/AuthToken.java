@@ -1,4 +1,4 @@
-package com.han.back.global.security.dto;
+package com.han.back.global.security.token;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -9,14 +9,14 @@ import org.springframework.util.StringUtils;
 @Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class AuthTokenDto {
+public class AuthToken {
 
     private String accessToken;
 
     private String refreshToken;
 
-    public static AuthTokenDto of(String accessToken, String refreshToken) {
-        return AuthTokenDto.builder()
+    public static AuthToken of(String accessToken, String refreshToken) {
+        return AuthToken.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();

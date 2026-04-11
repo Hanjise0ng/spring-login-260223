@@ -2,6 +2,19 @@ package com.han.back.global.security.context;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+/**
+ * LogoutHandler → LogoutSuccessHandler 간 처리 결과 전달
+ *
+ * <pre>
+ * CustomLogoutHandler        → set(Result)
+ * CustomLogoutSuccessHandler → get(Result) → 응답 코드 결정
+ * </pre>
+ *
+ * <p>미설정 시 기본값: {@link Result#UNAUTHENTICATED}</p>
+ *
+ * @see com.han.back.global.security.handler.CustomLogoutHandler
+ * @see com.han.back.global.security.handler.CustomLogoutSuccessHandler
+ */
 public final class LogoutContext {
 
     private LogoutContext() {}
@@ -20,6 +33,6 @@ public final class LogoutContext {
 
     public static Result getResult(HttpServletRequest request) {
         Object result = request.getAttribute(ATTR_RESULT);
-        return (result instanceof Result r) ? r : Result.SUCCESS;
+        return (result instanceof Result r) ? r : Result.UNAUTHENTICATED;
     }
 }

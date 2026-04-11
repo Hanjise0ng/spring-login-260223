@@ -3,7 +3,7 @@ package com.han.back.domain.auth.service.implement;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.han.back.global.notification;
+package com.han.back.global.infra.notification;
 
 public interface NotificationSender {
 

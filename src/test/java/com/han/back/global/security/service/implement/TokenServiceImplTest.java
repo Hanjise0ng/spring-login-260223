@@ -1,14 +1,14 @@
 package com.han.back.global.security.service.implement;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.JwtUtil;
-import com.han.back.global.security.util.RedisUtil;
+import com.han.back.global.infra.redis.util.RedisUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -84,7 +84,7 @@ class TokenServiceImplTest {
         void returnsAuthTokenDto_withBothTokens() {
             stubJwtCreate();
 
-            AuthTokenDto result = tokenService.issueTokens(USER_PK, ROLE, SESSION_ID);
+            AuthToken result = tokenService.issueTokens(USER_PK, ROLE, SESSION_ID);
 
             assertThat(result.getAccessToken()).isEqualTo(FAKE_AT);
             assertThat(result.getRefreshToken()).isEqualTo(FAKE_RT);
@@ -202,7 +202,7 @@ class TokenServiceImplTest {
         @Test
         @DisplayName("새 sessionId로 발급된 AT/RT를 반환한다")
         void returnsNewTokens_withNewSessionId() {
-            AuthTokenDto result = tokenService.rotateTokens(USER_PK, ROLE, OLD_SESSION, NEW_SESSION);
+            AuthToken result = tokenService.rotateTokens(USER_PK, ROLE, OLD_SESSION, NEW_SESSION);
 
             assertThat(result.getAccessToken()).isEqualTo(NEW_AT);
             assertThat(result.getRefreshToken()).isEqualTo(NEW_RT);

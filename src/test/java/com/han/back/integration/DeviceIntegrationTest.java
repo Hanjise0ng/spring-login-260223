@@ -335,14 +335,13 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         //   AT 없이 요청 시 동작 분석:
         //   JwtFilter → AT 없음 → SecurityContext 미설정 → 통과
         //   AnonymousAuthenticationFilter → anonymous 인증 설정
-        //   AuthorizationFilter → anonymous에게 USER 권한 없음 → 403 NP
-        //   MAT(401)는 JwtFilter가 AT를 찾았는데 없을 때 발생하는 예외
-        //   AT 헤더가 아예 없으면 JwtFilter는 AT 없음으로 인식해 그냥 통과시킴
-        @DisplayName("AT 없이 목록 조회 시 403 NP가 반환된다")
-        void getDevicesWithoutAt_returns403Np() throws Exception {
+        //   AuthorizationFilter → anonymous에게 USER 권한 없음
+        //   → CustomAuthenticationEntryPoint → 401 AUF
+        @DisplayName("AT 없이 목록 조회 시 401 AUF가 반환된다")
+        void getDevicesWithoutAt_returns401Auf() throws Exception {
             mockMvc.perform(get("/api/v1/devices"))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.code").value("NP"));
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("AUF"));
         }
     }
 

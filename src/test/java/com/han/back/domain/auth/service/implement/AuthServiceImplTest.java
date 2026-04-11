@@ -11,11 +11,11 @@ import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.fixture.TokenFixture;
 import com.han.back.fixture.UserFixture;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.LoginIdTokenUtil;
 import org.junit.jupiter.api.DisplayName;
@@ -240,7 +240,7 @@ class AuthServiceImplTest {
         @Test
         @DisplayName("RT가 비어있으면 AUTHENTICATION_FAIL 예외를 던진다")
         void emptyRefreshToken_throwsAuthenticationFail() {
-            AuthTokenDto emptyRt = AuthTokenDto.of(TokenFixture.FAKE_AT, "");
+            AuthToken emptyRt = AuthToken.of(TokenFixture.FAKE_AT, "");
 
             assertThatThrownBy(() -> authService.reissue(emptyRt))
                     .isInstanceOf(CustomAuthenticationException.class)
@@ -255,7 +255,7 @@ class AuthServiceImplTest {
         void validTokens_returnsNewTokenPair() {
             stubFullReissueFlow();
 
-            AuthTokenDto result = authService.reissue(TokenFixture.tokenPair());
+            AuthToken result = authService.reissue(TokenFixture.tokenPair());
 
             assertThat(result.getAccessToken()).isEqualTo(TokenFixture.NEW_FAKE_AT);
             assertThat(result.getRefreshToken()).isEqualTo(TokenFixture.NEW_FAKE_RT);

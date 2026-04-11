@@ -2,9 +2,9 @@ package com.han.back.controller;
 
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.service.DeviceService;
-import com.han.back.global.dto.BaseResponse;
-import com.han.back.global.dto.Empty;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.Empty;
+import com.han.back.global.security.principal.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

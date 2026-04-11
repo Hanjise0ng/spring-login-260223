@@ -1,4 +1,4 @@
-package com.han.back.global.security.dto;
+package com.han.back.global.security.principal;
 
 import com.han.back.domain.user.entity.Role;
 import org.springframework.security.core.GrantedAuthority;

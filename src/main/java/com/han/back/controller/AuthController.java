@@ -3,9 +3,9 @@ package com.han.back.controller;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.service.AuthService;
-import com.han.back.global.dto.BaseResponse;
-import com.han.back.global.dto.Empty;
-import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.Empty;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.util.AuthHttpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -85,8 +85,8 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Empty>> reissue(
             HttpServletRequest request, HttpServletResponse response) {
 
-        AuthTokenDto oldTokens = AuthHttpUtil.extractRequiredTokenPair(request);
-        AuthTokenDto newTokens = authService.reissue(oldTokens);
+        AuthToken oldTokens = AuthHttpUtil.extractRequiredTokenPair(request);
+        AuthToken newTokens = authService.reissue(oldTokens);
         AuthHttpUtil.setTokenResponse(request, response, newTokens);
         return BaseResponse.success();
     }

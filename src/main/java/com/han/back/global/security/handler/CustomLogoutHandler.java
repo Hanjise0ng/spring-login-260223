@@ -3,8 +3,8 @@ package com.han.back.global.security.handler;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.context.LogoutContext;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.AuthHttpUtil;
@@ -43,6 +43,8 @@ public class CustomLogoutHandler implements LogoutHandler {
             tokenService.invalidateSession(user.getId(), user.getSessionId());
             deviceService.deactivateSession(user.getId(), user.getSessionId());
             clearRefreshCookie(response);
+
+            LogoutContext.setResult(request, LogoutContext.Result.SUCCESS);
             log.info("Logout Success - UserPK: {} | SessionId: {} | ClientIP: {}",
                     user.getId(), user.getSessionId(), request.getRemoteAddr());
 
@@ -63,7 +65,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         log.debug("SecurityContext authentication unavailable - attempting RT fallback | ClientIP: {}",
                 request.getRemoteAddr());
 
-        AuthTokenDto tokens = AuthHttpUtil.extractTokenPairLeniently(request);
+        AuthToken tokens = AuthHttpUtil.extractTokenPairLeniently(request);
         return tokenService.extractUserFromTokens(tokens.getAccessToken(), tokens.getRefreshToken());
     }
 

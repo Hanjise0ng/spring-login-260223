@@ -1,8 +1,8 @@
 package com.han.back.global.security.util;
 
-import com.han.back.global.dto.BaseResponse;
-import com.han.back.global.dto.BaseResponseStatus;
-import com.han.back.global.dto.Empty;
+import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.Empty;
 import com.han.back.global.exception.CustomException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

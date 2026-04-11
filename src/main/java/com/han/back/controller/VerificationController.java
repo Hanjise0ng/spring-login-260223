@@ -4,8 +4,8 @@ import com.han.back.domain.verification.dto.request.VerificationConfirmRequestDt
 import com.han.back.domain.verification.dto.request.VerificationSendRequestDto;
 import com.han.back.domain.verification.dto.response.VerificationSendResponseDto;
 import com.han.back.domain.verification.service.VerificationService;
-import com.han.back.global.dto.BaseResponse;
-import com.han.back.global.dto.Empty;
+import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.Empty;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

@@ -1,9 +1,9 @@
-package com.han.back.global.notification.implement;
+package com.han.back.global.infra.notification.implement;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.notification.NotificationChannel;
-import com.han.back.global.notification.NotificationSender;
+import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationSender;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;

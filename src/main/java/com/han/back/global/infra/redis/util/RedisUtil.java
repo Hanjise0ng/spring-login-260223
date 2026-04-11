@@ -1,6 +1,6 @@
-package com.han.back.global.security.util;
+package com.han.back.global.infra.redis.util;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;

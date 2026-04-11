@@ -1,7 +1,7 @@
 package com.han.back.global.security.filter;
 
 import com.han.back.global.exception.CustomAuthenticationException;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthHttpUtil;
 import com.han.back.global.security.util.SecurityPathConst;

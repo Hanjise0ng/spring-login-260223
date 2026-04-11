@@ -9,11 +9,11 @@ import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthTokenDto reissue(AuthTokenDto oldTokens) {
+    public AuthToken reissue(AuthToken oldTokens) {
         if (!StringUtils.hasText(oldTokens.getRefreshToken())) {
             log.warn("Reissue Failed - Reason: Refresh Token is missing");
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
@@ -85,7 +85,7 @@ public class AuthServiceImpl implements AuthService {
         );
 
         String newSessionId = deviceService.rotateDeviceSession(userId, oldSessionId);
-        AuthTokenDto newTokens = tokenService.rotateTokens(userId, userDetails.getRole(), oldSessionId, newSessionId);
+        AuthToken newTokens = tokenService.rotateTokens(userId, userDetails.getRole(), oldSessionId, newSessionId);
 
         log.info("Token Reissue Success - UserPK: {} | SessionId: {} | Role: {}",
                 userDetails.getId(), userDetails.getSessionId(), userDetails.getRole().name());

@@ -5,11 +5,11 @@ import com.han.back.domain.device.dto.DeviceInfoDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.context.LoginContext;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.*;
 import jakarta.servlet.FilterChain;
@@ -74,7 +74,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         DeviceInfoDto deviceInfo = userAgentUtil.parse(request);
         DeviceSignInResponseDto deviceResult = deviceService.registerLoginDevice(userDetails.getId(), deviceInfo);
 
-        AuthTokenDto newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole(), deviceResult.getSessionId());
+        AuthToken newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole(), deviceResult.getSessionId());
 
         AuthHttpUtil.setTokenResponse(request, response, newTokens);
         DeviceHttpUtil.setDeviceIdCookie(response, deviceResult.getDeviceFingerprint());

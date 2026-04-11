@@ -1,7 +1,7 @@
 package com.han.back.domain.verification.dto.request;
 
 import com.han.back.domain.verification.entity.VerificationType;
-import com.han.back.global.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationChannel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

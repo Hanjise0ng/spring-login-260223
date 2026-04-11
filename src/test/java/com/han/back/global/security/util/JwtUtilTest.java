@@ -1,7 +1,7 @@
 package com.han.back.global.security.util;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;

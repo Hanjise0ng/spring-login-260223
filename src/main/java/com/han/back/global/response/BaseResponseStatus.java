@@ -1,4 +1,4 @@
-package com.han.back.global.dto;
+package com.han.back.global.response;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

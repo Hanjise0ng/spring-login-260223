@@ -1,4 +1,4 @@
-package com.han.back.global.dto;
+package com.han.back.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;

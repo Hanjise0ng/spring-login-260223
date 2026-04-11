@@ -6,12 +6,12 @@ import com.han.back.domain.verification.dto.response.VerificationSendResponseDto
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.notification.NotificationChannel;
-import com.han.back.global.notification.NotificationSender;
-import com.han.back.global.notification.template.MailTemplateUtil;
-import com.han.back.global.security.util.RedisUtil;
+import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationSender;
+import com.han.back.global.infra.notification.template.MailTemplateUtil;
+import com.han.back.global.infra.redis.util.RedisUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,19 +64,11 @@ class VerificationServiceImplTest {
     }
 
     private VerificationSendRequestDto sendRequest(String target, VerificationType type, NotificationChannel channel) {
-        VerificationSendRequestDto dto = mock(VerificationSendRequestDto.class);
-        given(dto.getTarget()).willReturn(target);
-        given(dto.getType()).willReturn(type);
-        given(dto.getChannel()).willReturn(channel);
-        return dto;
+        return VerificationSendRequestDto.of(target, type, channel);
     }
 
     private VerificationConfirmRequestDto confirmRequest(String target, VerificationType type, String code) {
-        VerificationConfirmRequestDto dto = mock(VerificationConfirmRequestDto.class);
-        given(dto.getTarget()).willReturn(target);
-        given(dto.getType()).willReturn(type);
-        given(dto.getCode()).willReturn(code);
-        return dto;
+        return VerificationConfirmRequestDto.of(target, code, type);
     }
 
     private void stubSendCodeHappyPath() {

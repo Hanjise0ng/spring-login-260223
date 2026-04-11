@@ -9,7 +9,7 @@ import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.service.TokenService;

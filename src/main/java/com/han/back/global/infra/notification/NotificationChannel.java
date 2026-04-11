@@ -1,6 +1,6 @@
-package com.han.back.global.notification;
+package com.han.back.global.infra.notification;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

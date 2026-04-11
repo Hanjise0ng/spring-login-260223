@@ -1,15 +1,15 @@
 package com.han.back.global.security.service.implement;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.dto.AuthTokenDto;
-import com.han.back.global.security.dto.CustomUserDetails;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.AuthConst;
 import com.han.back.global.security.util.JwtUtil;
-import com.han.back.global.security.util.RedisUtil;
+import com.han.back.global.infra.redis.util.RedisUtil;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,12 +26,12 @@ public class TokenServiceImpl implements TokenService {
     private final JwtUtil jwtUtil;
 
     @Override
-    public AuthTokenDto issueTokens(Long id, Role role, String sessionId) {
+    public AuthToken issueTokens(Long id, Role role, String sessionId) {
         return createAndStoreTokens(id, role, sessionId);
     }
 
     @Override
-    public AuthTokenDto rotateTokens(Long id, Role role, String oldSessionId, String newSessionId) {
+    public AuthToken rotateTokens(Long id, Role role, String oldSessionId, String newSessionId) {
         invalidateSession(id, oldSessionId);
         return createAndStoreTokens(id, role, newSessionId);
     }
@@ -118,12 +118,12 @@ public class TokenServiceImpl implements TokenService {
         return Optional.of(new CustomUserDetails(id, role, sessionId));
     }
 
-    private AuthTokenDto createAndStoreTokens(Long id, Role role, String sessionId) {
+    private AuthToken createAndStoreTokens(Long id, Role role, String sessionId) {
         String accessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, id, role, sessionId, AuthConst.ACCESS_EXPIRATION);
         String refreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, id, role, sessionId, AuthConst.REFRESH_EXPIRATION);
 
         redisUtil.setDataExpire(buildRefreshKey(id, sessionId), refreshToken, AuthConst.REFRESH_EXPIRATION);
-        return AuthTokenDto.of(accessToken, refreshToken);
+        return AuthToken.of(accessToken, refreshToken);
     }
 
     private void blacklistSession(String sessionId) {

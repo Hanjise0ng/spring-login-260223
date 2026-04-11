@@ -1,8 +1,8 @@
 package com.han.back.global.security.util;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.token.AuthToken;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -30,21 +30,21 @@ public class AuthHttpUtil {
         return CookieUtil.getCookieValue(request, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
     }
 
-    public static AuthTokenDto extractRequiredTokenPair(HttpServletRequest request) {
+    public static AuthToken extractRequiredTokenPair(HttpServletRequest request) {
         String accessToken = extractAccessToken(request)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_ACCESS_TOKEN));
         String refreshToken = extractRefreshToken(request)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
-        return AuthTokenDto.of(accessToken, refreshToken);
+        return AuthToken.of(accessToken, refreshToken);
     }
 
-    public static AuthTokenDto extractTokenPairLeniently(HttpServletRequest request) {
+    public static AuthToken extractTokenPairLeniently(HttpServletRequest request) {
         String accessToken = extractAccessToken(request).orElse("");
         String refreshToken = extractRefreshToken(request).orElse("");
-        return AuthTokenDto.of(accessToken, refreshToken);
+        return AuthToken.of(accessToken, refreshToken);
     }
 
-    public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthTokenDto newTokens) {
+    public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthToken newTokens) {
         response.setHeader(HttpHeaders.AUTHORIZATION, AuthConst.BEARER_PREFIX + newTokens.getAccessToken());
 
         ClientType clientType = ClientType.fromHeader(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));

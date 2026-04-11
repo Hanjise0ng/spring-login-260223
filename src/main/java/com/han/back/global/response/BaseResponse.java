@@ -1,4 +1,4 @@
-package com.han.back.global.dto;
+package com.han.back.global.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;

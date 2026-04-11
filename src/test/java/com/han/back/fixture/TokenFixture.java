@@ -1,6 +1,6 @@
 package com.han.back.fixture;
 
-import com.han.back.global.security.dto.AuthTokenDto;
+import com.han.back.global.security.token.AuthToken;
 
 public final class TokenFixture {
 
@@ -11,12 +11,12 @@ public final class TokenFixture {
     public static final String NEW_FAKE_AT = "new.fake.access.token";
     public static final String NEW_FAKE_RT = "new.fake.refresh.token";
 
-    public static AuthTokenDto tokenPair() {
-        return AuthTokenDto.of(FAKE_AT, FAKE_RT);
+    public static AuthToken tokenPair() {
+        return AuthToken.of(FAKE_AT, FAKE_RT);
     }
 
-    public static AuthTokenDto newTokenPair() {
-        return AuthTokenDto.of(NEW_FAKE_AT, NEW_FAKE_RT);
+    public static AuthToken newTokenPair() {
+        return AuthToken.of(NEW_FAKE_AT, NEW_FAKE_RT);
     }
 
 }

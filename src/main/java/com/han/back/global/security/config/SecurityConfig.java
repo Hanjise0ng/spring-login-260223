@@ -1,8 +1,8 @@
-package com.han.back.global.config;
+package com.han.back.global.security.config;
 
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.security.entrypoint.UnauthenticatedEntryPoint;
+import com.han.back.global.security.handler.CustomAuthenticationEntryPoint;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
@@ -45,7 +45,7 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
 
-    private final UnauthenticatedEntryPoint unauthenticatedEntryPoint;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomLogoutHandler customLogoutHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 
@@ -59,7 +59,7 @@ public class SecurityConfig {
             HttpResponseUtil httpResponseUtil,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
-            UnauthenticatedEntryPoint unauthenticatedEntryPoint,
+            CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
             CustomLogoutHandler customLogoutHandler,
             CustomLogoutSuccessHandler customLogoutSuccessHandler
     ) {
@@ -72,7 +72,7 @@ public class SecurityConfig {
         this.httpResponseUtil = httpResponseUtil;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
-        this.unauthenticatedEntryPoint = unauthenticatedEntryPoint;
+        this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
         this.customLogoutHandler = customLogoutHandler;
         this.customLogoutSuccessHandler = customLogoutSuccessHandler;
     }
@@ -135,7 +135,7 @@ public class SecurityConfig {
 
     private void configureExceptionHandling(HttpSecurity http) {
         http.exceptionHandling(exceptionHandling -> exceptionHandling
-                .authenticationEntryPoint(unauthenticatedEntryPoint)
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
         );
     }
 

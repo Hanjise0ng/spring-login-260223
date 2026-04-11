@@ -1,6 +1,6 @@
 package com.han.back.global.exception;
 
-import com.han.back.global.dto.BaseResponseStatus;
+import com.han.back.global.response.BaseResponseStatus;
 import lombok.Getter;
 import org.springframework.security.core.AuthenticationException;
 
