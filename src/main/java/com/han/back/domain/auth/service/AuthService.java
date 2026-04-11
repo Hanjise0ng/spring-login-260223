@@ -2,6 +2,7 @@ package com.han.back.domain.auth.service;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.dto.response.ReissueResponseDto;
 import com.han.back.global.security.token.AuthToken;
 
 public interface AuthService {
@@ -10,6 +11,6 @@ public interface AuthService {
 
     void signUp(SignUpRequestDto dto);
 
-    AuthToken reissue(AuthToken oldTokens);
+    ReissueResponseDto reissue(AuthToken oldTokens);
 
 }

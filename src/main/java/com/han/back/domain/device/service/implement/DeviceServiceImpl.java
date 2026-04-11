@@ -2,6 +2,7 @@ package com.han.back.domain.device.service.implement;
 
 import com.han.back.domain.device.dto.DeviceInfoDto;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
+import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceEntity;
@@ -9,9 +10,9 @@ import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.util.UuidUtil;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +60,7 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public String rotateDeviceSession(Long userId, String oldSessionId) {
+    public DeviceReissueResponseDto rotateDeviceSession(Long userId, String oldSessionId) {
         DeviceEntity device = deviceRepository.findByUserIdAndSessionId(userId, oldSessionId)
                 .orElseThrow(() -> new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
 
@@ -69,7 +70,7 @@ public class DeviceServiceImpl implements DeviceService {
         log.debug("Device Session Rotated - UserPK: {} | OldSessionId: {} | NewSessionId: {}",
                 userId, oldSessionId, newSessionId);
 
-        return newSessionId;
+        return DeviceReissueResponseDto.of(newSessionId, device.getDeviceType());
     }
 
     @Override

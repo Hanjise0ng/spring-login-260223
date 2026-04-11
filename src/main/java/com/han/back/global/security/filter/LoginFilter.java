@@ -3,15 +3,19 @@ package com.han.back.global.security.filter;
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
 import com.han.back.domain.device.dto.DeviceInfoDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
+import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.context.LoginContext;
-import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.*;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.util.AuthHttpUtil;
+import com.han.back.global.security.util.DeviceHttpUtil;
+import com.han.back.global.security.util.HttpResponseUtil;
+import com.han.back.global.security.util.UserAgentUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +27,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -66,9 +69,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) {
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+                                            FilterChain chain, Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
         invalidatePreviousSessionIfPresent(request, userDetails.getId());
 
         DeviceInfoDto deviceInfo = userAgentUtil.parse(request);
@@ -76,15 +79,16 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         AuthToken newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole(), deviceResult.getSessionId());
 
-        AuthHttpUtil.setTokenResponse(request, response, newTokens);
+        AuthHttpUtil.setTokenResponse(response, newTokens, deviceInfo.getDeviceType());
         DeviceHttpUtil.setDeviceIdCookie(response, deviceResult.getDeviceFingerprint());
         httpResponseUtil.writeResponse(response, BaseResponseStatus.SUCCESS);
 
-        recordSuccessLog(request, userDetails.getRole());
+        recordSuccessLog(request, userDetails.getRole(), deviceInfo.getDeviceType());
     }
 
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) {
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+                                              AuthenticationException failed) {
         BaseResponseStatus logStatus = determineLogStatus(failed);
         BaseResponseStatus clientStatus = determineClientStatus(failed);
 
@@ -105,13 +109,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 });
     }
 
-    private void recordSuccessLog(HttpServletRequest request, Role role) {
-        String clientType = request.getHeader(AuthConst.HEADER_CLIENT_TYPE);
+    private void recordSuccessLog(HttpServletRequest request, Role role, DeviceType deviceType) {
         String loginId = LoginContext.getAttemptedLoginId(request);
 
-        log.info("Login Success - LoginId: {} | Role: {} | ClientIP: {} | ClientType: {}",
-                loginId, role.name(), request.getRemoteAddr(),
-                StringUtils.hasText(clientType) ? clientType : ClientType.WEB.name());
+        log.info("Login Success - LoginId: {} | Role: {} | ClientIP: {} | DeviceType: {}",
+                loginId, role.name(), request.getRemoteAddr(), deviceType.name());
     }
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {

@@ -2,6 +2,7 @@ package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.dto.response.ReissueResponseDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
@@ -86,8 +87,8 @@ public class AuthController {
             HttpServletRequest request, HttpServletResponse response) {
 
         AuthToken oldTokens = AuthHttpUtil.extractRequiredTokenPair(request);
-        AuthToken newTokens = authService.reissue(oldTokens);
-        AuthHttpUtil.setTokenResponse(request, response, newTokens);
+        ReissueResponseDto result = authService.reissue(oldTokens);
+        AuthHttpUtil.setTokenResponse(response, result.getAuthToken(), result.getDeviceType());
         return BaseResponse.success();
     }
 

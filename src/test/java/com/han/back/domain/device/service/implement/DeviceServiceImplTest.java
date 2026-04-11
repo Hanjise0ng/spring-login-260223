@@ -2,6 +2,7 @@ package com.han.back.domain.device.service.implement;
 
 import com.han.back.domain.device.dto.DeviceInfoDto;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
+import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
@@ -10,9 +11,9 @@ import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.fixture.DeviceFixture;
 import com.han.back.fixture.UserFixture;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -202,16 +203,15 @@ class DeviceServiceImplTest {
         @Test
         @DisplayName("존재하는 sessionId → 새 sessionId 를 UUID 포맷으로 반환하며 이전 값과 다르다")
         void existingSession_returnsNewSessionIdInUuidFormat() {
-            // 실제 Entity — rotateSession() 후 Entity의 sessionId 변경을 상태로 직접 검증
             DeviceEntity device = DeviceFixture.activeWebDevice(user);
             given(deviceRepository.findByUserIdAndSessionId(USER_ID, SESSION_ID))
                     .willReturn(Optional.of(device));
 
-            String newSessionId = deviceService.rotateDeviceSession(USER_ID, SESSION_ID);
-
-            assertThat(newSessionId).matches(UUID_REGEX);
-            assertThat(newSessionId).isNotEqualTo(SESSION_ID);
-            assertThat(device.getSessionId()).isEqualTo(newSessionId);
+            DeviceReissueResponseDto result = deviceService.rotateDeviceSession(USER_ID, SESSION_ID);
+            assertThat(result.getSessionId()).matches(UUID_REGEX);
+            assertThat(result.getSessionId()).isNotEqualTo(SESSION_ID);
+            assertThat(result.getDeviceType()).isEqualTo(DeviceType.WEB_DESKTOP);
+            assertThat(device.getSessionId()).isEqualTo(result.getSessionId());
         }
 
         @Test

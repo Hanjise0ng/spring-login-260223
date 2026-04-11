@@ -54,14 +54,18 @@ public class UserAgentUtil {
     }
 
     public DeviceInfoDto parse(HttpServletRequest request) {
-        ClientType clientType = ClientType.fromHeader(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
+        boolean isApp = isAppClient(request);
         String loginIp = extractClientIp(request);
-        String fingerprint = extractFingerprint(request, clientType);
+        String fingerprint = extractFingerprint(request, isApp);
 
-        if (clientType == ClientType.APP) {
+        if (isApp) {
             return parseAppDevice(request, fingerprint, loginIp);
         }
         return parseWebDevice(request, fingerprint, loginIp);
+    }
+
+    private boolean isAppClient(HttpServletRequest request) {
+        return "APP".equalsIgnoreCase(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
     }
 
     private DeviceInfoDto parseAppDevice(HttpServletRequest request, String fingerprint, String loginIp) {
@@ -167,8 +171,8 @@ public class UserAgentUtil {
         return FALLBACK_VALUE;
     }
 
-    private String extractFingerprint(HttpServletRequest request, ClientType clientType) {
-        if (clientType == ClientType.APP) {
+    private String extractFingerprint(HttpServletRequest request, boolean isApp) {
+        if (isApp) {
             String deviceId = request.getHeader(AuthConst.HEADER_DEVICE_ID);
             if (StringUtils.hasText(deviceId)) {
                 return deviceId;

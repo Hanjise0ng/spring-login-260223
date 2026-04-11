@@ -2,6 +2,9 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.dto.response.ReissueResponseDto;
+import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
+import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
@@ -11,12 +14,12 @@ import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.fixture.TokenFixture;
 import com.han.back.fixture.UserFixture;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.util.LoginIdTokenUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,7 +30,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
@@ -232,7 +236,7 @@ class AuthServiceImplTest {
         private void stubFullReissueFlow() {
             stubAuthenticateRt();
             given(deviceService.rotateDeviceSession(USER_PK, SESSION_ID))
-                    .willReturn(NEW_SESSION_ID);
+                    .willReturn(DeviceReissueResponseDto.of(NEW_SESSION_ID, DeviceType.WEB_DESKTOP));
             given(tokenService.rotateTokens(USER_PK, ROLE, SESSION_ID, NEW_SESSION_ID))
                     .willReturn(TokenFixture.newTokenPair());
         }
@@ -255,10 +259,10 @@ class AuthServiceImplTest {
         void validTokens_returnsNewTokenPair() {
             stubFullReissueFlow();
 
-            AuthToken result = authService.reissue(TokenFixture.tokenPair());
+            ReissueResponseDto result = authService.reissue(TokenFixture.tokenPair());
 
-            assertThat(result.getAccessToken()).isEqualTo(TokenFixture.NEW_FAKE_AT);
-            assertThat(result.getRefreshToken()).isEqualTo(TokenFixture.NEW_FAKE_RT);
+            assertThat(result.getAuthToken().getAccessToken()).isEqualTo(TokenFixture.NEW_FAKE_AT);
+            assertThat(result.getAuthToken().getRefreshToken()).isEqualTo(TokenFixture.NEW_FAKE_RT);
         }
 
         @Test

@@ -1,8 +1,9 @@
 package com.han.back.domain.device.service;
 
 import com.han.back.domain.device.dto.DeviceInfoDto;
-import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
+import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
+import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 
 import java.util.List;
 
@@ -18,13 +19,13 @@ public interface DeviceService {
     DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfoDto deviceInfo);
 
     /**
-     * 재발급 시 디바이스의 세션 ID를 교체하고 새로운 세션 ID를 반환
+     * 재발급 시 디바이스의 세션 ID를 교체하고 재발급 결과를 반환
      *
-     * @param userId         로그인 사용자 PK
-     * @param oldSessionId   해당 디바이스의 기존 sessionId
-     * @return 해당 디바이스의 새로운 sessionId
+     * @param userId       로그인 사용자 PK
+     * @param oldSessionId 해당 디바이스의 기존 sessionId
+     * @return 새 sessionId + 디바이스 타입 (토큰 응답 방식 결정에 사용)
      */
-    String rotateDeviceSession(Long userId, String oldSessionId);
+    DeviceReissueResponseDto rotateDeviceSession(Long userId, String oldSessionId);
 
     /**
      * 세션 비활성화 — 로그아웃 시 DeviceEntity의 sessionId를 제거.

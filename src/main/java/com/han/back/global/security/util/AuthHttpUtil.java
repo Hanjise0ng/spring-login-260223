@@ -1,7 +1,8 @@
 package com.han.back.global.security.util;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.token.AuthToken;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,11 +45,10 @@ public class AuthHttpUtil {
         return AuthToken.of(accessToken, refreshToken);
     }
 
-    public static void setTokenResponse(HttpServletRequest request, HttpServletResponse response, AuthToken newTokens) {
+    public static void setTokenResponse(HttpServletResponse response, AuthToken newTokens, DeviceType deviceType) {
         response.setHeader(HttpHeaders.AUTHORIZATION, AuthConst.BEARER_PREFIX + newTokens.getAccessToken());
 
-        ClientType clientType = ClientType.fromHeader(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
-        if (clientType == ClientType.APP) {
+        if (deviceType.isApp()) {
             response.setHeader(AuthConst.HEADER_REFRESH_TOKEN_NAME, newTokens.getRefreshToken());
         } else {
             CookieUtil.addSecureCookie(response, AuthConst.COOKIE_REFRESH_TOKEN_NAME,
