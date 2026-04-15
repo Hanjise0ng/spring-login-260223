@@ -1,6 +1,6 @@
 package com.han.back.domain.device.service;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
@@ -16,7 +16,7 @@ public interface DeviceService {
      * @param deviceInfo User-Agent 파싱 결과 (웹 레이어에서 추출된 디바이스 정보)
      * @return sessionId + deviceFingerprint (토큰 발급 및 쿠키 설정에 사용)
      */
-    DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfoDto deviceInfo);
+    DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfo deviceInfo);
 
     /**
      * 재발급 시 디바이스의 세션 ID를 교체하고 재발급 결과를 반환

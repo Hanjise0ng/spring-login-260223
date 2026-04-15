@@ -1,6 +1,6 @@
 package com.han.back.global.security.util;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +53,7 @@ public class UserAgentUtil {
         this.parser = new Parser();
     }
 
-    public DeviceInfoDto parse(HttpServletRequest request) {
+    public DeviceInfo parse(HttpServletRequest request) {
         boolean isApp = isAppClient(request);
         String loginIp = extractClientIp(request);
         String fingerprint = extractFingerprint(request, isApp);
@@ -68,7 +68,7 @@ public class UserAgentUtil {
         return "APP".equalsIgnoreCase(request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
     }
 
-    private DeviceInfoDto parseAppDevice(HttpServletRequest request, String fingerprint, String loginIp) {
+    private DeviceInfo parseAppDevice(HttpServletRequest request, String fingerprint, String loginIp) {
         String deviceOs = request.getHeader(AuthConst.HEADER_DEVICE_OS);
         String userAgent = request.getHeader(HttpHeaders.USER_AGENT);
 
@@ -98,14 +98,14 @@ public class UserAgentUtil {
 
         String browserName = extractAppName(userAgent);
 
-        return DeviceInfoDto.of(deviceType, osName, browserName, fingerprint, loginIp);
+        return DeviceInfo.of(deviceType, osName, browserName, fingerprint, loginIp);
     }
 
-    private DeviceInfoDto parseWebDevice(HttpServletRequest request, String fingerprint, String loginIp) {
+    private DeviceInfo parseWebDevice(HttpServletRequest request, String fingerprint, String loginIp) {
         String userAgent = request.getHeader(HttpHeaders.USER_AGENT);
 
         if (!StringUtils.hasText(userAgent)) {
-            return DeviceInfoDto.of(DeviceType.UNKNOWN, FALLBACK_VALUE, FALLBACK_VALUE, fingerprint, loginIp);
+            return DeviceInfo.of(DeviceType.UNKNOWN, FALLBACK_VALUE, FALLBACK_VALUE, fingerprint, loginIp);
         }
 
         Client client = parser.parse(userAgent);
@@ -114,7 +114,7 @@ public class UserAgentUtil {
         String browserName = buildBrowserName(client);
         DeviceType deviceType = classifyWebDeviceType(client);
 
-        return DeviceInfoDto.of(deviceType, osName, browserName, fingerprint, loginIp);
+        return DeviceInfo.of(deviceType, osName, browserName, fingerprint, loginIp);
     }
 
     private DeviceType classifyWebDeviceType(Client client) {

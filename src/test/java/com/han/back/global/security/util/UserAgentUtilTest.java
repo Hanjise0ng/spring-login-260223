@@ -1,6 +1,6 @@
 package com.han.back.global.security.util;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceType;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +55,7 @@ class UserAgentUtilTest {
         })
         @DisplayName("User-Agent 에 따라 올바른 DeviceType 을 분류한다")
         void classifiesWebDeviceType(String userAgent, DeviceType expected, String label) {
-            DeviceInfoDto result = userAgentUtil.parse(webRequest(userAgent));
+            DeviceInfo result = userAgentUtil.parse(webRequest(userAgent));
 
             assertThat(result.getDeviceType()).isEqualTo(expected);
         }
@@ -70,7 +70,7 @@ class UserAgentUtilTest {
             }
             setDeviceIdCookie(request, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceType()).isEqualTo(DeviceType.UNKNOWN);
             assertThat(result.getOsName()).isEqualTo("알 수 없음");
@@ -90,7 +90,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_OS_HEADER, "iOS");
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceType()).isEqualTo(DeviceType.APP_IOS);
             assertThat(result.getOsName()).startsWith("iOS");
@@ -104,7 +104,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_OS_HEADER, "Android");
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceType()).isEqualTo(DeviceType.APP_ANDROID);
             assertThat(result.getOsName()).startsWith("Android");
@@ -117,7 +117,7 @@ class UserAgentUtilTest {
             request.addHeader(CLIENT_TYPE_HEADER, "APP");
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceType()).isEqualTo(DeviceType.UNKNOWN);
         }
@@ -131,7 +131,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
             request.addHeader("User-Agent", "MyApp/2.1.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X)");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getOsName()).startsWith("iOS");
             assertThat(result.getOsName()).contains("17");
@@ -146,7 +146,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
             request.addHeader("User-Agent", "MyApp/2.1.0 (Android 14; Pixel 8)");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getBrowserName()).isEqualTo("MyApp");
         }
@@ -159,7 +159,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_OS_HEADER, "HarmonyOS");
             request.addHeader(DEVICE_ID_HEADER, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceType()).isEqualTo(DeviceType.UNKNOWN);
             assertThat(result.getOsName()).isEqualTo("HarmonyOS");
@@ -178,7 +178,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_OS_HEADER, "iOS");
             request.addHeader(DEVICE_ID_HEADER, "my-device-uuid-001");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceFingerprint()).isEqualTo("my-device-uuid-001");
         }
@@ -191,7 +191,7 @@ class UserAgentUtilTest {
             request.addHeader(DEVICE_OS_HEADER, "iOS");
             setDeviceIdCookie(request, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceFingerprint()).isEqualTo(FIXED_FINGERPRINT);
         }
@@ -203,7 +203,7 @@ class UserAgentUtilTest {
             request.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0.0.0 Safari/537.36");
             setDeviceIdCookie(request, FIXED_FINGERPRINT);
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getDeviceFingerprint()).isEqualTo(FIXED_FINGERPRINT);
         }
@@ -214,7 +214,7 @@ class UserAgentUtilTest {
             MockHttpServletRequest request = new MockHttpServletRequest();
             request.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0.0.0 Safari/537.36");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             // UUID 포맷 검증: 8-4-4-4-12 (하이픈 포함 36자)
             assertThat(result.getDeviceFingerprint())
@@ -230,8 +230,8 @@ class UserAgentUtilTest {
             request1.addHeader("User-Agent", "Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
             request2.addHeader("User-Agent", "Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
 
-            DeviceInfoDto result1 = userAgentUtil.parse(request1);
-            DeviceInfoDto result2 = userAgentUtil.parse(request2);
+            DeviceInfo result1 = userAgentUtil.parse(request1);
+            DeviceInfo result2 = userAgentUtil.parse(request2);
 
             assertThat(result1.getDeviceFingerprint())
                     .isNotEqualTo(result2.getDeviceFingerprint());
@@ -248,7 +248,7 @@ class UserAgentUtilTest {
             MockHttpServletRequest request = webRequest("Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
             request.addHeader("X-Forwarded-For", "203.0.113.1, 10.0.0.1, 172.16.0.1");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("203.0.113.1");
         }
@@ -259,7 +259,7 @@ class UserAgentUtilTest {
             MockHttpServletRequest request = webRequest("Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
             request.addHeader("X-Forwarded-For", "  203.0.113.1  , 10.0.0.1");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("203.0.113.1");
         }
@@ -271,7 +271,7 @@ class UserAgentUtilTest {
             request.addHeader("X-Forwarded-For", "203.0.113.1");
             request.addHeader("X-Real-IP", "203.0.113.99");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("203.0.113.1");
         }
@@ -283,7 +283,7 @@ class UserAgentUtilTest {
             request.addHeader("X-Forwarded-For", "unknown");
             request.addHeader("X-Real-IP", "203.0.113.50");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("203.0.113.50");
         }
@@ -295,7 +295,7 @@ class UserAgentUtilTest {
             request.addHeader("X-Forwarded-For", "unknown");
             request.setRemoteAddr("192.168.0.200");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("192.168.0.200");
         }
@@ -306,7 +306,7 @@ class UserAgentUtilTest {
             MockHttpServletRequest request = webRequest("Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
             request.addHeader("X-Real-IP", "203.0.113.50");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("203.0.113.50");
         }
@@ -317,7 +317,7 @@ class UserAgentUtilTest {
             MockHttpServletRequest request = webRequest("Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36");
             request.setRemoteAddr("192.168.0.100");
 
-            DeviceInfoDto result = userAgentUtil.parse(request);
+            DeviceInfo result = userAgentUtil.parse(request);
 
             assertThat(result.getLoginIp()).isEqualTo("192.168.0.100");
         }

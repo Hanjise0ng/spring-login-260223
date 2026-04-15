@@ -1,6 +1,6 @@
 package com.han.back.fixture;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.user.entity.UserEntity;
@@ -35,8 +35,8 @@ public final class DeviceFixture {
                 .build();
     }
 
-    public static DeviceInfoDto webDeviceInfo() {
-        return DeviceInfoDto.of(
+    public static DeviceInfo webDeviceInfo() {
+        return DeviceInfo.of(
                 DeviceType.WEB_DESKTOP,
                 "Windows 11",
                 "Chrome",
@@ -45,8 +45,8 @@ public final class DeviceFixture {
         );
     }
 
-    public static DeviceInfoDto appDeviceInfo() {
-        return DeviceInfoDto.of(
+    public static DeviceInfo appDeviceInfo() {
+        return DeviceInfo.of(
                 DeviceType.APP_IOS,
                 "iOS 17",
                 "알 수 없음",

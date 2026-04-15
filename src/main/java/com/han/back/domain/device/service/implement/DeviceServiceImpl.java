@@ -1,6 +1,6 @@
 package com.han.back.domain.device.service.implement;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
@@ -34,7 +34,7 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfoDto deviceInfo) {
+    public DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfo deviceInfo) {
         String sessionId = UuidUtil.generateString();
 
         DeviceEntity device = deviceRepository
@@ -154,7 +154,7 @@ public class DeviceServiceImpl implements DeviceService {
         }
     }
 
-    private DeviceEntity createNewDevice(Long userId, DeviceInfoDto deviceInfo) {
+    private DeviceEntity createNewDevice(Long userId, DeviceInfo deviceInfo) {
         UserEntity user = userRepository.getReferenceById(userId);
 
         return DeviceEntity.builder()

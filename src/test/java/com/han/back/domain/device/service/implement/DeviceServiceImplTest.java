@@ -1,6 +1,6 @@
 package com.han.back.domain.device.service.implement;
 
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
@@ -48,7 +48,7 @@ class DeviceServiceImplTest {
     private static final String UUID_REGEX = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
     private UserEntity user;
-    private DeviceInfoDto webDeviceInfo;
+    private DeviceInfo webDeviceInfo;
 
     @BeforeEach
     void setUp() {

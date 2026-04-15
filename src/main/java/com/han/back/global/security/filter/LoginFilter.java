@@ -1,7 +1,7 @@
 package com.han.back.global.security.filter;
 
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
-import com.han.back.domain.device.dto.DeviceInfoDto;
+import com.han.back.domain.device.vo.DeviceInfo;
 import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.service.DeviceService;
@@ -74,7 +74,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         invalidatePreviousSessionIfPresent(request, userDetails.getId());
 
-        DeviceInfoDto deviceInfo = userAgentUtil.parse(request);
+        DeviceInfo deviceInfo = userAgentUtil.parse(request);
         DeviceSignInResponseDto deviceResult = deviceService.registerLoginDevice(userDetails.getId(), deviceInfo);
 
         AuthToken newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole(), deviceResult.getSessionId());
