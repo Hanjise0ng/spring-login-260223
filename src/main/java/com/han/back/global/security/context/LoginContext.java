@@ -2,17 +2,6 @@ package com.han.back.global.security.context;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/**
- * LoginFilter 메서드 간 loginId 전달
- *
- * <pre>
- * attemptAuthentication()      → set(loginId)
- * successfulAuthentication()   → get(loginId) → 성공 로그
- * unsuccessfulAuthentication() → get(loginId) → 실패 로그
- * </pre>
- *
- * @see com.han.back.global.security.filter.LoginFilter
- */
 public final class LoginContext {
 
     private LoginContext() {}
@@ -27,4 +16,5 @@ public final class LoginContext {
         Object loginId = request.getAttribute(ATTR_LOGIN_ID);
         return (loginId instanceof String s) ? s : "UNIDENTIFIED";
     }
+
 }

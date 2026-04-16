@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.security.token;
 
 public class AuthConst {
 
@@ -50,6 +50,7 @@ public class AuthConst {
     // 디바이스 관련 헤더 (Device Headers)
     public static final String HEADER_DEVICE_ID = "X-Device-Id";
     public static final String HEADER_DEVICE_OS = "X-Device-Os";
+    public static final String CLIENT_TYPE_APP = "APP";
 
 
     // 디바이스 쿠키 (Device Cookie)

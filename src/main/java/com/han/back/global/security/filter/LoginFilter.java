@@ -1,21 +1,11 @@
 package com.han.back.global.security.filter;
 
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
-import com.han.back.domain.device.vo.DeviceInfo;
-import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
-import com.han.back.domain.device.entity.DeviceType;
-import com.han.back.domain.device.service.DeviceService;
-import com.han.back.domain.user.entity.Role;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.context.LoginContext;
-import com.han.back.global.security.principal.CustomUserDetails;
-import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.util.AuthHttpUtil;
-import com.han.back.global.security.util.DeviceHttpUtil;
-import com.han.back.global.security.util.HttpResponseUtil;
-import com.han.back.global.security.util.UserAgentUtil;
+import com.han.back.global.security.login.LoginSuccessProcessor;
+import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,25 +25,23 @@ import java.io.IOException;
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final ObjectMapper objectMapper;
-    private final TokenService tokenService;
-    private final DeviceService deviceService;
-    private final UserAgentUtil userAgentUtil;
+    private final LoginSuccessProcessor loginSuccessProcessor;
     private final HttpResponseUtil httpResponseUtil;
 
-    public LoginFilter(AuthenticationManager authenticationManager, ObjectMapper objectMapper,
-                       TokenService tokenService, DeviceService deviceService,
-                       UserAgentUtil userAgentUtil, HttpResponseUtil httpResponseUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager,
+                       ObjectMapper objectMapper,
+                       LoginSuccessProcessor loginSuccessProcessor,
+                       HttpResponseUtil httpResponseUtil) {
         super.setAuthenticationManager(authenticationManager);
         this.objectMapper = objectMapper;
-        this.tokenService = tokenService;
-        this.deviceService = deviceService;
-        this.userAgentUtil = userAgentUtil;
+        this.loginSuccessProcessor = loginSuccessProcessor;
         this.httpResponseUtil = httpResponseUtil;
         setFilterProcessesUrl("/api/v1/auth/sign-in");
     }
 
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+            throws AuthenticationException {
         try {
             SignInRequestDto dto = objectMapper.readValue(request.getInputStream(), SignInRequestDto.class);
             LoginContext.setAttemptedLoginId(request, dto.getLoginId());
@@ -71,19 +59,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                             FilterChain chain, Authentication authentication) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        invalidatePreviousSessionIfPresent(request, userDetails.getId());
-
-        DeviceInfo deviceInfo = userAgentUtil.parse(request);
-        DeviceSignInResponseDto deviceResult = deviceService.registerLoginDevice(userDetails.getId(), deviceInfo);
-
-        AuthToken newTokens = tokenService.issueTokens(userDetails.getId(), userDetails.getRole(), deviceResult.getSessionId());
-
-        AuthHttpUtil.setTokenResponse(response, newTokens, deviceInfo.getDeviceType());
-        DeviceHttpUtil.setDeviceIdCookie(response, deviceResult.getDeviceFingerprint());
-        httpResponseUtil.writeResponse(response, BaseResponseStatus.SUCCESS);
-
-        recordSuccessLog(request, userDetails.getRole(), deviceInfo.getDeviceType());
+        loginSuccessProcessor.process(request, response, authentication);
     }
 
     @Override
@@ -94,26 +70,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         recordFailureLog(request, logStatus);
         httpResponseUtil.writeResponse(response, clientStatus);
-    }
-
-    private void invalidatePreviousSessionIfPresent(HttpServletRequest request, Long userId) {
-        String accessToken = AuthHttpUtil.extractAccessToken(request).orElse("");
-        String refreshToken = AuthHttpUtil.extractRefreshToken(request).orElse("");
-
-        tokenService.extractUserFromTokens(accessToken, refreshToken)
-                .filter(prev -> prev.getSessionId() != null)
-                .ifPresent(prev -> {
-                    tokenService.invalidateSession(userId, prev.getSessionId());
-                    log.debug("Previous session invalidated on re-login - UserPK: {} | OldSessionId: {}",
-                            userId, prev.getSessionId());
-                });
-    }
-
-    private void recordSuccessLog(HttpServletRequest request, Role role, DeviceType deviceType) {
-        String loginId = LoginContext.getAttemptedLoginId(request);
-
-        log.info("Login Success - LoginId: {} | Role: {} | ClientIP: {} | DeviceType: {}",
-                loginId, role.name(), request.getRemoteAddr(), deviceType.name());
     }
 
     private void recordFailureLog(HttpServletRequest request, BaseResponseStatus logStatus) {

@@ -1,9 +1,8 @@
 package com.han.back.domain.device.service.implement;
 
-import com.han.back.domain.device.vo.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
-import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
-import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.repository.DeviceRepository;
@@ -106,7 +105,7 @@ class DeviceServiceImplTest {
                     .willReturn(Optional.empty());
             given(userRepository.getReferenceById(USER_ID)).willReturn(user);
 
-            DeviceSignInResponseDto result =
+            DeviceRegistration result =
                     deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
             assertThat(result.getSessionId()).matches(UUID_REGEX);
@@ -207,11 +206,10 @@ class DeviceServiceImplTest {
             given(deviceRepository.findByUserIdAndSessionId(USER_ID, SESSION_ID))
                     .willReturn(Optional.of(device));
 
-            DeviceReissueResponseDto result = deviceService.rotateDeviceSession(USER_ID, SESSION_ID);
-            assertThat(result.getSessionId()).matches(UUID_REGEX);
-            assertThat(result.getSessionId()).isNotEqualTo(SESSION_ID);
-            assertThat(result.getDeviceType()).isEqualTo(DeviceType.WEB_DESKTOP);
-            assertThat(device.getSessionId()).isEqualTo(result.getSessionId());
+            String result = deviceService.rotateDeviceSession(USER_ID, SESSION_ID);
+            assertThat(result).matches(UUID_REGEX);
+            assertThat(result).isNotEqualTo(SESSION_ID);
+            assertThat(device.getSessionId()).isEqualTo(result);
         }
 
         @Test

@@ -1,10 +1,11 @@
 package com.han.back.domain.auth.service.implement;
 
+import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
-import com.han.back.domain.auth.dto.response.ReissueResponseDto;
 import com.han.back.domain.auth.service.AuthService;
-import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
+import com.han.back.domain.device.dto.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.mapper.UserMapper;
@@ -17,7 +18,7 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.util.LoginIdTokenUtil;
+import com.han.back.global.security.token.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -72,25 +73,60 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public ReissueResponseDto reissue(AuthToken oldTokens) {
-        if (!StringUtils.hasText(oldTokens.getRefreshToken())) {
+    public SignInResult completeSignIn(CustomUserDetails userDetails,
+                                       DeviceInfo deviceInfo,
+                                       AuthToken previousTokens) {
+        Long userId = userDetails.getId();
+        invalidatePreviousSessionIfPresent(userId, previousTokens);
+
+        DeviceRegistration registration = deviceService.registerLoginDevice(userId, deviceInfo);
+
+        AuthToken tokens = tokenService.issueTokens(
+                userId, userDetails.getRole(), registration.getSessionId());
+
+        log.info("Login Success - UserPK: {} | Role: {} | SessionId: {} | DeviceType: {}",
+                userId, userDetails.getRole().name(),
+                registration.getSessionId(), deviceInfo.getDeviceType().name());
+
+        return SignInResult.of(tokens, registration.getDeviceFingerprint());
+    }
+
+    @Override
+    @Transactional
+    public AuthToken reissue(String refreshToken) {
+        if (!StringUtils.hasText(refreshToken)) {
             log.warn("Reissue Failed - Reason: Refresh Token is missing");
             throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
         }
 
-        CustomUserDetails userDetails = tokenService.authenticateRefreshToken(oldTokens.getRefreshToken());
+        CustomUserDetails userDetails = tokenService.authenticateRefreshToken(refreshToken);
         Long userId = userDetails.getId();
         String oldSessionId = userDetails.getSessionId();
 
-        tokenService.validateRefreshToken(userId, oldSessionId, oldTokens.getRefreshToken());
+        tokenService.validateRefreshToken(userId, oldSessionId, refreshToken);
 
-        DeviceReissueResponseDto deviceResult = deviceService.rotateDeviceSession(userId, oldSessionId);
-        AuthToken newTokens = tokenService.rotateTokens(userId, userDetails.getRole(), oldSessionId, deviceResult.getSessionId());
+        String newSessionId = deviceService.rotateDeviceSession(userId, oldSessionId);
+        AuthToken newTokens = tokenService.rotateTokens(
+                userId, userDetails.getRole(), oldSessionId, newSessionId);
 
         log.info("Token Reissue Success - UserPK: {} | SessionId: {} | Role: {}",
-                userId, deviceResult.getSessionId(), userDetails.getRole().name());
+                userId, newSessionId, userDetails.getRole().name());
 
-        return ReissueResponseDto.of(newTokens, deviceResult.getDeviceType());
+        return newTokens;
+    }
+
+    private void invalidatePreviousSessionIfPresent(Long userId, AuthToken previousTokens) {
+        if (previousTokens == null || previousTokens.isEmpty()) return;
+
+        tokenService.extractUserFromTokens(
+                        previousTokens.getAccessToken(),
+                        previousTokens.getRefreshToken())
+                .filter(prev -> prev.getSessionId() != null)
+                .ifPresent(prev -> {
+                    tokenService.invalidateSession(userId, prev.getSessionId());
+                    log.debug("Previous session invalidated on re-login - UserPK: {} | OldSessionId: {}",
+                            userId, prev.getSessionId());
+                });
     }
 
 }

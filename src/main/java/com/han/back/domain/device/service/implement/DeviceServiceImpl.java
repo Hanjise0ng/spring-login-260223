@@ -1,9 +1,8 @@
 package com.han.back.domain.device.service.implement;
 
-import com.han.back.domain.device.vo.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
-import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
-import com.han.back.domain.device.dto.response.DeviceSignInResponseDto;
 import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.repository.DeviceRepository;
@@ -14,7 +13,7 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.UuidUtil;
+import com.han.back.global.util.UuidUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,7 +33,7 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public DeviceSignInResponseDto registerLoginDevice(Long userId, DeviceInfo deviceInfo) {
+    public DeviceRegistration registerLoginDevice(Long userId, DeviceInfo deviceInfo) {
         String sessionId = UuidUtil.generateString();
 
         DeviceEntity device = deviceRepository
@@ -55,12 +54,12 @@ public class DeviceServiceImpl implements DeviceService {
         log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {}",
                 userId, device.getId(), deviceInfo.getDeviceType().name(), sessionId, deviceInfo.getLoginIp());
 
-        return DeviceSignInResponseDto.of(sessionId, deviceInfo.getDeviceFingerprint());
+        return DeviceRegistration.of(sessionId, deviceInfo.getDeviceFingerprint());
     }
 
     @Override
     @Transactional
-    public DeviceReissueResponseDto rotateDeviceSession(Long userId, String oldSessionId) {
+    public String rotateDeviceSession(Long userId, String oldSessionId) {
         DeviceEntity device = deviceRepository.findByUserIdAndSessionId(userId, oldSessionId)
                 .orElseThrow(() -> new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
 
@@ -70,7 +69,7 @@ public class DeviceServiceImpl implements DeviceService {
         log.debug("Device Session Rotated - UserPK: {} | OldSessionId: {} | NewSessionId: {}",
                 userId, oldSessionId, newSessionId);
 
-        return DeviceReissueResponseDto.of(newSessionId, device.getDeviceType());
+        return newSessionId;
     }
 
     @Override

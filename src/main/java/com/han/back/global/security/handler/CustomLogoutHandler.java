@@ -3,12 +3,11 @@ package com.han.back.global.security.handler;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.context.LogoutContext;
-import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.AuthConst;
-import com.han.back.global.security.util.AuthHttpUtil;
-import com.han.back.global.security.util.CookieUtil;
+import com.han.back.global.security.token.AuthHttpUtil;
+import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.token.transport.TokenTransportResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +25,7 @@ public class CustomLogoutHandler implements LogoutHandler {
 
     private final TokenService tokenService;
     private final DeviceService deviceService;
+    private final TokenTransportResolver tokenTransportResolver;
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -42,7 +42,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         try {
             tokenService.invalidateSession(user.getId(), user.getSessionId());
             deviceService.deactivateSession(user.getId(), user.getSessionId());
-            clearRefreshCookie(response);
+            tokenTransportResolver.resolve(request).clear(response);
 
             LogoutContext.setResult(request, LogoutContext.Result.SUCCESS);
             log.info("Logout Success - UserPK: {} | SessionId: {} | ClientIP: {}",
@@ -67,10 +67,6 @@ public class CustomLogoutHandler implements LogoutHandler {
 
         AuthToken tokens = AuthHttpUtil.extractTokenPairLeniently(request);
         return tokenService.extractUserFromTokens(tokens.getAccessToken(), tokens.getRefreshToken());
-    }
-
-    private void clearRefreshCookie(HttpServletResponse response) {
-        CookieUtil.addSecureCookie(response, AuthConst.COOKIE_REFRESH_TOKEN_NAME, "", 0);
     }
 
 }

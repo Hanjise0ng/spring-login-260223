@@ -3,7 +3,7 @@ package com.han.back.domain.user.entity;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.entity.BaseTime;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.util.UuidUtil;
+import com.han.back.global.util.UuidUtil;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;

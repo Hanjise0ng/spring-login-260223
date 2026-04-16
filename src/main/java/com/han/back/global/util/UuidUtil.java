@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.util;
 
 import java.security.SecureRandom;
 import java.util.UUID;

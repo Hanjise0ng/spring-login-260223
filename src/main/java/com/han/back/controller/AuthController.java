@@ -2,12 +2,14 @@ package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
-import com.han.back.domain.auth.dto.response.ReissueResponseDto;
 import com.han.back.domain.auth.service.AuthService;
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.util.AuthHttpUtil;
+import com.han.back.global.security.token.transport.TokenTransportResolver;
+import com.han.back.global.security.token.AuthHttpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final TokenTransportResolver tokenTransportResolver;
 
     @Operation(summary = "로그인 ID 중복 확인",
             description = "회원가입 전 로그인 ID 사용 가능 여부를 확인합니다. "
@@ -86,9 +89,11 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Empty>> reissue(
             HttpServletRequest request, HttpServletResponse response) {
 
-        AuthToken oldTokens = AuthHttpUtil.extractRequiredTokenPair(request);
-        ReissueResponseDto result = authService.reissue(oldTokens);
-        AuthHttpUtil.setTokenResponse(response, result.getAuthToken(), result.getDeviceType());
+        String refreshToken = AuthHttpUtil.extractRefreshToken(request)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
+        AuthToken newTokens = authService.reissue(refreshToken);
+
+        tokenTransportResolver.resolve(request).write(response, newTokens);
         return BaseResponse.success();
     }
 

@@ -6,7 +6,7 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.fixture.UserFixture;
-import com.han.back.global.security.util.AuthConst;
+import com.han.back.global.security.token.AuthConst;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;

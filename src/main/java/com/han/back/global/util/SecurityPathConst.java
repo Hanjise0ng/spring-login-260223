@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.util;
 
 public final class SecurityPathConst {
 

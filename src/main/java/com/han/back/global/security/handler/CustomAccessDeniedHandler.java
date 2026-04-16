@@ -1,7 +1,7 @@
 package com.han.back.global.security.handler;
 
 import com.han.back.global.response.BaseResponseStatus;
-import com.han.back.global.security.util.HttpResponseUtil;
+import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

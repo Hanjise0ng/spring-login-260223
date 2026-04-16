@@ -1,20 +1,8 @@
 package com.han.back.global.security.context;
 
+import com.han.back.global.response.BaseResponseStatus;
 import jakarta.servlet.http.HttpServletRequest;
 
-/**
- * LogoutHandler → LogoutSuccessHandler 간 처리 결과 전달
- *
- * <pre>
- * CustomLogoutHandler        → set(Result)
- * CustomLogoutSuccessHandler → get(Result) → 응답 코드 결정
- * </pre>
- *
- * <p>미설정 시 기본값: {@link Result#UNAUTHENTICATED}</p>
- *
- * @see com.han.back.global.security.handler.CustomLogoutHandler
- * @see com.han.back.global.security.handler.CustomLogoutSuccessHandler
- */
 public final class LogoutContext {
 
     private LogoutContext() {}
@@ -22,9 +10,20 @@ public final class LogoutContext {
     private static final String ATTR_RESULT = "logout.result";
 
     public enum Result {
-        SUCCESS,
-        REDIS_ERROR,
-        UNAUTHENTICATED
+
+        SUCCESS(BaseResponseStatus.SUCCESS),
+        REDIS_ERROR(BaseResponseStatus.REDIS_ERROR),
+        UNAUTHENTICATED(BaseResponseStatus.AUTHENTICATION_FAIL);
+
+        private final BaseResponseStatus responseStatus;
+
+        Result(BaseResponseStatus responseStatus) {
+            this.responseStatus = responseStatus;
+        }
+
+        public BaseResponseStatus getResponseStatus() {
+            return responseStatus;
+        }
     }
 
     public static void setResult(HttpServletRequest request, Result result) {
@@ -35,4 +34,5 @@ public final class LogoutContext {
         Object result = request.getAttribute(ATTR_RESULT);
         return (result instanceof Result r) ? r : Result.UNAUTHENTICATED;
     }
+
 }

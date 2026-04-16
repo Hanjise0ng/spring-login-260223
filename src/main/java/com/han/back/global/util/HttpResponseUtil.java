@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.util;
 
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.BaseResponseStatus;

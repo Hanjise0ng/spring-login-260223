@@ -2,7 +2,7 @@ package com.han.back.integration;
 
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
-import com.han.back.global.security.util.LoginIdTokenUtil;
+import com.han.back.global.security.token.LoginIdTokenUtil;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;

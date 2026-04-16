@@ -2,9 +2,6 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
-import com.han.back.domain.auth.dto.response.ReissueResponseDto;
-import com.han.back.domain.device.dto.response.DeviceReissueResponseDto;
-import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
@@ -20,7 +17,7 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.util.LoginIdTokenUtil;
+import com.han.back.global.security.token.LoginIdTokenUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -236,7 +233,7 @@ class AuthServiceImplTest {
         private void stubFullReissueFlow() {
             stubAuthenticateRt();
             given(deviceService.rotateDeviceSession(USER_PK, SESSION_ID))
-                    .willReturn(DeviceReissueResponseDto.of(NEW_SESSION_ID, DeviceType.WEB_DESKTOP));
+                    .willReturn(NEW_SESSION_ID);
             given(tokenService.rotateTokens(USER_PK, ROLE, SESSION_ID, NEW_SESSION_ID))
                     .willReturn(TokenFixture.newTokenPair());
         }
@@ -244,9 +241,7 @@ class AuthServiceImplTest {
         @Test
         @DisplayName("RT가 비어있으면 AUTHENTICATION_FAIL 예외를 던진다")
         void emptyRefreshToken_throwsAuthenticationFail() {
-            AuthToken emptyRt = AuthToken.of(TokenFixture.FAKE_AT, "");
-
-            assertThatThrownBy(() -> authService.reissue(emptyRt))
+            assertThatThrownBy(() -> authService.reissue(""))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
@@ -259,10 +254,10 @@ class AuthServiceImplTest {
         void validTokens_returnsNewTokenPair() {
             stubFullReissueFlow();
 
-            ReissueResponseDto result = authService.reissue(TokenFixture.tokenPair());
+            AuthToken result = authService.reissue(TokenFixture.FAKE_RT);
 
-            assertThat(result.getAuthToken().getAccessToken()).isEqualTo(TokenFixture.NEW_FAKE_AT);
-            assertThat(result.getAuthToken().getRefreshToken()).isEqualTo(TokenFixture.NEW_FAKE_RT);
+            assertThat(result.getAccessToken()).isEqualTo(TokenFixture.NEW_FAKE_AT);
+            assertThat(result.getRefreshToken()).isEqualTo(TokenFixture.NEW_FAKE_RT);
         }
 
         @Test
@@ -270,7 +265,7 @@ class AuthServiceImplTest {
         void validTokens_callsRotateWithCorrectArgs() {
             stubFullReissueFlow();
 
-            authService.reissue(TokenFixture.tokenPair());
+            authService.reissue(TokenFixture.FAKE_RT);
 
             then(deviceService).should(times(1)).rotateDeviceSession(USER_PK, SESSION_ID);
             then(tokenService).should(times(1)).rotateTokens(USER_PK, ROLE, SESSION_ID, NEW_SESSION_ID);
@@ -285,7 +280,7 @@ class AuthServiceImplTest {
                     .given(tokenService)
                     .validateRefreshToken(USER_PK, SESSION_ID, TokenFixture.FAKE_RT);
 
-            assertThatThrownBy(() -> authService.reissue(TokenFixture.tokenPair()))
+            assertThatThrownBy(() -> authService.reissue(TokenFixture.FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
@@ -303,7 +298,7 @@ class AuthServiceImplTest {
             given(deviceService.rotateDeviceSession(USER_PK, SESSION_ID))
                     .willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
 
-            assertThatThrownBy(() -> authService.reissue(TokenFixture.tokenPair()))
+            assertThatThrownBy(() -> authService.reissue(TokenFixture.FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);

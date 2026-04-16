@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.security.token;
 
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;

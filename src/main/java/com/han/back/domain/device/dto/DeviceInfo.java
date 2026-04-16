@@ -1,4 +1,4 @@
-package com.han.back.domain.device.vo;
+package com.han.back.domain.device.dto;
 
 import com.han.back.domain.device.entity.DeviceType;
 import lombok.AccessLevel;

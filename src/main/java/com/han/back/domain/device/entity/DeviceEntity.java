@@ -2,7 +2,7 @@ package com.han.back.domain.device.entity;
 
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.global.entity.BaseTime;
-import com.han.back.global.security.util.UuidUtil;
+import com.han.back.global.util.UuidUtil;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;

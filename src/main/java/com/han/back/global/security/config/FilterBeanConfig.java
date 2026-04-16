@@ -3,7 +3,7 @@ package com.han.back.global.security.config;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.util.HttpResponseUtil;
+import com.han.back.global.util.HttpResponseUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,6 +1,6 @@
 package com.han.back.fixture;
 
-import com.han.back.domain.device.vo.DeviceInfo;
+import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.user.entity.UserEntity;

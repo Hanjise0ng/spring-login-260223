@@ -1,4 +1,4 @@
-package com.han.back.global.security.config;
+package com.han.back.global.config;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
