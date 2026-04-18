@@ -21,18 +21,18 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     Optional<DeviceEntity> findByUserIdAndSessionId(Long userId, String sessionId);
 
     // 사용자의 전체 디바이스 목록 — 최근 로그인 순 정렬
-    @Query("SELECT d FROM DeviceEntity d WHERE d.user.id = :userId ORDER BY d.lastLoginAt DESC")
+    @Query("SELECT d FROM DeviceEntity d WHERE d.userId = :userId ORDER BY d.lastLoginAt DESC")
     List<DeviceEntity> findAllByUserIdOrderByLastLoginAtDesc(@Param("userId") Long userId);
 
     // 사용자의 활성 세션 디바이스 목록 — 오래된 순 정렬 (최대 세션 정책용)
     @Query("SELECT d FROM DeviceEntity d " +
-            "WHERE d.user.id = :userId AND d.sessionId IS NOT NULL " +
+            "WHERE d.userId = :userId AND d.sessionId IS NOT NULL " +
             "ORDER BY d.lastLoginAt ASC")
     List<DeviceEntity> findActiveDevicesByUserIdOldestFirst(@Param("userId") Long userId);
 
     // 특정 세션 ID로 디바이스 세션 비활성화 — LogoutHandler, 강제 로그아웃에서 사용
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE DeviceEntity d SET d.sessionId = NULL WHERE d.user.id = :userId AND d.sessionId = :sessionId")
+    @Query("UPDATE DeviceEntity d SET d.sessionId = NULL WHERE d.userId = :userId AND d.sessionId = :sessionId")
     int deactivateSessionByUserIdAndSessionId(@Param("userId") Long userId, @Param("sessionId") String sessionId);
 
 }

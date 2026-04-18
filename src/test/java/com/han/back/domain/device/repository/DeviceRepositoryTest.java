@@ -27,11 +27,22 @@ class DeviceRepositoryTest {
     @Autowired TestEntityManager em;
     @Autowired DeviceRepository deviceRepository;
 
-    private UserEntity user;
+    private Long userId;
+    private Long otherUserId;
 
     @BeforeEach
     void setUp() {
-        user = em.persistAndFlush(UserFixture.localUser());
+        UserEntity user = em.persistAndFlush(UserFixture.localUser());
+        userId = user.getId();
+    }
+
+    /** 다른 사용자가 필요한 테스트에서만 호출 — 중복 생성 방지용 헬퍼 */
+    private Long persistOtherUser() {
+        if (otherUserId == null) {
+            UserEntity other = em.persistAndFlush(UserFixture.adminUser());
+            otherUserId = other.getId();
+        }
+        return otherUserId;
     }
 
     @Nested
@@ -41,27 +52,23 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("publicId + userId 일치 → 디바이스를 반환한다")
         void matchingPublicIdAndUserId_returnsDevice() {
-            DeviceEntity device = em.persistAndFlush(DeviceFixture.activeWebDevice(user));
-            String publicId = device.getPublicId();
+            DeviceEntity device = em.persistAndFlush(DeviceFixture.activeWebDevice(userId));
 
             Optional<DeviceEntity> result =
-                    deviceRepository.findByPublicIdAndUserId(publicId, user.getId());
+                    deviceRepository.findByPublicIdAndUserId(device.getPublicId(), userId);
 
             assertThat(result).isPresent();
-            assertThat(result.get().getPublicId()).isEqualTo(publicId);
+            assertThat(result.get().getPublicId()).isEqualTo(device.getPublicId());
         }
 
         @Test
         @DisplayName("publicId는 일치하지만 userId가 다르면 반환하지 않는다 (IDOR 방어)")
         void publicIdMatches_butUserIdDiffers_returnsEmpty() {
-            UserEntity otherUser = em.persistAndFlush(UserFixture.adminUser());
-            DeviceEntity otherDevice = em.persistAndFlush(
-                    DeviceFixture.activeWebDevice(otherUser)
-            );
-            String otherPublicId = otherDevice.getPublicId();
+            Long other = persistOtherUser();
+            DeviceEntity otherDevice = em.persistAndFlush(DeviceFixture.activeWebDevice(other));
 
             Optional<DeviceEntity> result =
-                    deviceRepository.findByPublicIdAndUserId(otherPublicId, user.getId());
+                    deviceRepository.findByPublicIdAndUserId(otherDevice.getPublicId(), userId);
 
             assertThat(result).isEmpty();
         }
@@ -70,7 +77,7 @@ class DeviceRepositoryTest {
         @DisplayName("존재하지 않는 publicId → Optional.empty()를 반환한다")
         void nonExistentPublicId_returnsEmpty() {
             Optional<DeviceEntity> result =
-                    deviceRepository.findByPublicIdAndUserId("non-existent-uuid", user.getId());
+                    deviceRepository.findByPublicIdAndUserId("non-existent-uuid", userId);
 
             assertThat(result).isEmpty();
         }
@@ -83,57 +90,41 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("최근 로그인 순(DESC)으로 반환한다")
         void returnsDevices_orderedByLastLoginAtDesc() {
-            DeviceEntity oldest = DeviceFixture.builder(user)
-                    .fingerprint("fp-oldest")
-                    .loginAt(LocalDateTime.of(2025, 1, 1, 0, 0))
-                    .sessionId("session-oldest")
-                    .build();
-            DeviceEntity middle = DeviceFixture.builder(user)
-                    .fingerprint("fp-middle")
-                    .loginAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                    .sessionId("session-middle")
-                    .build();
-            DeviceEntity newest = DeviceFixture.builder(user)
-                    .fingerprint("fp-newest")
-                    .loginAt(LocalDateTime.of(2025, 12, 1, 0, 0))
-                    .sessionId("session-newest")
-                    .build();
-
-            em.persistAndFlush(oldest);
-            em.persistAndFlush(middle);
-            em.persistAndFlush(newest);
+            persistDevice("fp-oldest", "session-oldest", LocalDateTime.of(2025, 1, 1, 0, 0));
+            persistDevice("fp-middle", "session-middle", LocalDateTime.of(2025, 6, 1, 0, 0));
+            persistDevice("fp-newest", "session-newest", LocalDateTime.of(2025, 12, 1, 0, 0));
 
             List<DeviceEntity> result =
-                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(user.getId());
+                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(userId);
 
-            assertThat(result).hasSize(3);
-            assertThat(result.get(0).getDeviceFingerprint()).isEqualTo("fp-newest");
-            assertThat(result.get(1).getDeviceFingerprint()).isEqualTo("fp-middle");
-            assertThat(result.get(2).getDeviceFingerprint()).isEqualTo("fp-oldest");
+            assertThat(result)
+                    .extracting(DeviceEntity::getDeviceFingerprint)
+                    .containsExactly("fp-newest", "fp-middle", "fp-oldest");
         }
 
         @Test
         @DisplayName("다른 사용자의 디바이스는 결과에 포함되지 않는다")
         void excludesOtherUsersDevices() {
-            UserEntity otherUser = em.persistAndFlush(UserFixture.adminUser());
+            Long other = persistOtherUser();
 
-            em.persistAndFlush(DeviceFixture.activeWebDevice(user));
-            em.persistAndFlush(DeviceFixture.builder(otherUser)
+            em.persistAndFlush(DeviceFixture.activeWebDevice(userId));
+            em.persistAndFlush(DeviceFixture.builder(other)
                     .fingerprint("fp-other-user")
                     .build());
 
             List<DeviceEntity> result =
-                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(user.getId());
+                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(userId);
 
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getDeviceFingerprint()).isEqualTo("fp-web-default-001");
+            assertThat(result)
+                    .extracting(DeviceEntity::getDeviceFingerprint)
+                    .containsExactly(DeviceFixture.DEFAULT_WEB_FINGERPRINT);
         }
 
         @Test
         @DisplayName("디바이스가 없으면 빈 리스트를 반환한다")
         void noDevices_returnsEmptyList() {
             List<DeviceEntity> result =
-                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(user.getId());
+                    deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(userId);
 
             assertThat(result).isEmpty();
         }
@@ -146,43 +137,25 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("sessionId IS NOT NULL 인 디바이스만 오래된 순(ASC)으로 반환한다")
         void returnsOnlyActiveDevices_orderedByLastLoginAtAsc() {
-            DeviceEntity oldest = DeviceFixture.builder(user)
-                    .fingerprint("fp-oldest")
-                    .loginAt(LocalDateTime.of(2025, 1, 1, 0, 0))
-                    .sessionId("session-oldest")
-                    .build();
-            DeviceEntity newest = DeviceFixture.builder(user)
-                    .fingerprint("fp-newest")
-                    .loginAt(LocalDateTime.of(2025, 12, 1, 0, 0))
-                    .sessionId("session-newest")
-                    .build();
-
-            DeviceEntity inactive = DeviceFixture.builder(user)
-                    .fingerprint("fp-inactive")
-                    .loginAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                    .sessionId(null)
-                    .build();
-
-            em.persistAndFlush(oldest);
-            em.persistAndFlush(newest);
-            em.persistAndFlush(inactive);
+            persistDevice("fp-oldest", "session-oldest", LocalDateTime.of(2025, 1, 1, 0, 0));
+            persistDevice("fp-newest", "session-newest", LocalDateTime.of(2025, 12, 1, 0, 0));
+            persistDevice("fp-inactive", null, LocalDateTime.of(2025, 6, 1, 0, 0));
 
             List<DeviceEntity> result =
-                    deviceRepository.findActiveDevicesByUserIdOldestFirst(user.getId());
+                    deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
-            // 활성 2개만 반환 + 오래된 순(ASC)
-            assertThat(result).hasSize(2);
-            assertThat(result.get(0).getDeviceFingerprint()).isEqualTo("fp-oldest");
-            assertThat(result.get(1).getDeviceFingerprint()).isEqualTo("fp-newest");
+            assertThat(result)
+                    .extracting(DeviceEntity::getDeviceFingerprint)
+                    .containsExactly("fp-oldest", "fp-newest");
         }
 
         @Test
         @DisplayName("비활성 디바이스만 있으면 빈 리스트를 반환한다")
         void allInactive_returnsEmptyList() {
-            em.persistAndFlush(DeviceFixture.inactiveDevice(user));
+            em.persistAndFlush(DeviceFixture.inactiveDevice(userId));
 
             List<DeviceEntity> result =
-                    deviceRepository.findActiveDevicesByUserIdOldestFirst(user.getId());
+                    deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
             assertThat(result).isEmpty();
         }
@@ -190,27 +163,16 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("최대 세션 정책에서 index 0이 가장 오래된 퇴출 대상임을 보장한다")
         void firstElement_isOldestSession_forEvictionPolicy() {
-            em.persistAndFlush(DeviceFixture.builder(user)
-                    .fingerprint("fp-first")
-                    .loginAt(LocalDateTime.of(2025, 1, 1, 0, 0))
-                    .sessionId("oldest-session")
-                    .build());
-            em.persistAndFlush(DeviceFixture.builder(user)
-                    .fingerprint("fp-second")
-                    .loginAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                    .sessionId("middle-session")
-                    .build());
-            em.persistAndFlush(DeviceFixture.builder(user)
-                    .fingerprint("fp-third")
-                    .loginAt(LocalDateTime.of(2025, 12, 1, 0, 0))
-                    .sessionId("newest-session")
-                    .build());
+            persistDevice("fp-first", "oldest-session", LocalDateTime.of(2025, 1, 1, 0, 0));
+            persistDevice("fp-second", "middle-session", LocalDateTime.of(2025, 6, 1, 0, 0));
+            persistDevice("fp-third", "newest-session", LocalDateTime.of(2025, 12, 1, 0, 0));
 
             List<DeviceEntity> result =
-                    deviceRepository.findActiveDevicesByUserIdOldestFirst(user.getId());
+                    deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
-            assertThat(result.get(0).getSessionId()).isEqualTo("oldest-session");
-            assertThat(result.get(2).getSessionId()).isEqualTo("newest-session");
+            assertThat(result)
+                    .extracting(DeviceEntity::getSessionId)
+                    .containsExactly("oldest-session", "middle-session", "newest-session");
         }
     }
 
@@ -221,16 +183,14 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("활성 디바이스 → sessionId가 NULL로 변경되고 updated = 1 을 반환한다")
         void activeDevice_deactivatesSession_andReturnsOne() {
-            DeviceEntity device = em.persistAndFlush(
-                    DeviceFixture.builder(user)
-                            .sessionId("target-session")
-                            .build()
-            );
+            DeviceEntity device = em.persistAndFlush(DeviceFixture.builder(userId)
+                    .sessionId("target-session")
+                    .build());
 
             int updated = deviceRepository.deactivateSessionByUserIdAndSessionId(
-                    user.getId(), "target-session"
-            );
+                    userId, "target-session");
 
+            em.clear();   // 1차 캐시 비우고 DB 재조회 → @Modifying 결과를 정확히 검증
             DeviceEntity refreshed = em.find(DeviceEntity.class, device.getId());
 
             assertThat(updated).isEqualTo(1);
@@ -241,11 +201,10 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("이미 비활성 디바이스 → updated = 0 을 반환하고 예외 없이 종료한다 (멱등)")
         void inactiveDevice_returnsZero_withoutException() {
-            em.persistAndFlush(DeviceFixture.inactiveDevice(user));
+            em.persistAndFlush(DeviceFixture.inactiveDevice(userId));
 
             int updated = deviceRepository.deactivateSessionByUserIdAndSessionId(
-                    user.getId(), "non-existent-session"
-            );
+                    userId, "non-existent-session");
 
             assertThat(updated).isZero();
         }
@@ -253,26 +212,21 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("다른 사용자의 세션을 비활성화할 수 없다 (userId 조건 격리)")
         void doesNotDeactivate_otherUsersSession() {
-            DeviceEntity userDevice = em.persistAndFlush(
-                    DeviceFixture.builder(user)
-                            .fingerprint("fp-user-own")
-                            .sessionId("user-own-session")
-                            .build()
-            );
+            DeviceEntity userDevice = em.persistAndFlush(DeviceFixture.builder(userId)
+                    .fingerprint("fp-user-own")
+                    .sessionId("user-own-session")
+                    .build());
 
-            UserEntity otherUser = em.persistAndFlush(UserFixture.adminUser());
-            DeviceEntity otherDevice = em.persistAndFlush(
-                    DeviceFixture.builder(otherUser)
-                            .sessionId("other-session")
-                            .fingerprint("fp-other")
-                            .build()
-            );
+            Long other = persistOtherUser();
+            DeviceEntity otherDevice = em.persistAndFlush(DeviceFixture.builder(other)
+                    .sessionId("other-session")
+                    .fingerprint("fp-other")
+                    .build());
 
-            // user.getId()로 otherUser의 sessionId 비활성화 시도 (IDOR 공격 시나리오)
             int updated = deviceRepository.deactivateSessionByUserIdAndSessionId(
-                    user.getId(), "other-session"
-            );
+                    userId, "other-session");
 
+            em.clear();
             DeviceEntity otherRefreshed = em.find(DeviceEntity.class, otherDevice.getId());
             DeviceEntity userOwnRefreshed = em.find(DeviceEntity.class, userDevice.getId());
 
@@ -284,29 +238,32 @@ class DeviceRepositoryTest {
         @Test
         @DisplayName("동일 사용자의 다른 세션은 영향받지 않는다")
         void doesNotAffect_otherSessionsOfSameUser() {
-            DeviceEntity target = em.persistAndFlush(
-                    DeviceFixture.builder(user)
-                            .fingerprint("fp-target")
-                            .sessionId("target-session")
-                            .build()
-            );
-            DeviceEntity safe = em.persistAndFlush(
-                    DeviceFixture.builder(user)
-                            .fingerprint("fp-safe")
-                            .sessionId("safe-session")
-                            .build()
-            );
+            DeviceEntity target = em.persistAndFlush(DeviceFixture.builder(userId)
+                    .fingerprint("fp-target")
+                    .sessionId("target-session")
+                    .build());
+            DeviceEntity safe = em.persistAndFlush(DeviceFixture.builder(userId)
+                    .fingerprint("fp-safe")
+                    .sessionId("safe-session")
+                    .build());
 
-            deviceRepository.deactivateSessionByUserIdAndSessionId(
-                    user.getId(), "target-session"
-            );
+            deviceRepository.deactivateSessionByUserIdAndSessionId(userId, "target-session");
 
+            em.clear();
             DeviceEntity targetRefreshed = em.find(DeviceEntity.class, target.getId());
             DeviceEntity safeRefreshed = em.find(DeviceEntity.class, safe.getId());
 
             assertThat(targetRefreshed.getSessionId()).isNull();
             assertThat(safeRefreshed.getSessionId()).isEqualTo("safe-session");
         }
+    }
+
+    private DeviceEntity persistDevice(String fingerprint, String sessionId, LocalDateTime loginAt) {
+        return em.persistAndFlush(DeviceFixture.builder(userId)
+                .fingerprint(fingerprint)
+                .sessionId(sessionId)
+                .loginAt(loginAt)
+                .build());
     }
 
 }

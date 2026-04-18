@@ -7,8 +7,6 @@ import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.device.service.DeviceService;
-import com.han.back.domain.user.entity.UserEntity;
-import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
@@ -28,7 +26,6 @@ import java.util.List;
 public class DeviceServiceImpl implements DeviceService {
 
     private final DeviceRepository deviceRepository;
-    private final UserRepository userRepository;
     private final TokenService tokenService;
 
     @Override
@@ -52,7 +49,7 @@ public class DeviceServiceImpl implements DeviceService {
         enforceMaxSessionPolicy(userId, sessionId);
 
         log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {}",
-                userId, device.getId(), deviceInfo.getDeviceType().name(), sessionId, deviceInfo.getLoginIp());
+                device.getUserId(), device.getId(), deviceInfo.getDeviceType().name(), sessionId, deviceInfo.getLoginIp());
 
         return DeviceRegistration.of(sessionId, deviceInfo.getDeviceFingerprint());
     }
@@ -114,7 +111,7 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public void deleteDevice(Long userId, String devicePublicId){
+    public void deleteDevice(Long userId, String devicePublicId) {
         DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
 
@@ -154,10 +151,8 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     private DeviceEntity createNewDevice(Long userId, DeviceInfo deviceInfo) {
-        UserEntity user = userRepository.getReferenceById(userId);
-
         return DeviceEntity.builder()
-                .user(user)
+                .userId(userId)
                 .deviceFingerprint(deviceInfo.getDeviceFingerprint())
                 .deviceType(deviceInfo.getDeviceType())
                 .osName(deviceInfo.getOsName())
