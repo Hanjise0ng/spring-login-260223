@@ -2,10 +2,10 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
-import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
@@ -37,7 +37,7 @@ import static org.mockito.BDDMockito.*;
 class AuthServiceImplTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private UserMapper userMapper;
+    @Mock private UserFactory userFactory;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenService tokenService;
     @Mock private DeviceService deviceService;
@@ -182,12 +182,12 @@ class AuthServiceImplTest {
             given(userRepository.existsByEmail(EMAIL)).willReturn(false);
             given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
             UserEntity newUser = UserFixture.localUser();
-            given(userMapper.fromSignUpRequest(dto, ENCODED_PW)).willReturn(newUser);
+            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW)).willReturn(newUser);
 
             authService.signUp(dto);
 
             then(passwordEncoder).should(times(1)).encode(UserFixture.RAW_PASSWORD);
-            then(userMapper).should(times(1)).fromSignUpRequest(dto, ENCODED_PW);
+            then(userFactory).should(times(1)).createFromSignUpRequest(dto, ENCODED_PW);
             then(userRepository).should(times(1)).save(newUser);
             // 저장 후 인증 상태 소비 — 동일 토큰으로 재가입 방지
             then(verificationService).should(times(1))
@@ -205,7 +205,7 @@ class AuthServiceImplTest {
             given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
             given(userRepository.existsByEmail(EMAIL)).willReturn(false);
             given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
-            given(userMapper.fromSignUpRequest(dto, ENCODED_PW)).willReturn(UserFixture.localUser());
+            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW)).willReturn(UserFixture.localUser());
 
             authService.signUp(dto);
 

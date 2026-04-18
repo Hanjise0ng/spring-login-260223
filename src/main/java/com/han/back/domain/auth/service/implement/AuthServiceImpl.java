@@ -3,12 +3,12 @@ package com.han.back.domain.auth.service.implement;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
-import com.han.back.domain.user.mapper.UserMapper;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
@@ -32,7 +32,7 @@ import org.springframework.util.StringUtils;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
+    private final UserFactory userFactory;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final DeviceService deviceService;
@@ -63,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
         }
 
-        UserEntity user = userMapper.fromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
+        UserEntity user = userFactory.createFromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
         userRepository.save(user);
 
         verificationService.consumeConfirmation(dto.getEmail(), VerificationType.SIGN_UP);

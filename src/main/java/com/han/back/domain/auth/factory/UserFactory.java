@@ -1,4 +1,4 @@
-package com.han.back.domain.user.mapper;
+package com.han.back.domain.auth.factory;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.user.entity.AuthProvider;
@@ -7,9 +7,9 @@ import com.han.back.domain.user.entity.UserEntity;
 import org.springframework.stereotype.Component;
 
 @Component
-public class UserMapper {
+public class UserFactory {
 
-    public UserEntity fromSignUpRequest(SignUpRequestDto dto, String encodedPassword) {
+    public UserEntity createFromSignUpRequest(SignUpRequestDto dto, String encodedPassword) {
         return UserEntity.builder()
                 .loginId(dto.getLoginId())
                 .password(encodedPassword)

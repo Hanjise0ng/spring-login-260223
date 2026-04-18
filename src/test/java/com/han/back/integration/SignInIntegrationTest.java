@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 //
 // DeviceEntity 생성/갱신, 세션 무효화 세부 로직 → DeviceIntegrationTest 담당
 @DisplayName("로그인 통합 테스트")
-class LoginIntegrationTest extends IntegrationTestBase {
+class SignInIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private JwtUtil jwtUtil;
