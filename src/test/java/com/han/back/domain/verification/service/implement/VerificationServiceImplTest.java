@@ -63,14 +63,6 @@ class VerificationServiceImplTest {
         );
     }
 
-    private VerificationSendRequestDto sendRequest(String target, VerificationType type, NotificationChannel channel) {
-        return VerificationSendRequestDto.of(target, type, channel);
-    }
-
-    private VerificationConfirmRequestDto confirmRequest(String target, VerificationType type, String code) {
-        return VerificationConfirmRequestDto.of(target, code, type);
-    }
-
     private void stubSendCodeHappyPath() {
         given(redisUtil.hasKey(anyString())).willReturn(false);
         given(mailTemplateUtil.buildVerificationEmail(anyString(), anyString(), anyLong()))
@@ -85,9 +77,9 @@ class VerificationServiceImplTest {
         @DisplayName("정상 요청 → 인증 코드를 생성·저장하고 이메일을 발송한 뒤 TTL 정보를 초 단위로 반환한다")
         void happyPath_sendsCodeAndReturnsTtl() {
             stubSendCodeHappyPath();
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
-
-            VerificationSendResponseDto result = verificationService.sendCode(request);
+            VerificationSendResponseDto result = verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            );
 
             assertThat(result.getCodeExpiresIn()).isEqualTo(VerificationConst.CODE_TTL / 1_000);
             assertThat(result.getCooldownExpiresIn()).isEqualTo(VerificationConst.COOLDOWN_TTL / 1_000);
@@ -97,9 +89,10 @@ class VerificationServiceImplTest {
         @DisplayName("정상 요청 → 정책 검증 → 쿨다운 확인 → 코드 저장 → 발송 순서로 실행된다")
         void happyPath_executesInCorrectOrder() {
             stubSendCodeHappyPath();
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
 
-            verificationService.sendCode(request);
+            verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            );
 
             var inOrder = inOrder(signUpPolicy, redisUtil, mailTemplateUtil, emailSender);
 
@@ -123,9 +116,10 @@ class VerificationServiceImplTest {
         @DisplayName("정상 요청 → 생성된 코드가 지정된 자릿수의 숫자 문자열이다")
         void happyPath_generatesCodeWithCorrectLength() {
             stubSendCodeHappyPath();
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
 
-            verificationService.sendCode(request);
+            verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            );
 
             then(redisUtil).should().setDataExpire(
                     eq(VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL)),
@@ -143,10 +137,9 @@ class VerificationServiceImplTest {
         void unmappedPolicyType_skipsCheckAndSendsCode() {
             stubSendCodeHappyPath();
             // EMAIL_CHANGE 타입은 setUp에서 policyMap에 등록하지 않음
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.EMAIL_CHANGE, NotificationChannel.EMAIL);
-
-            assertThatCode(() -> verificationService.sendCode(request))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.EMAIL_CHANGE, NotificationChannel.EMAIL)
+            )).doesNotThrowAnyException();
 
             then(signUpPolicy).should(never()).check(anyString());
             then(passwordResetPolicy).should(never()).check(anyString());
@@ -158,9 +151,10 @@ class VerificationServiceImplTest {
         void policyCheckFails_propagatesExceptionWithoutStoringCode() {
             willThrow(new CustomException(BaseResponseStatus.DUPLICATE_EMAIL))
                     .given(signUpPolicy).check(EMAIL);
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
 
-            assertThatThrownBy(() -> verificationService.sendCode(request))
+            assertThatThrownBy(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
@@ -174,9 +168,10 @@ class VerificationServiceImplTest {
         void cooldownActive_throwsCooldownActive() {
             given(redisUtil.hasKey(VerificationConst.cooldownKey(VerificationType.SIGN_UP, EMAIL)))
                     .willReturn(true);
-            VerificationSendRequestDto request = sendRequest(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
 
-            assertThatThrownBy(() -> verificationService.sendCode(request))
+            assertThatThrownBy(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.COOLDOWN_ACTIVE);
@@ -188,19 +183,19 @@ class VerificationServiceImplTest {
         @DisplayName("이메일 로컬파트 2자 이하 → maskTarget이 '***@domain' 형태로 마스킹한다 (atIndex <= 2 분기)")
         void shortEmailLocal_masksCorrectly() {
             stubSendCodeHappyPath();
-            VerificationSendRequestDto request = sendRequest(SHORT_EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL);
 
             // maskTarget은 log.info 내부에서 호출되므로, 예외 없이 완료되면 해당 분기가 커버된다
-            assertThatCode(() -> verificationService.sendCode(request))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(SHORT_EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            )).doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("미지원 채널(SMS) → UNSUPPORTED_NOTIFICATION_CHANNEL 예외를 던지고 이후 로직을 실행하지 않는다")
         void unsupportedChannel_throwsUnsupportedNotificationChannel() {
-            VerificationSendRequestDto request = sendRequest(PHONE, VerificationType.SIGN_UP, NotificationChannel.SMS);
-
-            assertThatThrownBy(() -> verificationService.sendCode(request))
+            assertThatThrownBy(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(PHONE, VerificationType.SIGN_UP, NotificationChannel.SMS)
+            ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL);
@@ -223,9 +218,9 @@ class VerificationServiceImplTest {
             String confirmedKey = VerificationConst.confirmedKey(VerificationType.SIGN_UP, EMAIL);
             given(redisUtil.getData(codeKey)).willReturn(Optional.of(code));
 
-            VerificationConfirmRequestDto request = confirmRequest(EMAIL, VerificationType.SIGN_UP, code);
-
-            verificationService.confirmCode(request);
+            verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, code, VerificationType.SIGN_UP)
+            );
 
             var inOrder = inOrder(redisUtil);
             inOrder.verify(redisUtil).deleteData(codeKey);
@@ -238,9 +233,9 @@ class VerificationServiceImplTest {
             String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
             given(redisUtil.getData(codeKey)).willReturn(Optional.empty());
 
-            VerificationConfirmRequestDto request = confirmRequest(EMAIL, VerificationType.SIGN_UP, "123456");
-
-            assertThatThrownBy(() -> verificationService.confirmCode(request))
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, "123456", VerificationType.SIGN_UP)
+            ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.VERIFICATION_EXPIRED);
@@ -254,9 +249,9 @@ class VerificationServiceImplTest {
             String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
             given(redisUtil.getData(codeKey)).willReturn(Optional.of("999999"));
 
-            VerificationConfirmRequestDto request = confirmRequest(EMAIL, VerificationType.SIGN_UP, "000000");
-
-            assertThatThrownBy(() -> verificationService.confirmCode(request))
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, "000000", VerificationType.SIGN_UP)
+            ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.VERIFICATION_FAIL);
@@ -270,10 +265,9 @@ class VerificationServiceImplTest {
             String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, SHORT_TARGET);
             given(redisUtil.getData(codeKey)).willReturn(Optional.of("123456"));
 
-            VerificationConfirmRequestDto request = confirmRequest(SHORT_TARGET, VerificationType.SIGN_UP, "123456");
-
-            assertThatCode(() -> verificationService.confirmCode(request))
-                    .doesNotThrowAnyException();
+            assertThatCode(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(SHORT_TARGET, "123456", VerificationType.SIGN_UP)
+            )).doesNotThrowAnyException();
         }
     }
 
