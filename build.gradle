@@ -69,6 +69,7 @@ dependencies {
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-mail'          // 이메일 전송 기능 (인증 메일)
     implementation 'com.github.ua-parser:uap-java:1.6.1'                        // User-Agent 문자열 파싱 (브라우저, OS 정보 추출)
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'       // AOP 기반 부가 기능
 
     // ===================================================================================
     // Lombok (편의성 라이브러리)
@@ -89,6 +90,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'     // Spring MVC 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'   // JPA 테스트
     testImplementation 'com.github.codemonstur:embedded-redis:1.4.3'                  // 내장 Redis 테스트
+    testImplementation 'org.awaitility:awaitility:4.2.2'                              // 비동기 작업 결과 검증 (Wait & Assert)
+    testImplementation 'com.icegreen:greenmail-spring:2.1.0'                          // 통합 테스트용 가상 메일 서버 (SMTP 테스트)
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 }
