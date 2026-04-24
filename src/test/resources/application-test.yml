@@ -47,6 +47,9 @@ spring:
     virtual:
       enabled: true
 
+notification:
+  dispatcher: sync
+
 logging:
   level:
     com.han.back: DEBUG

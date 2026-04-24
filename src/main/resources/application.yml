@@ -79,6 +79,9 @@ spring:
             authorization-grant-type: authorization_code
             scope:
 
+notification:
+  dispatcher: async
+
 logging:
   level:
     org.hibernate.orm.jdbc.bind: TRACE
