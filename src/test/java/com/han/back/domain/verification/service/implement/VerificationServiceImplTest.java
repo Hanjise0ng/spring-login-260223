@@ -9,6 +9,8 @@ import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationPurpose;
+import com.han.back.global.infra.notification.NotificationRequest;
 import com.han.back.global.infra.notification.NotificationSender;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
@@ -41,6 +43,7 @@ class VerificationServiceImplTest {
     @Mock private VerificationPolicy passwordResetPolicy;
 
     @Captor private ArgumentCaptor<String> codeCaptor;
+    @Captor private ArgumentCaptor<NotificationRequest> requestCaptor;
 
     private VerificationServiceImpl verificationService;
 
@@ -108,8 +111,25 @@ class VerificationServiceImplTest {
                     eq(VerificationConst.cooldownKey(VerificationType.SIGN_UP, EMAIL)), eq("ACTIVE"), eq(VerificationConst.COOLDOWN_TTL));
             // 이메일 콘텐츠 생성
             inOrder.verify(mailTemplateUtil).buildVerificationEmail(anyString(), anyString(), anyLong());
-            // 발송
-            inOrder.verify(emailSender).send(eq(EMAIL), eq(VerificationType.SIGN_UP.getEmailSubject()), eq(HTML_CONTENT));
+            inOrder.verify(emailSender).send(any(NotificationRequest.class));
+        }
+
+        @Test
+        @DisplayName("정상 요청 → NotificationRequest에 올바른 purpose와 channel이 설정된다")
+        void happyPath_requestHasCorrectFields() {
+            stubSendCodeHappyPath();
+
+            verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            );
+
+            then(emailSender).should().send(requestCaptor.capture());
+            NotificationRequest captured = requestCaptor.getValue();
+            assertThat(captured.getChannel()).isEqualTo(NotificationChannel.EMAIL);
+            assertThat(captured.getTarget()).isEqualTo(EMAIL);
+            assertThat(captured.getPurpose()).isEqualTo(NotificationPurpose.VERIFICATION);
+            assertThat(captured.getSubject()).isEqualTo(VerificationType.SIGN_UP.getEmailSubject());
+            assertThat(captured.getContent()).isEqualTo(HTML_CONTENT);
         }
 
         @Test
@@ -136,14 +156,14 @@ class VerificationServiceImplTest {
         @DisplayName("정책이 매핑되지 않은 타입 → 정책 검증을 건너뛰고 정상 발송한다")
         void unmappedPolicyType_skipsCheckAndSendsCode() {
             stubSendCodeHappyPath();
-            // EMAIL_CHANGE 타입은 setUp에서 policyMap에 등록하지 않음
+
             assertThatCode(() -> verificationService.sendCode(
                     new VerificationSendRequestDto(EMAIL, VerificationType.EMAIL_CHANGE, NotificationChannel.EMAIL)
             )).doesNotThrowAnyException();
 
             then(signUpPolicy).should(never()).check(anyString());
             then(passwordResetPolicy).should(never()).check(anyString());
-            then(emailSender).should(times(1)).send(anyString(), anyString(), anyString());
+            then(emailSender).should(times(1)).send(any(NotificationRequest.class));
         }
 
         @Test
@@ -160,7 +180,7 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
-            then(emailSender).should(never()).send(anyString(), anyString(), anyString());
+            then(emailSender).should(never()).send(any(NotificationRequest.class));
         }
 
         @Test
@@ -176,18 +196,7 @@ class VerificationServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.COOLDOWN_ACTIVE);
 
-            then(emailSender).should(never()).send(anyString(), anyString(), anyString());
-        }
-
-        @Test
-        @DisplayName("이메일 로컬파트 2자 이하 → maskTarget이 '***@domain' 형태로 마스킹한다 (atIndex <= 2 분기)")
-        void shortEmailLocal_masksCorrectly() {
-            stubSendCodeHappyPath();
-
-            // maskTarget은 log.info 내부에서 호출되므로, 예외 없이 완료되면 해당 분기가 커버된다
-            assertThatCode(() -> verificationService.sendCode(
-                    new VerificationSendRequestDto(SHORT_EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
-            )).doesNotThrowAnyException();
+            then(emailSender).should(never()).send(any(NotificationRequest.class));
         }
 
         @Test
@@ -202,7 +211,7 @@ class VerificationServiceImplTest {
 
             then(redisUtil).should(never()).hasKey(anyString());
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
-            then(emailSender).should(never()).send(anyString(), anyString(), anyString());
+            then(emailSender).should(never()).send(any(NotificationRequest.class));
         }
     }
 
@@ -257,17 +266,6 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.VERIFICATION_FAIL);
 
             then(redisUtil).should(never()).deleteData(anyString());
-        }
-
-        @Test
-        @DisplayName("짧은 타겟(길이 ≤ 4, @없음) → maskTarget이 '****'로 마스킹한다")
-        void shortTarget_masksToStars() {
-            String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, SHORT_TARGET);
-            given(redisUtil.getData(codeKey)).willReturn(Optional.of("123456"));
-
-            assertThatCode(() -> verificationService.confirmCode(
-                    new VerificationConfirmRequestDto(SHORT_TARGET, "123456", VerificationType.SIGN_UP)
-            )).doesNotThrowAnyException();
         }
     }
 

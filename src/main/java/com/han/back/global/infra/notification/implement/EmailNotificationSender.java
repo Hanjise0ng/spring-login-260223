@@ -1,29 +1,38 @@
 package com.han.back.global.infra.notification.implement;
 
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationPurpose;
+import com.han.back.global.infra.notification.NotificationRequest;
 import com.han.back.global.infra.notification.NotificationSender;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
+import com.han.back.global.infra.notification.strategy.MailSendStrategy;
+import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.util.MaskingUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class EmailNotificationSender implements NotificationSender {
 
-    private final JavaMailSender javaMailSender;
+    private final Map<NotificationPurpose, MailSendStrategy> strategyMap;
 
-    @Override
-    public void send(String target, String subject, String content) {
-        MimeMessage message = createMessage(target, subject, content);
-        dispatch(message, target);
+    public EmailNotificationSender(List<MailSendStrategy> strategies) {
+        this.strategyMap = strategies.stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        MailSendStrategy::getPurpose, Function.identity()));
+
+        for (NotificationPurpose purpose : NotificationPurpose.values()) {
+            if (!this.strategyMap.containsKey(purpose)) {
+                log.warn("No MailSendStrategy for purpose: {}. " +
+                        "Mail send for this purpose will fail at runtime.", purpose);
+            }
+        }
     }
 
     @Override
@@ -31,33 +40,19 @@ public class EmailNotificationSender implements NotificationSender {
         return NotificationChannel.EMAIL;
     }
 
-    private MimeMessage createMessage(String target, String subject, String content) {
-        MimeMessage message = javaMailSender.createMimeMessage();
-        try {
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-            helper.setTo(target);
-            helper.setSubject(subject);
-            helper.setText(content, true);
-            return message;
-        } catch (MessagingException e) {
-            log.error("Email message creation failed: target={}, subject={}", maskEmail(target), subject, e);
-            throw new CustomException(BaseResponseStatus.MAIL_FAIL);
+    @Override
+    public void send(NotificationRequest request) {
+        MailSendStrategy strategy = strategyMap.get(request.getPurpose());
+        if (strategy == null) {
+            log.error("No strategy for purpose: {} | target: {} | trace: {}",
+                    request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()), request.getTraceKey());
+            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
         }
-    }
 
-    private void dispatch(MimeMessage message, String target) {
-        try {
-            javaMailSender.send(message);
-        } catch (MailException e) {
-            log.error("Email dispatch failed: target={}, cause={}", maskEmail(target), e.getMessage(), e);
-            throw new CustomException(BaseResponseStatus.MAIL_FAIL);
-        }
-    }
+        log.debug("Dispatching to {} strategy - target: {} | trace: {}",
+                request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()), request.getTraceKey());
 
-    private String maskEmail(String email) {
-        int atIndex = email.indexOf("@");
-        if (atIndex <= 2) return "***" + email.substring(atIndex);
-        return email.substring(0, 2) + "***" + email.substring(atIndex);
+        strategy.send(request);
     }
 
 }

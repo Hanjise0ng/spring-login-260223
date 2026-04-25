@@ -7,12 +7,15 @@ import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.domain.verification.service.VerificationService;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationPurpose;
+import com.han.back.global.infra.notification.NotificationRequest;
 import com.han.back.global.infra.notification.NotificationSender;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
+import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.util.MaskingUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -67,10 +70,14 @@ public class VerificationServiceImpl implements VerificationService {
         storeCodeAndCooldown(type, target, code);
 
         String content = buildContent(channel, type, code);
-        sender.send(target, type.getEmailSubject(), content);
+        sender.send(NotificationRequest.of(
+                channel, target, type.getEmailSubject(), content,
+                NotificationPurpose.VERIFICATION,
+                "verification:" + type.name() + ":" + MaskingUtil.maskTarget(target)
+        ));
 
         log.info("Verification code sent - Type: {} | Channel: {} | Target: {}",
-                type, channel, maskTarget(target));
+                type, channel, MaskingUtil.maskTarget(target));
 
         return VerificationSendResponseDto.of(VerificationConst.CODE_TTL, VerificationConst.COOLDOWN_TTL);
     }
@@ -96,7 +103,8 @@ public class VerificationServiceImpl implements VerificationService {
                 VerificationConst.CONFIRMED_TTL
         );
 
-        log.info("Verification code confirmed - Type: {} | Target: {}", type, maskTarget(target));
+        log.info("Verification code confirmed - Type: {} | Target: {}",
+                type, MaskingUtil.maskTarget(target));
     }
 
     @Override
@@ -150,18 +158,6 @@ public class VerificationServiceImpl implements VerificationService {
     private String generateCode() {
         return String.format("%0" + VerificationConst.CODE_LENGTH + "d",
                 secureRandom.nextInt(VerificationConst.CODE_BOUND));
-    }
-
-    private String maskTarget(String target) {
-        if (target.contains("@")) {
-            int atIndex = target.indexOf("@");
-            if (atIndex <= 2) return "***" + target.substring(atIndex);
-            return target.substring(0, 2) + "***" + target.substring(atIndex);
-        }
-        if (target.length() > 4) {
-            return target.substring(0, 3) + "****" + target.substring(target.length() - 4);
-        }
-        return "****";
     }
 
 }

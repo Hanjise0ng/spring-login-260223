@@ -27,7 +27,7 @@ public class AsyncNotificationDispatcher implements NotificationDispatcher {
                         NotificationSender::getChannel, Function.identity()));
     }
 
-    @Async("mailExecutor")
+    @Async("notificationExecutor")
     @Override
     public void dispatch(NotificationRequest request) {
         NotificationSender sender = senderMap.get(request.getChannel());
