@@ -9,6 +9,7 @@ import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
+import com.han.back.domain.user.event.UserSignedUpEvent;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
@@ -21,6 +22,7 @@ import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final DeviceService deviceService;
     private final VerificationService verificationService;
     private final LoginIdTokenUtil loginIdTokenUtil;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
         UserEntity user = userFactory.createFromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
         userRepository.save(user);
 
-        verificationService.consumeConfirmation(dto.getEmail(), VerificationType.SIGN_UP);
+        eventPublisher.publishEvent(UserSignedUpEvent.of(user));
 
         log.info("Sign Up Success - LoginId: {}", dto.getLoginId());
     }
