@@ -15,7 +15,8 @@ public class NotificationRequest {
     private final String subject;                  // 제목
     private final String content;                  // 본문 (HTML)
     private final NotificationPurpose purpose;     // 용도 (재시도 정책 분기 키)
-    private final String traceKey;                 // 로그 추적용
+    private final String traceKey;                 // 로그 추적용 — 요청마다 고유
+    private final String dedupeKey;                // 중복 차단용 — 같은 의도면 같은 값
     private final LocalDateTime createdAt;
 
     public static NotificationRequest of(NotificationChannel channel,
@@ -23,10 +24,11 @@ public class NotificationRequest {
                                          String subject,
                                          String content,
                                          NotificationPurpose purpose,
-                                         String traceKey) {
+                                         String traceKey,
+                                         String dedupeKey) {
         return new NotificationRequest(
                 channel, target, subject, content, purpose,
-                traceKey, LocalDateTime.now()
+                traceKey, dedupeKey, LocalDateTime.now()
         );
     }
 

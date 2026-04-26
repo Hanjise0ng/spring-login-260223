@@ -66,7 +66,8 @@ public class VerificationServiceImpl implements VerificationService {
         notificationDispatcher.dispatch(NotificationRequest.of(
                 channel, target, type.getEmailSubject(), content,
                 NotificationPurpose.VERIFICATION,
-                "verification:" + type.name() + ":" + MaskingUtil.maskTarget(target)
+                "verification:" + type.name() + ":" + MaskingUtil.maskTarget(target),
+                "verification:" + type.name() + ":" + target + ":" + code
         ));
 
         log.info("Verification code dispatched - Type: {} | Channel: {} | Target: {}",

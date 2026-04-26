@@ -2,6 +2,7 @@ package com.han.back.global.infra.notification.dispatcher;
 
 import com.han.back.global.infra.notification.NotificationChannel;
 import com.han.back.global.infra.notification.NotificationDispatcher;
+import com.han.back.global.infra.notification.NotificationIdempotencyGuard;
 import com.han.back.global.infra.notification.NotificationRequest;
 import com.han.back.global.infra.notification.NotificationSender;
 import lombok.extern.slf4j.Slf4j;
@@ -19,15 +20,24 @@ import java.util.stream.Collectors;
 public class SyncNotificationDispatcher implements NotificationDispatcher {
 
     private final Map<NotificationChannel, NotificationSender> senderMap;
+    private final NotificationIdempotencyGuard idempotencyGuard;
 
-    public SyncNotificationDispatcher(List<NotificationSender> senders) {
+    public SyncNotificationDispatcher(List<NotificationSender> senders,
+                                      NotificationIdempotencyGuard idempotencyGuard) {
         this.senderMap = senders.stream()
                 .collect(Collectors.toUnmodifiableMap(
                         NotificationSender::getChannel, Function.identity()));
+        this.idempotencyGuard = idempotencyGuard;
     }
 
     @Override
     public void dispatch(NotificationRequest request) {
+        long ttlSeconds = selectDedupeTtl(request);
+        if (!idempotencyGuard.tryAcquire(request.getDedupeKey(), ttlSeconds)) {
+            log.info("Duplicate dispatch skipped (sync) - trace: {}", request.getTraceKey());
+            return;
+        }
+
         NotificationSender sender = senderMap.get(request.getChannel());
         if (sender == null) {
             log.error("No sender for channel: {} | trace: {}", request.getChannel(), request.getTraceKey());
@@ -42,6 +52,14 @@ public class SyncNotificationDispatcher implements NotificationDispatcher {
                     request.getTraceKey(), e.getMessage(), e);
             throw e;
         }
+    }
+
+    private long selectDedupeTtl(NotificationRequest request) {
+        return switch (request.getPurpose()) {
+            case VERIFICATION -> 3600;
+            case WELCOME -> 86400;
+            case PASSWORD_RESET -> 3600;
+        };
     }
 
 }

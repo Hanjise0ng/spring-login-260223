@@ -4,7 +4,6 @@ import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
 import com.han.back.global.infra.notification.NotificationPurpose;
 import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.implement.EmailNotificationSender;
 import com.han.back.global.infra.notification.strategy.MailSendStrategy;
 import com.han.back.global.response.BaseResponseStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +16,8 @@ import org.springframework.mail.MailSendException;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -103,7 +103,8 @@ class EmailNotificationSenderTest {
                 "[HAN] 테스트",
                 "<html>content</html>",
                 purpose,
-                "test-trace"
+                "test-trace",
+                "test-dedupe"
         );
     }
 

@@ -25,7 +25,7 @@ class SmsNotificationSenderTest {
     void send_doesNotThrow() {
         NotificationRequest request = NotificationRequest.of(
                 NotificationChannel.SMS, "01012345678", "subject", "content",
-                NotificationPurpose.VERIFICATION, "test-trace"
+                NotificationPurpose.VERIFICATION, "test-trace", "test-dedupe"
         );
 
         assertThatCode(() -> smsNotificationSender.send(request))

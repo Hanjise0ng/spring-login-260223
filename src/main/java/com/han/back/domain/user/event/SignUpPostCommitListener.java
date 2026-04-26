@@ -50,7 +50,8 @@ public class SignUpPostCommitListener {
                     subject,
                     content,
                     NotificationPurpose.WELCOME,
-                    "welcome:user:" + event.getUserId()
+                    "welcome:" + java.util.UUID.randomUUID(),       // traceKey — 매번 고유
+                    "welcome:user:" + event.getUserId()                        // dedupeKey — userId 기반 결정적
             );
 
             notificationDispatcher.dispatch(request);

@@ -109,7 +109,7 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("정상 요청 → NotificationRequest에 올바른 purpose, channel, target 이 설정된다")
+        @DisplayName("정상 요청 → NotificationRequest에 올바른 purpose, channel, target, dedupeKey 가 설정된다")
         void happyPath_requestHasCorrectFields() {
             stubSendCodeHappyPath();
 
@@ -124,6 +124,8 @@ class VerificationServiceImplTest {
             assertThat(captured.getPurpose()).isEqualTo(NotificationPurpose.VERIFICATION);
             assertThat(captured.getSubject()).isEqualTo(VerificationType.SIGN_UP.getEmailSubject());
             assertThat(captured.getContent()).isEqualTo(HTML_CONTENT);
+            assertThat(captured.getDedupeKey()).startsWith("verification:SIGN_UP:" + EMAIL);
+            assertThat(captured.getTraceKey()).isNotBlank();
         }
 
         @Test
