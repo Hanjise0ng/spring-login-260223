@@ -6,14 +6,14 @@ import com.han.back.domain.verification.dto.response.VerificationSendResponseDto
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationDispatcher;
 import com.han.back.global.infra.notification.NotificationPurpose;
 import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.NotificationSender;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
+import com.han.back.global.response.BaseResponseStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,7 +38,7 @@ class VerificationServiceImplTest {
 
     @Mock private RedisUtil redisUtil;
     @Mock private MailTemplateUtil mailTemplateUtil;
-    @Mock private NotificationSender emailSender;
+    @Mock private NotificationDispatcher notificationDispatcher;
     @Mock private VerificationPolicy signUpPolicy;
     @Mock private VerificationPolicy passwordResetPolicy;
 
@@ -47,21 +47,18 @@ class VerificationServiceImplTest {
 
     private VerificationServiceImpl verificationService;
 
-    private static final String EMAIL          = "test@example.com";
-    private static final String SHORT_EMAIL    = "ab@example.com";
-    private static final String PHONE          = "01012345678";
-    private static final String SHORT_TARGET   = "abc";
-    private static final String HTML_CONTENT   = "<html>code</html>";
+    private static final String EMAIL       = "test@example.com";
+    private static final String PHONE       = "01012345678";
+    private static final String HTML_CONTENT = "<html>code</html>";
 
     @BeforeEach
     void setUp() {
-        given(emailSender.getChannel()).willReturn(NotificationChannel.EMAIL);
         given(signUpPolicy.getSupportedTypes()).willReturn(Set.of(VerificationType.SIGN_UP));
         given(passwordResetPolicy.getSupportedTypes()).willReturn(Set.of(VerificationType.PASSWORD_RESET));
 
         verificationService = new VerificationServiceImpl(
                 redisUtil, mailTemplateUtil,
-                List.of(emailSender),
+                notificationDispatcher,
                 List.of(signUpPolicy, passwordResetPolicy)
         );
     }
@@ -77,15 +74,17 @@ class VerificationServiceImplTest {
     class SendCode {
 
         @Test
-        @DisplayName("정상 요청 → 인증 코드를 생성·저장하고 이메일을 발송한 뒤 TTL 정보를 초 단위로 반환한다")
-        void happyPath_sendsCodeAndReturnsTtl() {
+        @DisplayName("정상 요청 → 인증 코드를 생성·저장하고 Dispatcher에 발송을 위임한 뒤 TTL 정보를 반환한다")
+        void happyPath_dispatchesAndReturnsTtl() {
             stubSendCodeHappyPath();
+
             VerificationSendResponseDto result = verificationService.sendCode(
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
             );
 
             assertThat(result.getCodeExpiresIn()).isEqualTo(VerificationConst.CODE_TTL / 1_000);
             assertThat(result.getCooldownExpiresIn()).isEqualTo(VerificationConst.COOLDOWN_TTL / 1_000);
+            then(notificationDispatcher).should(times(1)).dispatch(any(NotificationRequest.class));
         }
 
         @Test
@@ -97,25 +96,20 @@ class VerificationServiceImplTest {
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
             );
 
-            var inOrder = inOrder(signUpPolicy, redisUtil, mailTemplateUtil, emailSender);
+            var inOrder = inOrder(signUpPolicy, redisUtil, mailTemplateUtil, notificationDispatcher);
 
-            // 정책 검증
-            inOrder.verify(signUpPolicy).check(EMAIL);
-            // 쿨다운 확인 (cooldownKey로 hasKey)
+            inOrder.verify(signUpPolicy).check(EMAIL, NotificationChannel.EMAIL);
             inOrder.verify(redisUtil).hasKey(VerificationConst.cooldownKey(VerificationType.SIGN_UP, EMAIL));
-            // 코드 저장 (codeKey로 setDataExpire)
             inOrder.verify(redisUtil).setDataExpire(
                     eq(VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL)), anyString(), eq(VerificationConst.CODE_TTL));
-            // 쿨다운 저장
             inOrder.verify(redisUtil).setDataExpire(
                     eq(VerificationConst.cooldownKey(VerificationType.SIGN_UP, EMAIL)), eq("ACTIVE"), eq(VerificationConst.COOLDOWN_TTL));
-            // 이메일 콘텐츠 생성
             inOrder.verify(mailTemplateUtil).buildVerificationEmail(anyString(), anyString(), anyLong());
-            inOrder.verify(emailSender).send(any(NotificationRequest.class));
+            inOrder.verify(notificationDispatcher).dispatch(any(NotificationRequest.class));
         }
 
         @Test
-        @DisplayName("정상 요청 → NotificationRequest에 올바른 purpose와 channel이 설정된다")
+        @DisplayName("정상 요청 → NotificationRequest에 올바른 purpose, channel, target 이 설정된다")
         void happyPath_requestHasCorrectFields() {
             stubSendCodeHappyPath();
 
@@ -123,7 +117,7 @@ class VerificationServiceImplTest {
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
             );
 
-            then(emailSender).should().send(requestCaptor.capture());
+            then(notificationDispatcher).should().dispatch(requestCaptor.capture());
             NotificationRequest captured = requestCaptor.getValue();
             assertThat(captured.getChannel()).isEqualTo(NotificationChannel.EMAIL);
             assertThat(captured.getTarget()).isEqualTo(EMAIL);
@@ -154,23 +148,23 @@ class VerificationServiceImplTest {
 
         @Test
         @DisplayName("정책이 매핑되지 않은 타입 → 정책 검증을 건너뛰고 정상 발송한다")
-        void unmappedPolicyType_skipsCheckAndSendsCode() {
+        void unmappedPolicyType_skipsCheckAndDispatches() {
             stubSendCodeHappyPath();
 
             assertThatCode(() -> verificationService.sendCode(
                     new VerificationSendRequestDto(EMAIL, VerificationType.EMAIL_CHANGE, NotificationChannel.EMAIL)
             )).doesNotThrowAnyException();
 
-            then(signUpPolicy).should(never()).check(anyString());
-            then(passwordResetPolicy).should(never()).check(anyString());
-            then(emailSender).should(times(1)).send(any(NotificationRequest.class));
+            then(signUpPolicy).should(never()).check(anyString(), any());
+            then(passwordResetPolicy).should(never()).check(anyString(), any());
+            then(notificationDispatcher).should(times(1)).dispatch(any(NotificationRequest.class));
         }
 
         @Test
         @DisplayName("정책 검증 실패 → 예외가 그대로 전파되고 코드를 저장하지 않는다")
         void policyCheckFails_propagatesExceptionWithoutStoringCode() {
             willThrow(new CustomException(BaseResponseStatus.DUPLICATE_EMAIL))
-                    .given(signUpPolicy).check(EMAIL);
+                    .given(signUpPolicy).check(EMAIL, NotificationChannel.EMAIL);
 
             assertThatThrownBy(() -> verificationService.sendCode(
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
@@ -180,7 +174,7 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
-            then(emailSender).should(never()).send(any(NotificationRequest.class));
+            then(notificationDispatcher).should(never()).dispatch(any(NotificationRequest.class));
         }
 
         @Test
@@ -196,7 +190,7 @@ class VerificationServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.COOLDOWN_ACTIVE);
 
-            then(emailSender).should(never()).send(any(NotificationRequest.class));
+            then(notificationDispatcher).should(never()).dispatch(any(NotificationRequest.class));
         }
 
         @Test
@@ -211,7 +205,7 @@ class VerificationServiceImplTest {
 
             then(redisUtil).should(never()).hasKey(anyString());
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
-            then(emailSender).should(never()).send(any(NotificationRequest.class));
+            then(notificationDispatcher).should(never()).dispatch(any(NotificationRequest.class));
         }
     }
 

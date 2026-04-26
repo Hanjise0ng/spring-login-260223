@@ -1,4 +1,4 @@
-package com.han.back.global.notification.implement;
+package com.han.back.global.infra.notification.implement;
 
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;

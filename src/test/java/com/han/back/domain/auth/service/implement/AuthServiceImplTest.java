@@ -6,6 +6,7 @@ import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
+import com.han.back.domain.user.event.UserSignedUpEvent;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
@@ -22,9 +23,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,17 +46,19 @@ class AuthServiceImplTest {
     @Mock private DeviceService deviceService;
     @Mock private VerificationService verificationService;
     @Mock private LoginIdTokenUtil loginIdTokenUtil;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
-    @InjectMocks private AuthServiceImpl authService;
+    @InjectMocks
+    private AuthServiceImpl authService;
 
-    private static final Long   USER_PK        = 1L;
-    private static final Role   ROLE           = Role.USER;
-    private static final String LOGIN_ID       = UserFixture.DEFAULT_LOGIN_ID;
-    private static final String EMAIL          = "test@test.com";
+    private static final Long USER_PK = 1L;
+    private static final Role ROLE = Role.USER;
+    private static final String LOGIN_ID = UserFixture.DEFAULT_LOGIN_ID;
+    private static final String EMAIL = "test@test.com";
     private static final String LOGIN_ID_TOKEN = "valid.loginid.token";
-    private static final String SESSION_ID     = "session-abc-123";
+    private static final String SESSION_ID = "session-abc-123";
     private static final String NEW_SESSION_ID = "new-session-xyz-456";
-    private static final String ENCODED_PW     = "$2a$10$encodedPasswordForTest";
+    private static final String ENCODED_PW = "$2a$10$encodedPasswordForTest";
 
     @Nested
     @DisplayName("checkLoginId()")
@@ -69,7 +74,6 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
 
-            // 중복이면 토큰 발급까지 도달하지 않아야 함
             then(loginIdTokenUtil).should(never()).issue(anyString());
         }
 
@@ -91,9 +95,8 @@ class AuthServiceImplTest {
     class SignUp {
 
         @Test
-        @DisplayName("loginIdToken 검증 실패 → LOGIN_ID_CHECK_REQUIRED를 던지고 이후 로직을 실행하지 않는다")
+        @DisplayName("loginIdToken 검증 실패: LOGIN_ID_CHECK_REQUIRED를 던지고 이후 로직을 실행하지 않는다")
         void invalidLoginIdToken_throwsLoginIdCheckRequired() {
-            // validate()는 loginId + loginIdToken 두 인자를 받음
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
@@ -105,17 +108,15 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
 
-            // 토큰 검증 실패 시 이후 모든 로직 미호출
             then(verificationService).should(never()).validateConfirmed(anyString(), any());
             then(userRepository).should(never()).existsByLoginId(anyString());
             then(userRepository).should(never()).save(any());
+            then(eventPublisher).should(never()).publishEvent(any());
         }
 
         @Test
-        @DisplayName("이메일 인증 미완료 → VERIFICATION_NOT_COMPLETED를 던지고 DB 접근을 하지 않는다")
+        @DisplayName("이메일 인증 미완료: VERIFICATION_NOT_COMPLETED를 던지고 DB 접근을 하지 않는다")
         void emailNotVerified_throwsVerificationNotCompleted() {
-            // loginIdToken 검증 통과 (void 메서드 — @Mock 기본 동작: 아무것도 안 함)
-            // validateConfirmed()는 email + type 두 인자를 받음
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
@@ -128,15 +129,14 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.VERIFICATION_NOT_COMPLETED);
 
-            // 이메일 인증 실패 → DB 조회 및 저장 미호출
             then(userRepository).should(never()).existsByLoginId(anyString());
             then(userRepository).should(never()).save(any());
+            then(eventPublisher).should(never()).publishEvent(any());
         }
 
         @Test
-        @DisplayName("중복 loginId → DUPLICATE_ID 예외를 던지고 저장하지 않는다")
+        @DisplayName("중복 loginId: DUPLICATE_ID 예외를 던지고 저장하지 않는다")
         void duplicateLoginId_throwsDuplicateId() {
-            // loginIdToken 검증 + 이메일 인증 모두 통과, DB에서 loginId 중복 발견
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
@@ -149,12 +149,12 @@ class AuthServiceImplTest {
                     .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
 
             then(userRepository).should(never()).save(any());
+            then(eventPublisher).should(never()).publishEvent(any());
         }
 
         @Test
-        @DisplayName("중복 email → DUPLICATE_EMAIL 예외를 던지고 저장하지 않는다")
+        @DisplayName("중복 email: DUPLICATE_EMAIL 예외를 던지고 저장하지 않는다")
         void duplicateEmail_throwsDuplicateEmail() {
-            // loginId는 통과, email 중복
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
@@ -168,11 +168,12 @@ class AuthServiceImplTest {
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
 
             then(userRepository).should(never()).save(any());
+            then(eventPublisher).should(never()).publishEvent(any());
         }
 
         @Test
-        @DisplayName("정상 회원가입 → 비밀번호 인코딩 후 저장하고 인증 상태를 소비한다")
-        void validSignUp_savesUserAndConsumesConfirmation() {
+        @DisplayName("정상 회원가입: 저장 후 이벤트를 발행하고 consumeConfirmation 은 호출하지 않는다")
+        void validSignUp_savesUserAndPublishesEvent() {
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
@@ -189,13 +190,19 @@ class AuthServiceImplTest {
             then(passwordEncoder).should(times(1)).encode(UserFixture.RAW_PASSWORD);
             then(userFactory).should(times(1)).createFromSignUpRequest(dto, ENCODED_PW);
             then(userRepository).should(times(1)).save(newUser);
-            // 저장 후 인증 상태 소비 — 동일 토큰으로 재가입 방지
-            then(verificationService).should(times(1))
-                    .consumeConfirmation(EMAIL, VerificationType.SIGN_UP);
+
+            // consumeConfirmation 대신 이벤트 발행 검증
+            ArgumentCaptor<UserSignedUpEvent> eventCaptor = ArgumentCaptor.forClass(UserSignedUpEvent.class);
+            then(eventPublisher).should(times(1)).publishEvent(eventCaptor.capture());
+            UserSignedUpEvent event = eventCaptor.getValue();
+            assertThat(event.getEmail()).isEqualTo(EMAIL);
+
+            // consumeConfirmation은 SignUpPostCommitListener의 책임으로 이동
+            then(verificationService).should(never()).consumeConfirmation(any(), any());
         }
 
         @Test
-        @DisplayName("정상 회원가입 → 검증 순서가 토큰→이메일인증→DB중복→저장→인증소비 임을 확인한다")
+        @DisplayName("정상 회원가입: 검증 순서가 토큰 → 이메일인증 → DB중복 → 저장 → 이벤트발행 확인")
         void validSignUp_executesInCorrectOrder() {
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
@@ -209,14 +216,13 @@ class AuthServiceImplTest {
 
             authService.signUp(dto);
 
-            // InOrder: 호출 순서 위반 시 테스트 실패
-            var inOrder = inOrder(loginIdTokenUtil, verificationService, userRepository);
+            var inOrder = inOrder(loginIdTokenUtil, verificationService, userRepository, eventPublisher);
             inOrder.verify(loginIdTokenUtil).validate(LOGIN_ID, LOGIN_ID_TOKEN);
             inOrder.verify(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
             inOrder.verify(userRepository).existsByLoginId(LOGIN_ID);
             inOrder.verify(userRepository).existsByEmail(EMAIL);
             inOrder.verify(userRepository).save(any());
-            inOrder.verify(verificationService).consumeConfirmation(EMAIL, VerificationType.SIGN_UP);
+            inOrder.verify(eventPublisher).publishEvent(any(UserSignedUpEvent.class));
         }
     }
 
@@ -250,7 +256,7 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("유효한 AT + RT → 세션 롤링 후 새 토큰 쌍을 반환한다")
+        @DisplayName("유효한 AT + RT: 세션 롤링 후 새 토큰 쌍을 반환한다")
         void validTokens_returnsNewTokenPair() {
             stubFullReissueFlow();
 
@@ -261,7 +267,7 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("유효한 AT + RT → rotateDeviceSession과 rotateTokens가 올바른 인자로 호출된다")
+        @DisplayName("유효한 AT + RT: rotateDeviceSession과 rotateTokens가 올바른 인자로 호출된다")
         void validTokens_callsRotateWithCorrectArgs() {
             stubFullReissueFlow();
 
@@ -272,9 +278,8 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("RT가 Redis 값과 불일치 → validateRefreshToken이 AUTHENTICATION_FAIL을 던진다")
+        @DisplayName("RT가 Redis 값과 불일치: validateRefreshToken이 AUTHENTICATION_FAIL을 던진다")
         void mismatchedRt_throwsAuthenticationFail() {
-            // authenticateRefreshToken 성공, validateRefreshToken 실패 (탈취 의심)
             stubAuthenticateRt();
             willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL))
                     .given(tokenService)
@@ -285,15 +290,13 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
 
-            // validate 실패 후 rotateDeviceSession/rotateTokens 미호출
             then(deviceService).should(never()).rotateDeviceSession(anyLong(), anyString());
             then(tokenService).should(never()).rotateTokens(any(), any(), any(), any());
         }
 
         @Test
-        @DisplayName("rotateDeviceSession 실패 (세션 없음) → AUTHENTICATION_FAIL 예외가 전파된다")
+        @DisplayName("rotateDeviceSession 실패 (세션 없음): AUTHENTICATION_FAIL 예외가 전파된다")
         void rotateDeviceSession_fails_propagatesException() {
-            // deviceService가 존재하지 않는 sessionId로 예외를 던지는 시나리오
             stubAuthenticateRt();
             given(deviceService.rotateDeviceSession(USER_PK, SESSION_ID))
                     .willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
@@ -303,7 +306,6 @@ class AuthServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
 
-            // rotateDeviceSession 실패 → rotateTokens 미호출
             then(tokenService).should(never()).rotateTokens(any(), any(), any(), any());
         }
     }

@@ -1,9 +1,8 @@
-package com.han.back.global.notification.implement;
+package com.han.back.global.infra.notification.implement;
 
 import com.han.back.global.infra.notification.NotificationChannel;
 import com.han.back.global.infra.notification.NotificationPurpose;
 import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.implement.SmsNotificationSender;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
