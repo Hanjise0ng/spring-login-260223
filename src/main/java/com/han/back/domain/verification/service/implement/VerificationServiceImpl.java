@@ -9,9 +9,9 @@ import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.NotificationDispatcher;
 import com.han.back.global.infra.notification.NotificationPurpose;
 import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.NotificationSender;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import com.han.back.global.response.BaseResponseStatus;
@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,26 +30,22 @@ public class VerificationServiceImpl implements VerificationService {
 
     private final RedisUtil redisUtil;
     private final MailTemplateUtil mailTemplateUtil;
-    private final Map<NotificationChannel, NotificationSender> senderMap;
+    private final NotificationDispatcher notificationDispatcher;
     private final Map<VerificationType, VerificationPolicy> policyMap;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public VerificationServiceImpl(RedisUtil redisUtil, MailTemplateUtil mailTemplateUtil,
-                                   List<NotificationSender> senders, List<VerificationPolicy> policies) {
+    public VerificationServiceImpl(RedisUtil redisUtil,
+                                   MailTemplateUtil mailTemplateUtil,
+                                   NotificationDispatcher notificationDispatcher,
+                                   List<VerificationPolicy> policies) {
         this.redisUtil = redisUtil;
         this.mailTemplateUtil = mailTemplateUtil;
-        this.senderMap = senders.stream()
-                .collect(Collectors.toUnmodifiableMap(
-                        NotificationSender::getChannel,
-                        Function.identity()
-                ));
+        this.notificationDispatcher = notificationDispatcher;
         this.policyMap = policies.stream()
                 .flatMap(v -> v.getSupportedTypes().stream()
                         .map(type -> Map.entry(type, v)))
                 .collect(Collectors.toUnmodifiableMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue
-                ));
+                        Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
@@ -60,23 +55,21 @@ public class VerificationServiceImpl implements VerificationService {
         NotificationChannel channel = request.getChannel();
 
         channel.validateSupported();
-
-        NotificationSender sender = resolveSender(channel);
-
-        runPolicyCheck(type, target);
+        runPolicyCheck(type, target, channel);
         validateCooldown(type, target);
 
         String code = generateCode();
         storeCodeAndCooldown(type, target, code);
 
         String content = buildContent(channel, type, code);
-        sender.send(NotificationRequest.of(
+
+        notificationDispatcher.dispatch(NotificationRequest.of(
                 channel, target, type.getEmailSubject(), content,
                 NotificationPurpose.VERIFICATION,
                 "verification:" + type.name() + ":" + MaskingUtil.maskTarget(target)
         ));
 
-        log.info("Verification code sent - Type: {} | Channel: {} | Target: {}",
+        log.info("Verification code dispatched - Type: {} | Channel: {} | Target: {}",
                 type, channel, MaskingUtil.maskTarget(target));
 
         return VerificationSendResponseDto.of(VerificationConst.CODE_TTL, VerificationConst.COOLDOWN_TTL);
@@ -119,10 +112,10 @@ public class VerificationServiceImpl implements VerificationService {
         redisUtil.deleteData(VerificationConst.confirmedKey(type, target));
     }
 
-    private void runPolicyCheck(VerificationType type, String target) {
+    private void runPolicyCheck(VerificationType type, String target, NotificationChannel channel) {
         VerificationPolicy policy = policyMap.get(type);
         if (policy != null) {
-            policy.check(target);
+            policy.check(target, channel);
         }
     }
 
@@ -135,15 +128,6 @@ public class VerificationServiceImpl implements VerificationService {
     private void storeCodeAndCooldown(VerificationType type, String target, String code) {
         redisUtil.setDataExpire(VerificationConst.codeKey(type, target), code, VerificationConst.CODE_TTL);
         redisUtil.setDataExpire(VerificationConst.cooldownKey(type, target), "ACTIVE", VerificationConst.COOLDOWN_TTL);
-    }
-
-    private NotificationSender resolveSender(NotificationChannel channel) {
-        NotificationSender sender = senderMap.get(channel);
-        if (sender == null) {
-            log.error("NotificationSender implementation not found for channel: {}", channel);
-            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
-        }
-        return sender;
     }
 
     private String buildContent(NotificationChannel channel, VerificationType type, String code) {
