@@ -110,6 +110,7 @@ jacoco {
 
 tasks.named('test') {
     useJUnitPlatform()
+    jvmArgs('-XX:+EnableDynamicAgentLoading') // Mockito 경고 제거
     finalizedBy jacocoTestReport   // 테스트 완료 후 자동으로 리포트 생성
 }
 
