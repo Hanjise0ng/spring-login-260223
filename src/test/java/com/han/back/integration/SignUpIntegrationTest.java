@@ -5,6 +5,7 @@ import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.global.security.token.LoginIdTokenUtil;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,25 +17,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// [이메일 발송 처리 전략]
-// 실제 SMTP 발송은 통합 테스트에서 의미 없음. JavaMailSender를 @MockitoBean으로 교체
-// (@MockBean은 Spring Boot 3.4 / Spring Boot 4에서 @MockitoBean으로 대체됨)
-//
-// 이메일 발송 자체는 단위 테스트(EmailNotificationSender)에서 검증
-// 인증 코드는 발송 직후 Redis에서 직접 읽어 사용 → 실제 플로우와 동일한 상태를 만듦
-//
-// [LoginIdTokenUtil 처리 전략]
-// HMAC 서명 기반 실제 Bean 사용 → checkLoginId 응답 token을 signUp에 그대로 전달
 @DisplayName("회원가입 통합 테스트")
 class SignUpIntegrationTest extends IntegrationTestBase {
 
@@ -51,13 +43,8 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
     @BeforeEach
     void setUpMailSenderMock() {
-        // Session 없이 빈 MimeMessage 객체 생성
         MimeMessage mimeMessage = new MimeMessage((Session) null);
-
-        // createMimeMessage() 호출 시 빈 MimeMessage 반환
         when(javaMailSender.createMimeMessage()).thenReturn(mimeMessage);
-
-        // send() 호출 시 아무 동작도 하지 않음
         doNothing().when(javaMailSender).send(any(MimeMessage.class));
     }
 
@@ -150,20 +137,37 @@ class SignUpIntegrationTest extends IntegrationTestBase {
             assertThat(userRepository.existsByLoginId(LOGIN_ID)).isTrue();
             assertThat(userRepository.existsByEmail(EMAIL)).isTrue();
 
-            // Redis: confirmed 키 소비됨 (재가입 방지)
+            // consumeConfirmation이 AFTER_COMMIT 리스너로 이동
+            // 리스너는 같은 HTTP 스레드에서 동기 실행되므로 응답 시점에 이미 소비
             assertThat(redisTemplate.hasKey(
                     VerificationConst.confirmedKey(VerificationType.SIGN_UP, EMAIL))).isFalse();
         }
 
         @Test
+        @DisplayName("회원가입 완료 후 환영 메일 발송이 시도된다")
+        void fullSignUpFlow_attemptsWelcomeMailSend() throws Exception {
+            String loginIdToken = checkLoginId(LOGIN_ID);
+            injectConfirmedKey(EMAIL);
+
+            requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
+                    .andExpect(status().isOk());
+
+            // 환영 메일은 @Async 비동기 발송 — JavaMailSender.send 호출 대기
+            // 인증 코드 메일 1회 + 환영 메일 1회 = 최소 1회 이상 send 호출
+            Awaitility.await()
+                    .atMost(5, TimeUnit.SECONDS)
+                    .untilAsserted(() ->
+                            verify(javaMailSender, atLeast(1)).send(any(MimeMessage.class))
+                    );
+        }
+
+        @Test
         @DisplayName("회원가입 완료 후 동일 이메일로 재가입 시도하면 VNC가 반환된다")
         void signUpTwice_withConsumedConfirmedKey_returnsVnc() throws Exception {
-            // 첫 번째 가입
             String token1 = checkLoginId(LOGIN_ID);
             injectConfirmedKey(EMAIL);
             requestSignUp(LOGIN_ID, EMAIL, token1).andExpect(status().isOk());
 
-            // 두 번째 시도 — confirmed 키가 소비됐으므로 VNC
             String token2 = checkLoginId("newuser02");
             requestSignUp("newuser02", EMAIL, token2)
                     .andExpect(status().isBadRequest())
@@ -217,7 +221,6 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         void cooldownViolation_returns429Ca() throws Exception {
             sendVerificationCode(EMAIL);
 
-            // 즉시 재발송 → 쿨다운 위반
             mockMvc.perform(post("/api/v1/verification/send")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of(
@@ -228,7 +231,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         }
 
         @Test
-        @DisplayName("미지원 채널(SMS) 요청 시 422 UNC가 반환된다 — DB 조회 없이 즉시 차단")
+        @DisplayName("미지원 채널(SMS) 요청 시 422 UNC가 반환된다")
         void unsupportedChannel_returns422Unc() throws Exception {
             mockMvc.perform(post("/api/v1/verification/send")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -258,7 +261,6 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("CF"));
 
-            // 코드 키는 삭제되지 않아야 함 (재시도 가능)
             assertThat(getStoredVerificationCode(EMAIL)).isEqualTo(correctCode);
         }
     }
@@ -268,7 +270,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
     class SignUpFailures {
 
         @Test
-        @DisplayName("loginIdToken 필드 없이 회원가입 시 400 VF가 반환된다 — @NotBlank 검증")
+        @DisplayName("loginIdToken 필드 없이 회원가입 시 400 VF가 반환된다")
         void missingLoginIdToken_returns400Vf() throws Exception {
             injectConfirmedKey(EMAIL);
 
@@ -295,7 +297,6 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         @Test
         @DisplayName("다른 loginId로 발급된 토큰을 사용하면 400 LICR이 반환된다")
         void mismatchedLoginIdToken_returns400Licr() throws Exception {
-            // "otherid"로 발급된 토큰을 LOGIN_ID로 가입 시도 — LoginIdTokenUtil 실제 Bean 사용
             String otherToken = loginIdTokenUtil.issue("otherid");
             injectConfirmedKey(EMAIL);
 
@@ -317,11 +318,10 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         }
 
         @Test
-        @DisplayName("시간차로 같은 아이디가 선점되면 409 DI가 반환된다 — belt-and-suspenders")
+        @DisplayName("시간차로 같은 아이디가 선점되면 409 DI가 반환된다")
         void loginIdRaceCondition_returns409Di() throws Exception {
             String loginIdToken = checkLoginId(LOGIN_ID);
             injectConfirmedKey(EMAIL);
-            // 시간차 방어: 동일 loginId로 다른 사용자가 먼저 가입
             signUpAs(LOGIN_ID, "other@test.com");
 
             requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
@@ -330,7 +330,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         }
 
         @Test
-        @DisplayName("시간차로 같은 이메일이 선점되면 409 DE가 반환된다 — belt-and-suspenders")
+        @DisplayName("시간차로 같은 이메일이 선점되면 409 DE가 반환된다")
         void emailRaceCondition_returns409De() throws Exception {
             String loginIdToken = checkLoginId(LOGIN_ID);
             injectConfirmedKey(EMAIL);
