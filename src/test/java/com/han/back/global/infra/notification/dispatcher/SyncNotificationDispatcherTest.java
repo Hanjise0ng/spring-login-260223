@@ -6,13 +6,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.*;
@@ -31,13 +34,18 @@ class SyncNotificationDispatcherTest {
         dispatcher = new SyncNotificationDispatcher(List.of(emailSender), idempotencyGuard);
     }
 
+    static Stream<Arguments> purposeTtlProvider() {
+        return Stream.of(NotificationPurpose.values())
+                .map(p -> Arguments.of(p, p.getDedupeTtl()));
+    }
+
     @Test
     @DisplayName("이미 처리된 중복 요청이면 발송을 생략한다")
     void skipDuplicateDispatch() {
         NotificationRequest request = mock(NotificationRequest.class);
         given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
         given(request.getDedupeKey()).willReturn("key");
-        given(idempotencyGuard.tryAcquire(anyString(), anyLong())).willReturn(false);
+        given(idempotencyGuard.tryAcquire(anyString(), any(Duration.class))).willReturn(false);
 
         dispatcher.dispatch(request);
 
@@ -50,7 +58,7 @@ class SyncNotificationDispatcherTest {
         NotificationRequest request = mock(NotificationRequest.class);
         given(request.getPurpose()).willReturn(NotificationPurpose.WELCOME);
         given(request.getChannel()).willReturn(NotificationChannel.SMS);
-        given(idempotencyGuard.tryAcquire(any(), anyLong())).willReturn(true);
+        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
 
         assertThatThrownBy(() -> dispatcher.dispatch(request))
                 .isInstanceOf(IllegalStateException.class);
@@ -62,7 +70,7 @@ class SyncNotificationDispatcherTest {
         NotificationRequest request = mock(NotificationRequest.class);
         given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
         given(request.getChannel()).willReturn(NotificationChannel.EMAIL);
-        given(idempotencyGuard.tryAcquire(any(), anyLong())).willReturn(true);
+        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
         willThrow(new RuntimeException("Send error")).given(emailSender).send(request);
 
         assertThatThrownBy(() -> dispatcher.dispatch(request))
@@ -70,10 +78,10 @@ class SyncNotificationDispatcherTest {
                 .hasMessage("Send error");
     }
 
-    @ParameterizedTest
-    @CsvSource({"VERIFICATION, 3600", "WELCOME, 86400", "PASSWORD_RESET, 3600"})
+    @ParameterizedTest(name = "{0} → TTL = {1}")
+    @MethodSource("purposeTtlProvider")
     @DisplayName("목적(Purpose)에 따라 올바른 TTL을 설정한다")
-    void selectDedupeTtlByPurpose(NotificationPurpose purpose, long expectedTtl) {
+    void dedupeTtlMatchesPurpose(NotificationPurpose purpose, Duration expectedTtl) {
         NotificationRequest request = mock(NotificationRequest.class);
         given(request.getPurpose()).willReturn(purpose);
         given(request.getChannel()).willReturn(NotificationChannel.EMAIL);

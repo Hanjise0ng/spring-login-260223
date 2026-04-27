@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -14,12 +16,12 @@ public class NotificationIdempotencyGuard {
 
     private final RedisUtil redisUtil;
 
-    public boolean tryAcquire(String dedupeKey, long ttlSeconds) {
+    public boolean tryAcquire(String dedupeKey, Duration ttl) {
         if (dedupeKey == null || dedupeKey.isBlank()) {
             return true;
         }
         String key = KEY_PREFIX + dedupeKey;
-        boolean acquired = redisUtil.setIfAbsent(key, "1", ttlSeconds);
+        boolean acquired = redisUtil.setIfAbsent(key, "1", ttl);
         if (!acquired) {
             log.warn("Duplicate notification blocked - dedupeKey: {}", dedupeKey);
         }

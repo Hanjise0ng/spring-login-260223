@@ -1,11 +1,13 @@
 package com.han.back.global.security.token.transport;
 
-import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.util.CookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 @Component
 public class CookieTokenTransport implements TokenTransport {
@@ -17,7 +19,7 @@ public class CookieTokenTransport implements TokenTransport {
         CookieUtil.addSecureCookie(response,
                 AuthConst.COOKIE_REFRESH_TOKEN_NAME,
                 tokens.getRefreshToken(),
-                AuthConst.COOKIE_REFRESH_EXPIRATION);
+                AuthConst.REFRESH_TOKEN_TTL);
     }
 
     @Override
@@ -25,13 +27,13 @@ public class CookieTokenTransport implements TokenTransport {
         CookieUtil.addSecureCookie(response,
                 AuthConst.COOKIE_DEVICE_ID_NAME,
                 deviceFingerprint,
-                AuthConst.COOKIE_DEVICE_ID_MAX_AGE);
+                AuthConst.DEVICE_COOKIE_TTL);
     }
 
     @Override
     public void clear(HttpServletResponse response) {
         CookieUtil.addSecureCookie(response,
-                AuthConst.COOKIE_REFRESH_TOKEN_NAME, "", 0);
+                AuthConst.COOKIE_REFRESH_TOKEN_NAME, "", Duration.ZERO);
     }
 
 }

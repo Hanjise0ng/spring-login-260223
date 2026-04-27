@@ -1,15 +1,15 @@
 package com.han.back.global.security.service.implement;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.infra.redis.util.RedisUtil;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.JwtUtil;
-import com.han.back.global.infra.redis.util.RedisUtil;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -119,15 +119,24 @@ public class TokenServiceImpl implements TokenService {
     }
 
     private AuthToken createAndStoreTokens(Long id, Role role, String sessionId) {
-        String accessToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_ACCESS, id, role, sessionId, AuthConst.ACCESS_EXPIRATION);
-        String refreshToken = jwtUtil.createJwt(AuthConst.TOKEN_TYPE_REFRESH, id, role, sessionId, AuthConst.REFRESH_EXPIRATION);
+        String accessToken = jwtUtil.createJwt(
+                AuthConst.TOKEN_TYPE_ACCESS, id, role, sessionId,
+                AuthConst.ACCESS_TOKEN_TTL.toMillis());
+        String refreshToken = jwtUtil.createJwt(
+                AuthConst.TOKEN_TYPE_REFRESH, id, role, sessionId,
+                AuthConst.REFRESH_TOKEN_TTL.toMillis());
 
-        redisUtil.setDataExpire(buildRefreshKey(id, sessionId), refreshToken, AuthConst.REFRESH_EXPIRATION);
+        redisUtil.setDataExpire(buildRefreshKey(id, sessionId), refreshToken,
+                AuthConst.REFRESH_TOKEN_TTL);
+
         return AuthToken.of(accessToken, refreshToken);
     }
 
     private void blacklistSession(String sessionId) {
-        redisUtil.setDataExpire(AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX + sessionId, "revoked", AuthConst.ACCESS_EXPIRATION);
+        redisUtil.setDataExpire(
+                AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX + sessionId,
+                "revoked",
+                AuthConst.ACCESS_TOKEN_TTL);   // AT 수명만큼 블랙리스트 유지
     }
 
     private void revokeRefreshToken(Long id, String sessionId) {

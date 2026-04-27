@@ -1,14 +1,14 @@
 package com.han.back.global.security.service.implement;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.infra.redis.util.RedisUtil;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.JwtUtil;
-import com.han.back.global.infra.redis.util.RedisUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -47,7 +48,7 @@ class TokenServiceImplTest {
 
     @Captor private ArgumentCaptor<String> keyCaptor;
     @Captor private ArgumentCaptor<String> valueCaptor;
-    @Captor private ArgumentCaptor<Long> ttlCaptor;
+    @Captor private ArgumentCaptor<Duration> ttlCaptor;
 
     // createJwt AT/RT 양방향 Stub — SESSION_ID 기준
     private void stubJwtCreate() {
@@ -112,7 +113,7 @@ class TokenServiceImplTest {
             tokenService.issueTokens(USER_PK, ROLE, SESSION_ID);
 
             then(redisUtil).should().setDataExpire(any(), any(), ttlCaptor.capture());
-            assertThat(ttlCaptor.getValue()).isEqualTo(AuthConst.REFRESH_EXPIRATION);
+            assertThat(ttlCaptor.getValue()).isEqualTo(AuthConst.REFRESH_TOKEN_TTL);
         }
 
         @Test
@@ -123,7 +124,7 @@ class TokenServiceImplTest {
             tokenService.issueTokens(USER_PK, ROLE, SESSION_ID);
 
             then(redisUtil).should(times(1))
-                    .setDataExpire(eq(RT_KEY), eq(FAKE_RT), eq(AuthConst.REFRESH_EXPIRATION));
+                    .setDataExpire(eq(RT_KEY), eq(FAKE_RT), eq(AuthConst.REFRESH_TOKEN_TTL));
         }
     }
 
@@ -137,18 +138,18 @@ class TokenServiceImplTest {
             tokenService.invalidateSession(USER_PK, SESSION_ID);
 
             then(redisUtil).should()
-                    .setDataExpire(keyCaptor.capture(), eq("revoked"), anyLong());
+                    .setDataExpire(keyCaptor.capture(), eq("revoked"), any(Duration.class));
             assertThat(keyCaptor.getValue()).isEqualTo(BLACKLIST_KEY);
         }
 
         @Test
-        @DisplayName("블랙리스트 TTL은 AuthConst.ACCESS_EXPIRATION이다")
+        @DisplayName("블랙리스트 TTL은 AuthConst.ACCESS_TOKEN_TTL이다")
         void blacklistTtl_equalsAccessExpiration() {
             tokenService.invalidateSession(USER_PK, SESSION_ID);
 
             then(redisUtil).should()
                     .setDataExpire(startsWith("blacklist:"), any(), ttlCaptor.capture());
-            assertThat(ttlCaptor.getValue()).isEqualTo(AuthConst.ACCESS_EXPIRATION);
+            assertThat(ttlCaptor.getValue()).isEqualTo(AuthConst.ACCESS_TOKEN_TTL);
         }
 
         @Test
@@ -186,7 +187,7 @@ class TokenServiceImplTest {
             tokenService.rotateTokens(USER_PK, ROLE, OLD_SESSION, NEW_SESSION);
 
             then(redisUtil).should().setDataExpire(
-                    eq("blacklist:session:" + OLD_SESSION), eq("revoked"), anyLong());
+                    eq("blacklist:session:" + OLD_SESSION), eq("revoked"), any(Duration.class));
             then(redisUtil).should().deleteData("refresh:" + USER_PK + ":" + OLD_SESSION);
         }
 
@@ -196,7 +197,7 @@ class TokenServiceImplTest {
             tokenService.rotateTokens(USER_PK, ROLE, OLD_SESSION, NEW_SESSION);
 
             then(redisUtil).should().setDataExpire(
-                    eq("refresh:" + USER_PK + ":" + NEW_SESSION), eq(NEW_RT), anyLong());
+                    eq("refresh:" + USER_PK + ":" + NEW_SESSION), eq(NEW_RT), any(Duration.class));
         }
 
         @Test

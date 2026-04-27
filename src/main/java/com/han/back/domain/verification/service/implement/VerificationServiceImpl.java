@@ -94,8 +94,7 @@ public class VerificationServiceImpl implements VerificationService {
         redisUtil.setDataExpire(
                 VerificationConst.confirmedKey(type, target),
                 "CONFIRMED",
-                VerificationConst.CONFIRMED_TTL
-        );
+                VerificationConst.CONFIRMED_TTL);
 
         log.info("Verification code confirmed - Type: {} | Target: {}",
                 type, MaskingUtil.maskTarget(target));
@@ -127,17 +126,21 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     private void storeCodeAndCooldown(VerificationType type, String target, String code) {
-        redisUtil.setDataExpire(VerificationConst.codeKey(type, target), code, VerificationConst.CODE_TTL);
-        redisUtil.setDataExpire(VerificationConst.cooldownKey(type, target), "ACTIVE", VerificationConst.COOLDOWN_TTL);
+        redisUtil.setDataExpire(VerificationConst.codeKey(type, target),
+                code, VerificationConst.CODE_TTL);
+        redisUtil.setDataExpire(VerificationConst.cooldownKey(type, target),
+                "ACTIVE", VerificationConst.COOLDOWN_TTL);
     }
 
     private String buildContent(NotificationChannel channel, VerificationType type, String code) {
         if (channel == NotificationChannel.EMAIL) {
             return mailTemplateUtil.buildVerificationEmail(
-                    code, type.getDescription(), VerificationConst.CODE_TTL_MINUTES);
+                    code, type.getDescription(),
+                    VerificationConst.CODE_TTL.toMinutes());
         }
         return String.format("[HAN] %s code: %s (valid for %d min)",
-                type.getDescription(), code, VerificationConst.CODE_TTL_MINUTES);
+                type.getDescription(), code,
+                VerificationConst.CODE_TTL.toMinutes());
     }
 
     private String generateCode() {

@@ -24,6 +24,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -82,8 +83,8 @@ class VerificationServiceImplTest {
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
             );
 
-            assertThat(result.getCodeExpiresIn()).isEqualTo(VerificationConst.CODE_TTL / 1_000);
-            assertThat(result.getCooldownExpiresIn()).isEqualTo(VerificationConst.COOLDOWN_TTL / 1_000);
+            assertThat(result.getCodeExpiresIn()).isEqualTo(VerificationConst.CODE_TTL.toSeconds());
+            assertThat(result.getCooldownExpiresIn()).isEqualTo(VerificationConst.COOLDOWN_TTL.toSeconds());
             then(notificationDispatcher).should(times(1)).dispatch(any(NotificationRequest.class));
         }
 
@@ -175,7 +176,7 @@ class VerificationServiceImplTest {
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
 
-            then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
+            then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
             then(notificationDispatcher).should(never()).dispatch(any(NotificationRequest.class));
         }
 
@@ -206,7 +207,7 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL);
 
             then(redisUtil).should(never()).hasKey(anyString());
-            then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), anyLong());
+            then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
             then(notificationDispatcher).should(never()).dispatch(any(NotificationRequest.class));
         }
     }

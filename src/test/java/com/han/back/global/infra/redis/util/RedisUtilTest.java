@@ -42,10 +42,10 @@ class RedisUtilTest {
     @DisplayName("setDataExpire - 정상 처리")
     void setDataExpire_Success() {
         // when
-        redisUtil.setDataExpire("testKey", "testValue", 1000L);
+        redisUtil.setDataExpire("testKey", "testValue", Duration.ofSeconds(5));
 
         // then
-        verify(valueOperations).set("testKey", "testValue", Duration.ofMillis(1000L));
+        verify(valueOperations).set("testKey", "testValue", Duration.ofSeconds(5));
     }
 
     @Test
@@ -55,7 +55,7 @@ class RedisUtilTest {
         given(redisTemplate.opsForValue()).willThrow(new RuntimeException("Redis connection error"));
 
         // when & then
-        assertThatThrownBy(() -> redisUtil.setDataExpire("testKey", "testValue", 1000L))
+        assertThatThrownBy(() -> redisUtil.setDataExpire("testKey", "testValue", Duration.ofSeconds(5)))
                 .isInstanceOf(CustomException.class);
     }
 
@@ -63,11 +63,11 @@ class RedisUtilTest {
     @DisplayName("setIfAbsent - 정상적으로 저장되면 true를 반환한다")
     void setIfAbsent_Success() {
         // given
-        given(valueOperations.setIfAbsent("testKey", "testValue", Duration.ofMillis(1000L)))
+        given(valueOperations.setIfAbsent("testKey", "testValue", Duration.ofSeconds(5)))
                 .willReturn(true);
 
         // when
-        boolean result = redisUtil.setIfAbsent("testKey", "testValue", 1000L);
+        boolean result = redisUtil.setIfAbsent("testKey", "testValue", Duration.ofSeconds(5));
 
         // then
         assertThat(result).isTrue();
@@ -80,7 +80,7 @@ class RedisUtilTest {
         given(redisTemplate.opsForValue()).willThrow(new RuntimeException());
 
         // when & then
-        assertThatThrownBy(() -> redisUtil.setIfAbsent("testKey", "testValue", 1000L))
+        assertThatThrownBy(() -> redisUtil.setIfAbsent("testKey", "testValue", Duration.ofSeconds(5)))
                 .isInstanceOf(CustomException.class);
     }
 

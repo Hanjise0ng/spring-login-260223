@@ -1,7 +1,7 @@
 package com.han.back.global.infra.redis.util;
 
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -18,17 +18,19 @@ public class RedisUtil {
         this.redisTemplate = redisTemplate;
     }
 
-    public void setDataExpire(String key, String value, long durationMillis) {
+    public void setDataExpire(String key, String value, Duration ttl) {
         try {
-            redisTemplate.opsForValue().set(key, value, Duration.ofMillis(durationMillis));
+            redisTemplate.opsForValue().set(key, value, ttl);
         } catch (Exception e) {
             throw new CustomException(BaseResponseStatus.REDIS_ERROR);
         }
     }
 
-    public boolean setIfAbsent(String key, String value, long durationMillis) {
+    public boolean setIfAbsent(String key, String value, Duration ttl) {
         try {
-            return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, value, Duration.ofMillis(durationMillis)));
+            return Boolean.TRUE.equals(
+                    redisTemplate.opsForValue().setIfAbsent(key, value, ttl)
+            );
         } catch (Exception e) {
             throw new CustomException(BaseResponseStatus.REDIS_ERROR);
         }

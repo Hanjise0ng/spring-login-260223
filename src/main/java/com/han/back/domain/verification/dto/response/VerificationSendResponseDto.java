@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.Duration;
+
 @Schema(description = "인증 코드 발송 응답")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -16,10 +18,10 @@ public class VerificationSendResponseDto {
     @Schema(description = "재발송 쿨다운 남은 시간 (초)", example = "60")
     private final long cooldownExpiresIn;
 
-    public static VerificationSendResponseDto of(long codeExpiresInMillis, long cooldownExpiresInMillis) {
+    public static VerificationSendResponseDto of(Duration codeTtl, Duration cooldownTtl) {
         return new VerificationSendResponseDto(
-                codeExpiresInMillis / 1_000,
-                cooldownExpiresInMillis / 1_000
+                codeTtl.toSeconds(),
+                cooldownTtl.toSeconds()
         );
     }
 

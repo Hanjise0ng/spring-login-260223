@@ -1,15 +1,12 @@
 package com.han.back.global.infra.notification.dispatcher;
 
-import com.han.back.global.infra.notification.NotificationChannel;
-import com.han.back.global.infra.notification.NotificationDispatcher;
-import com.han.back.global.infra.notification.NotificationIdempotencyGuard;
-import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.NotificationSender;
+import com.han.back.global.infra.notification.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,8 +31,9 @@ public class AsyncNotificationDispatcher implements NotificationDispatcher {
     @Async("notificationExecutor")
     @Override
     public void dispatch(NotificationRequest request) {
-        long ttlSeconds = selectDedupeTtl(request);
-        if (!idempotencyGuard.tryAcquire(request.getDedupeKey(), ttlSeconds)) {
+        Duration ttl = request.getPurpose().getDedupeTtl();
+
+        if (!idempotencyGuard.tryAcquire(request.getDedupeKey(), ttl)) {
             log.info("Duplicate dispatch skipped - trace: {} | dedupeKey: {}",
                     request.getTraceKey(), request.getDedupeKey());
             return;
@@ -54,14 +52,6 @@ public class AsyncNotificationDispatcher implements NotificationDispatcher {
             log.error("Notification failed async - trace: {} | error: {}",
                     request.getTraceKey(), e.getMessage(), e);
         }
-    }
-
-    private long selectDedupeTtl(NotificationRequest request) {
-        return switch (request.getPurpose()) {
-            case VERIFICATION -> 3600;
-            case WELCOME -> 86400;
-            case PASSWORD_RESET -> 3600;
-        };
     }
 
 }

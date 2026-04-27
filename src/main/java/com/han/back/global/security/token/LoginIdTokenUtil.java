@@ -1,7 +1,7 @@
 package com.han.back.global.security.token;
 
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -26,7 +26,7 @@ public class LoginIdTokenUtil {
     }
 
     public String issue(String loginId) {
-        long expiresAt = System.currentTimeMillis() + AuthConst.LOGIN_ID_TOKEN_TTL;
+        long expiresAt = System.currentTimeMillis() + AuthConst.LOGIN_ID_TOKEN_TTL.toMillis();
 
         String payload = loginId + SEPARATOR + expiresAt;
         String signature = sign(payload);
@@ -56,7 +56,8 @@ public class LoginIdTokenUtil {
             long expiresAt = Long.parseLong(parts[1]);
 
             if (!tokenLoginId.equals(loginId)) {
-                log.warn("LoginId token loginId mismatch - expected: {}, actual: {}", loginId, tokenLoginId);
+                log.warn("LoginId token loginId mismatch - expected: {}, actual: {}",
+                        loginId, tokenLoginId);
                 throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
             }
 
@@ -67,7 +68,8 @@ public class LoginIdTokenUtil {
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("LoginId token validation failed - loginId: {}, cause: {}", loginId, e.getMessage());
+            log.warn("LoginId token validation failed - loginId: {}, cause: {}",
+                    loginId, e.getMessage());
             throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
         }
     }
@@ -76,8 +78,7 @@ public class LoginIdTokenUtil {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
             mac.init(new SecretKeySpec(
-                    secretKey.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM
-            ));
+                    secretKey.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(
                     mac.doFinal(payload.getBytes(StandardCharsets.UTF_8))
             );

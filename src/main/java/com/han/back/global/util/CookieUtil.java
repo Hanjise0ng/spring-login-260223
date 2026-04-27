@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseCookie;
 import org.springframework.web.util.WebUtils;
 
+import java.time.Duration;
 import java.util.Optional;
 
 public class CookieUtil {
@@ -16,7 +17,8 @@ public class CookieUtil {
         return Optional.ofNullable(cookie).map(Cookie::getValue);
     }
 
-    public static void addSecureCookie(HttpServletResponse response, String name, String value, long maxAge) {
+    public static void addSecureCookie(HttpServletResponse response,
+                                       String name, String value, Duration maxAge) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .path("/")
                 .maxAge(maxAge)
