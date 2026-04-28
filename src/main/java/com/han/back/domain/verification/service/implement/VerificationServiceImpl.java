@@ -144,8 +144,11 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     private String generateCode() {
-        return String.format("%0" + VerificationConst.CODE_LENGTH + "d",
-                secureRandom.nextInt(VerificationConst.CODE_BOUND));
+        StringBuilder sb = new StringBuilder(VerificationConst.CODE_LENGTH);
+        for (int i = 0; i < VerificationConst.CODE_LENGTH; i++) {
+            sb.append(secureRandom.nextInt(10));
+        }
+        return sb.toString();
     }
 
 }
