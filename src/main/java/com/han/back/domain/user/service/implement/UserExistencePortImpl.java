@@ -1,13 +1,13 @@
 package com.han.back.domain.user.service.implement;
 
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.domain.verification.service.UserExistenceChecker;
+import com.han.back.domain.verification.service.UserExistencePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class UserExistenceCheckerImpl implements UserExistenceChecker {
+public class UserExistencePortImpl implements UserExistencePort {
 
     private final UserRepository userRepository;
 

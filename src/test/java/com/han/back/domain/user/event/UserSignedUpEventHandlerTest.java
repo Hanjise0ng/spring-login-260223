@@ -25,7 +25,7 @@ import static org.mockito.BDDMockito.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("SignUpPostCommitListener")
-class SignUpPostCommitListenerTest {
+class UserSignedUpEventHandlerTest {
 
     @MockitoBean private NotificationDispatcher notificationDispatcher;
     @MockitoBean private VerificationService verificationService;

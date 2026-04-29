@@ -17,7 +17,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class SignUpPostCommitListener {
+public class UserSignedUpEventHandler {
 
     private final VerificationService verificationService;
     private final NotificationDispatcher notificationDispatcher;

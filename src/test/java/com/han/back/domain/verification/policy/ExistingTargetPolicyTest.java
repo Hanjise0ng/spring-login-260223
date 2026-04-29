@@ -1,7 +1,7 @@
 package com.han.back.domain.verification.policy;
 
 import com.han.back.domain.verification.entity.VerificationType;
-import com.han.back.domain.verification.service.UserExistenceChecker;
+import com.han.back.domain.verification.service.UserExistencePort;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.NotificationChannel;
 import com.han.back.global.response.BaseResponseStatus;
@@ -22,7 +22,7 @@ import static org.mockito.BDDMockito.*;
 @DisplayName("ExistingTargetPolicy")
 class ExistingTargetPolicyTest {
 
-    @Mock private UserExistenceChecker userExistenceChecker;
+    @Mock private UserExistencePort userExistencePort;
 
     @InjectMocks private ExistingTargetPolicy existingTargetPolicy;
 
@@ -48,18 +48,18 @@ class ExistingTargetPolicyTest {
         @Test
         @DisplayName("EMAIL 채널 + 존재하는 이메일 → 예외 없이 통과한다")
         void email_existing_passes() {
-            given(userExistenceChecker.existsByEmail(EMAIL)).willReturn(true);
+            given(userExistencePort.existsByEmail(EMAIL)).willReturn(true);
 
             assertThatCode(() -> existingTargetPolicy.check(EMAIL, NotificationChannel.EMAIL))
                     .doesNotThrowAnyException();
 
-            then(userExistenceChecker).should(times(1)).existsByEmail(EMAIL);
+            then(userExistencePort).should(times(1)).existsByEmail(EMAIL);
         }
 
         @Test
         @DisplayName("EMAIL 채널 + 존재하지 않는 이메일 → NOT_FOUND_USER 예외를 던진다")
         void email_nonExisting_throwsNotFoundUser() {
-            given(userExistenceChecker.existsByEmail(EMAIL)).willReturn(false);
+            given(userExistencePort.existsByEmail(EMAIL)).willReturn(false);
 
             assertThatThrownBy(() -> existingTargetPolicy.check(EMAIL, NotificationChannel.EMAIL))
                     .isInstanceOf(CustomException.class)

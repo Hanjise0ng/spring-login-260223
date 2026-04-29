@@ -1,6 +1,6 @@
 package com.han.back.domain.verification.service;
 
-public interface UserExistenceChecker {
+public interface UserExistencePort {
 
     boolean existsByEmail(String email);
 
