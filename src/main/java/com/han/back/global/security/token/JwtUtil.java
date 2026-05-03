@@ -21,12 +21,12 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
-    @Value("${spring.jwt.issuer}")
+    @Value("${jwt.issuer}")
     private String issuer;
 
     private final SecretKey secretKey;
 
-    public JwtUtil(@Value("${spring.jwt.secret}") String secret) {
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 

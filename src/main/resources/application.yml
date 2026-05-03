@@ -14,9 +14,6 @@ spring:
       enabled: always
 
   jpa:
-    hibernate:
-      ddl-auto: create
-    show-sql: true
     properties:
       hibernate:
         format_sql: true
@@ -33,21 +30,6 @@ spring:
   threads:
     virtual:
       enabled: true
-
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-  data:
-    redis:
-      host: localhost
-      port: 6379
 
   security:
     oauth2:
@@ -82,10 +64,16 @@ spring:
 notification:
   dispatcher: async
 
+trace:
+  strict-mode: false
+
 logging:
   level:
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:
@@ -98,5 +86,6 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
     display-request-duration: true
+
   default-produces-media-type: application/json
   default-consumes-media-type: application/json

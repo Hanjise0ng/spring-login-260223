@@ -1,12 +1,34 @@
-#spring:
-#  datasource:
-#    url: jdbc:h2:./data/db_dev;MODE=MySQL;TRACE_LEVEL_FILE=3
-#    username: sa
-#    password:
-#    driver-class-name: org.h2.Driver
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
-    show-sql: false
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+
+trace:
+  strict-mode: false
+
+logging:
+  level:
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.orm.jdbc.extract: TRACE
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json

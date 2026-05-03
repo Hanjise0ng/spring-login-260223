@@ -1,5 +1,6 @@
 package com.han.back.global.config;
 
+import com.han.back.global.trace.MdcTaskDecorator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy()); // 큐 포화 시 호출자 스레드에서 직접 실행 (유실 방지)
         executor.setWaitForTasksToCompleteOnShutdown(true);              // 서버 종료 시 잔여 작업 처리 보장 (Graceful Shutdown)
         executor.setAwaitTerminationSeconds(30);                         // 작업 완료 최대 대기 시간 (30초 초과 시 강제 종료)
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.initialize();
         return executor;
     }

@@ -3,7 +3,20 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: validate
     show-sql: false
+
+trace:
+  strict-mode: true
+
+logging:
+  level:
+    org.hibernate.orm.jdbc.bind: OFF
+    org.hibernate.orm.jdbc.extract: OFF
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:
