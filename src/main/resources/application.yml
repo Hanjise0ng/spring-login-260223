@@ -21,6 +21,7 @@ spring:
         use_sql_comments: true
         jdbc:
           time_zone: Asia/Seoul
+    open-in-view: false
 
   jackson:
     deserialization:
@@ -64,16 +65,10 @@ spring:
 notification:
   dispatcher: async
 
-trace:
-  strict-mode: false
-
 logging:
   level:
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
-
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:

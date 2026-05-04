@@ -16,7 +16,7 @@ logging:
     org.hibernate.orm.jdbc.extract: OFF
 
   pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:

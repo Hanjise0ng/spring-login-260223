@@ -57,12 +57,20 @@ public enum BaseResponseStatus {
     NOT_FOUND_DEVICE(HttpStatus.NOT_FOUND, "NFD", "Device not found."),
 
 
+    // ================== 메서드 불허 (405 Method Not Allowed) ==================
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "MNA", "HTTP method not allowed."),
+
+
     // ================== 데이터 충돌 및 논리 오류 (409 Conflict) ==================
     DUPLICATE_ID(HttpStatus.CONFLICT, "DI", "Duplicate Id."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DE", "Duplicate Email."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "AD", "The resource is already deleted."),
     SOCIAL_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "SAL", "This social account is already linked."),
     ACTIVE_DEVICE_CANNOT_DELETE(HttpStatus.CONFLICT, "ACD", "Active device cannot be deleted. Force logout first."),
+
+
+    // ================== 지원하지 않는 미디어 타입 (415 Unsupported Media Type) ==================
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UMT", "Unsupported media type."),
 
 
     // ================== 요청 처리 불가 (422 Unprocessable Content) ==================
