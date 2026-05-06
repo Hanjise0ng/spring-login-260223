@@ -44,13 +44,13 @@ public class EmailNotificationSender implements NotificationSender {
     public void send(NotificationRequest request) {
         MailSendStrategy strategy = strategyMap.get(request.getPurpose());
         if (strategy == null) {
-            log.error("No strategy for purpose: {} | target: {} | trace: {}",
-                    request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()), request.getTraceKey());
+            log.error("No strategy for purpose: {} | target: {}",
+                    request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()));
             throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
         }
 
-        log.debug("Dispatching to {} strategy - target: {} | trace: {}",
-                request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()), request.getTraceKey());
+        log.debug("Dispatching to {} strategy - target: {}",
+                request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()));
 
         strategy.send(request);
     }

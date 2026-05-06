@@ -1,5 +1,7 @@
 package com.han.back.global.infra.notification.dispatcher;
 
+import com.han.back.global.idempotency.IdempotencyGuard;
+import com.han.back.global.idempotency.IdempotencyResult;
 import com.han.back.global.infra.notification.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,37 +18,52 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "notification.dispatcher", havingValue = "sync")
 public class SyncNotificationDispatcher implements NotificationDispatcher {
 
+    private static final String SCOPE = "notification";
+
     private final Map<NotificationChannel, NotificationSender> senderMap;
-    private final NotificationIdempotencyGuard idempotencyGuard;
+    private final IdempotencyGuard idempotencyGuard;
 
     public SyncNotificationDispatcher(List<NotificationSender> senders,
-                                      NotificationIdempotencyGuard idempotencyGuard) {
+                                      IdempotencyGuard idempotencyGuard) {
         this.senderMap = senders.stream()
                 .collect(Collectors.toUnmodifiableMap(
                         NotificationSender::getChannel, Function.identity()));
         this.idempotencyGuard = idempotencyGuard;
     }
 
-    public void dispatch(NotificationRequest request) {
-        Duration ttl = request.getPurpose().getDedupeTtl();
+    @Override
+    public void dispatch(NotificationCommand command) {
+        NotificationRequest request = command.getRequest();
+        NotificationMetadata metadata = command.getMetadata();
+        Duration processingTtl = request.getPurpose().getDedupeTtl();
 
-        if (!idempotencyGuard.tryAcquire(request.getDedupeKey(), ttl)) {
-            log.info("Duplicate dispatch skipped (sync) - trace: {}", request.getTraceKey());
+        IdempotencyResult result = idempotencyGuard.tryAcquire(
+                SCOPE, metadata.getDedupeKey(), processingTtl);
+
+        if (result != IdempotencyResult.ACQUIRED) {
+            log.info("Dispatch skipped (sync) [{}] - trace: {}",
+                    result, metadata.getTraceKey());
             return;
         }
 
         NotificationSender sender = senderMap.get(request.getChannel());
         if (sender == null) {
-            log.error("No sender for channel: {} | trace: {}", request.getChannel(), request.getTraceKey());
-            throw new IllegalStateException("No sender for channel: " + request.getChannel());
+            idempotencyGuard.release(SCOPE, metadata.getDedupeKey());
+            log.error("No sender for channel: {} | trace: {}",
+                    request.getChannel(), metadata.getTraceKey());
+            throw new IllegalStateException(
+                    "No sender for channel: " + request.getChannel());
         }
 
         try {
             sender.send(request);
-            log.info("Notification sent sync - trace: {}", request.getTraceKey());
+            idempotencyGuard.complete(SCOPE, metadata.getDedupeKey(),
+                    request.getPurpose().getDedupeTtl());
+            log.debug("Notification sent sync - trace: {}", metadata.getTraceKey());
         } catch (Exception e) {
             log.error("Notification failed sync - trace: {} | error: {}",
-                    request.getTraceKey(), e.getMessage(), e);
+                    metadata.getTraceKey(), e.getMessage(), e);
+            idempotencyGuard.release(SCOPE, metadata.getDedupeKey());
             throw e;
         }
     }

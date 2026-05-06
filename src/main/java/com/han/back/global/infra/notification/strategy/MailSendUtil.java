@@ -29,7 +29,7 @@ public final class MailSendUtil {
         } catch (MailException e) {
             throw e;
         } catch (MessagingException e) {
-            log.error("Mail message assembly failed - trace: {}", request.getTraceKey(), e);
+            log.error("Mail message assembly failed", e);
             throw new CustomException(BaseResponseStatus.MAIL_FAIL);
         }
     }

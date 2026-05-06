@@ -12,6 +12,7 @@ trace:
 
 logging:
   level:
+    com.han.back: INFO
     org.hibernate.orm.jdbc.bind: OFF
     org.hibernate.orm.jdbc.extract: OFF
 

@@ -8,13 +8,11 @@ import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.infra.notification.NotificationChannel;
-import com.han.back.global.infra.notification.NotificationDispatcher;
-import com.han.back.global.infra.notification.NotificationPurpose;
-import com.han.back.global.infra.notification.NotificationRequest;
+import com.han.back.global.infra.notification.*;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.trace.TraceContext;
 import com.han.back.global.util.MaskingUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,16 +29,19 @@ public class VerificationServiceImpl implements VerificationService {
     private final RedisUtil redisUtil;
     private final MailTemplateUtil mailTemplateUtil;
     private final NotificationDispatcher notificationDispatcher;
+    private final NotificationKeyPolicy keyPolicy;
     private final Map<VerificationType, VerificationPolicy> policyMap;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public VerificationServiceImpl(RedisUtil redisUtil,
                                    MailTemplateUtil mailTemplateUtil,
                                    NotificationDispatcher notificationDispatcher,
+                                   NotificationKeyPolicy keyPolicy,
                                    List<VerificationPolicy> policies) {
         this.redisUtil = redisUtil;
         this.mailTemplateUtil = mailTemplateUtil;
         this.notificationDispatcher = notificationDispatcher;
+        this.keyPolicy = keyPolicy;
         this.policyMap = policies.stream()
                 .flatMap(v -> v.getSupportedTypes().stream()
                         .map(type -> Map.entry(type, v)))
@@ -63,11 +64,15 @@ public class VerificationServiceImpl implements VerificationService {
 
         String content = buildContent(channel, type, code);
 
-        notificationDispatcher.dispatch(NotificationRequest.of(
-                channel, target, type.getEmailSubject(), content,
-                NotificationPurpose.VERIFICATION,
-                "verification:" + type.name() + ":" + MaskingUtil.maskTarget(target),
-                "verification:" + type.name() + ":" + target + ":" + code
+        notificationDispatcher.dispatch(NotificationCommand.of(
+                NotificationRequest.of(
+                        channel, target, type.getEmailSubject(), content,
+                        NotificationPurpose.VERIFICATION
+                ),
+                NotificationMetadata.of(
+                        TraceContext.getTraceId(),
+                        keyPolicy.verification(type.name(), target)
+                )
         ));
 
         log.info("Verification code dispatched - Type: {} | Channel: {} | Target: {}",
