@@ -3,6 +3,7 @@ package com.han.back.global.security.handler;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.context.LogoutContext;
+import com.han.back.global.security.context.LogoutResult;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthHttpUtil;
@@ -33,7 +34,7 @@ public class CustomLogoutHandler implements LogoutHandler {
 
         if (userDetails.isEmpty()) {
             log.warn("Logout Failed - Unable to identify user | ClientIP: {}", request.getRemoteAddr());
-            LogoutContext.setResult(request, LogoutContext.Result.UNAUTHENTICATED);
+            LogoutContext.setResult(request, LogoutResult.UNAUTHENTICATED);
             return;
         }
 
@@ -44,12 +45,12 @@ public class CustomLogoutHandler implements LogoutHandler {
             deviceService.deactivateSession(user.getId(), user.getSessionId());
             tokenTransportResolver.resolve(request).clear(response);
 
-            LogoutContext.setResult(request, LogoutContext.Result.SUCCESS);
+            LogoutContext.setResult(request, LogoutResult.SUCCESS);
             log.info("Logout Success - UserPK: {} | SessionId: {} | ClientIP: {}",
                     user.getId(), user.getSessionId(), request.getRemoteAddr());
 
         } catch (CustomException e) { // Redis 장애 또는 DB 오류
-            LogoutContext.setResult(request, LogoutContext.Result.REDIS_ERROR);
+            LogoutContext.setResult(request, LogoutResult.REDIS_ERROR);
             log.error("Logout Failed - UserPK: {} | Reason: {} | ClientIP: {}",
                     user.getId(), e.getMessage(), request.getRemoteAddr(), e);
         }

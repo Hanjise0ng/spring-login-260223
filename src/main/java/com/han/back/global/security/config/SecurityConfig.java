@@ -4,11 +4,7 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
-import com.han.back.global.security.handler.CustomAuthenticationEntryPoint;
-import com.han.back.global.security.handler.CustomLogoutHandler;
-import com.han.back.global.security.handler.CustomLogoutSuccessHandler;
-import com.han.back.global.security.login.LoginSuccessProcessor;
-import com.han.back.global.util.HttpResponseUtil;
+import com.han.back.global.security.handler.*;
 import com.han.back.global.util.SecurityPathConst;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -32,14 +28,14 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsConfig;
     private final AuthenticationConfiguration authConfig;
 
-    private final LoginSuccessProcessor loginSuccessProcessor;
-    private final HttpResponseUtil httpResponseUtil;
     private final ObjectMapper objectMapper;
 
     private final JwtFilter jwtFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
 
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomLoginSuccessHandler customLoginSuccessHandler;
+    private final CustomLoginFailureHandler  customLoginFailureHandler;
     private final CustomLogoutHandler customLogoutHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 
@@ -47,22 +43,22 @@ public class SecurityConfig {
             @Qualifier("appCorsConfigurationSource") CorsConfigurationSource corsConfig,
             AuthenticationConfiguration authConfig,
             ObjectMapper objectMapper,
-            LoginSuccessProcessor loginSuccessProcessor,
-            HttpResponseUtil httpResponseUtil,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
             CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
+            CustomLoginSuccessHandler customLoginSuccessHandler,
+            CustomLoginFailureHandler customLoginFailureHandler,
             CustomLogoutHandler customLogoutHandler,
             CustomLogoutSuccessHandler customLogoutSuccessHandler
     ) {
         this.corsConfig = corsConfig;
         this.authConfig = authConfig;
         this.objectMapper = objectMapper;
-        this.loginSuccessProcessor = loginSuccessProcessor;
-        this.httpResponseUtil = httpResponseUtil;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
         this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
+        this.customLoginSuccessHandler = customLoginSuccessHandler;
+        this.customLoginFailureHandler = customLoginFailureHandler;
         this.customLogoutHandler = customLogoutHandler;
         this.customLogoutSuccessHandler = customLogoutSuccessHandler;
     }
@@ -75,7 +71,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         LoginFilter loginFilter = new LoginFilter(
-                authenticationManager(), objectMapper, loginSuccessProcessor, httpResponseUtil
+                authenticationManager(), objectMapper,
+                customLoginSuccessHandler, customLoginFailureHandler
         );
 
         configureCors(http);

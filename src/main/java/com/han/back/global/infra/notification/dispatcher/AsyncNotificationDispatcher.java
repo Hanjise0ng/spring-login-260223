@@ -47,7 +47,7 @@ public class AsyncNotificationDispatcher implements NotificationDispatcher {
 
         try {
             sender.send(request);
-            log.debug("Notification dispatched async - trace: {}", request.getTraceKey());
+            log.info("Notification dispatched async - trace: {}", request.getTraceKey());
         } catch (Exception e) {
             log.error("Notification failed async - trace: {} | error: {}",
                     request.getTraceKey(), e.getMessage(), e);

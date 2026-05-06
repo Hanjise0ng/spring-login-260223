@@ -43,7 +43,7 @@ public class SyncNotificationDispatcher implements NotificationDispatcher {
 
         try {
             sender.send(request);
-            log.debug("Notification sent sync - trace: {}", request.getTraceKey());
+            log.info("Notification sent sync - trace: {}", request.getTraceKey());
         } catch (Exception e) {
             log.error("Notification failed sync - trace: {} | error: {}",
                     request.getTraceKey(), e.getMessage(), e);
