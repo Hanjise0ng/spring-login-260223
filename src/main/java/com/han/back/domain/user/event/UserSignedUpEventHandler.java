@@ -2,7 +2,9 @@ package com.han.back.domain.user.event;
 
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
-import com.han.back.global.infra.notification.*;
+import com.han.back.global.infra.notification.dispatcher.NotificationDispatcher;
+import com.han.back.global.infra.notification.model.*;
+import com.han.back.global.infra.notification.policy.NotificationKeyPolicy;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.trace.TraceContext;
 import com.han.back.global.util.MaskingUtil;

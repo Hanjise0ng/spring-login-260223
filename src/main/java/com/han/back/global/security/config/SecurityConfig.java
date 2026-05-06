@@ -5,6 +5,10 @@ import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
 import com.han.back.global.security.handler.*;
+import com.han.back.global.security.login.CustomLoginFailureHandler;
+import com.han.back.global.security.login.CustomLoginSuccessHandler;
+import com.han.back.global.security.logout.CustomLogoutHandler;
+import com.han.back.global.security.logout.CustomLogoutSuccessHandler;
 import com.han.back.global.util.SecurityPathConst;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -35,7 +39,7 @@ public class SecurityConfig {
 
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomLoginSuccessHandler customLoginSuccessHandler;
-    private final CustomLoginFailureHandler  customLoginFailureHandler;
+    private final CustomLoginFailureHandler customLoginFailureHandler;
     private final CustomLogoutHandler customLogoutHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 

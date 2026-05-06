@@ -4,7 +4,7 @@ import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.UserExistencePort;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.model.NotificationChannel;
 import com.han.back.global.response.BaseResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

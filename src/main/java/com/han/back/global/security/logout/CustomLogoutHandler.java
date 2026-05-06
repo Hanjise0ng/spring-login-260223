@@ -1,9 +1,7 @@
-package com.han.back.global.security.handler;
+package com.han.back.global.security.logout;
 
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.security.context.LogoutContext;
-import com.han.back.global.security.context.LogoutResult;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthHttpUtil;

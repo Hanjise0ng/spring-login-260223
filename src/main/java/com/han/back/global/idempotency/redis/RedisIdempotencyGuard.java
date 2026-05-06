@@ -1,5 +1,7 @@
-package com.han.back.global.idempotency;
+package com.han.back.global.idempotency.redis;
 
+import com.han.back.global.idempotency.IdempotencyGuard;
+import com.han.back.global.idempotency.IdempotencyResult;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

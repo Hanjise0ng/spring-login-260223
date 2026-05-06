@@ -1,4 +1,4 @@
-package com.han.back.global.infra.notification;
+package com.han.back.global.infra.notification.policy;
 
 import org.springframework.stereotype.Component;
 

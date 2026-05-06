@@ -1,6 +1,5 @@
-package com.han.back.global.security.handler;
+package com.han.back.global.security.login;
 
-import com.han.back.global.security.login.LoginSuccessProcessor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

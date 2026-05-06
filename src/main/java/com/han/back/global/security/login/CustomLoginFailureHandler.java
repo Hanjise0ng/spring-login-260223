@@ -1,4 +1,4 @@
-package com.han.back.global.security.handler;
+package com.han.back.global.security.login;
 
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.BaseResponseStatus;

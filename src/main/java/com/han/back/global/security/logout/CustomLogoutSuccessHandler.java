@@ -1,7 +1,6 @@
-package com.han.back.global.security.handler;
+package com.han.back.global.security.logout;
 
 import com.han.back.global.response.BaseResponseStatus;
-import com.han.back.global.security.context.LogoutContext;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

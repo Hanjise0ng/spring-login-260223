@@ -1,10 +1,9 @@
-package com.han.back.global.infra.notification.implement;
+package com.han.back.global.infra.notification.sender;
 
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.infra.notification.NotificationChannel;
-import com.han.back.global.infra.notification.NotificationPurpose;
-import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.NotificationSender;
+import com.han.back.global.infra.notification.model.NotificationChannel;
+import com.han.back.global.infra.notification.model.NotificationPurpose;
+import com.han.back.global.infra.notification.model.NotificationRequest;
 import com.han.back.global.infra.notification.strategy.MailSendStrategy;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.util.MaskingUtil;

@@ -1,7 +1,7 @@
 package com.han.back.domain.verification.service;
 
 import com.han.back.domain.verification.entity.VerificationType;
-import com.han.back.global.infra.notification.NotificationChannel;
+import com.han.back.global.infra.notification.model.NotificationChannel;
 
 import java.util.Set;
 

@@ -1,7 +1,7 @@
 package com.han.back.global.infra.notification.strategy;
 
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.infra.notification.NotificationRequest;
+import com.han.back.global.infra.notification.model.NotificationRequest;
 import com.han.back.global.response.BaseResponseStatus;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
