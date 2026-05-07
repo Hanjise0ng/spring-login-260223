@@ -68,25 +68,29 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager() throws Exception {
+    public AuthenticationManager authenticationManager() {
         return authConfig.getAuthenticationManager();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        LoginFilter loginFilter = new LoginFilter(
-                authenticationManager(), objectMapper,
-                customLoginSuccessHandler, customLoginFailureHandler
-        );
-
         configureCors(http);
         configureSecurity(http);
         configureAuthorization(http);
-        configureFilters(http, loginFilter);
+        configureFilters(http, buildLoginFilter(authenticationManager()));
         configureExceptionHandling(http);
         configureLogout(http);
 
         return http.build();
+    }
+
+    private LoginFilter buildLoginFilter(AuthenticationManager authenticationManager) {
+        return new LoginFilter(
+                authenticationManager,
+                objectMapper,
+                customLoginSuccessHandler,
+                customLoginFailureHandler
+        );
     }
 
     private void configureCors(HttpSecurity http) {
