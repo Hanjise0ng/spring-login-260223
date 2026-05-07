@@ -1,6 +1,9 @@
 package com.han.back.global.infra.notification.dispatcher;
 
-import com.han.back.global.infra.notification.*;
+import com.han.back.global.idempotency.IdempotencyGuard;
+import com.han.back.global.idempotency.IdempotencyResult;
+import com.han.back.global.infra.notification.model.*;
+import com.han.back.global.infra.notification.sender.NotificationSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +28,8 @@ import static org.mockito.BDDMockito.*;
 class SyncNotificationDispatcherTest {
 
     @Mock private NotificationSender emailSender;
-    @Mock private NotificationIdempotencyGuard idempotencyGuard;
+    @Mock private IdempotencyGuard idempotencyGuard;
+
     private SyncNotificationDispatcher dispatcher;
 
     @BeforeEach
@@ -34,63 +38,99 @@ class SyncNotificationDispatcherTest {
         dispatcher = new SyncNotificationDispatcher(List.of(emailSender), idempotencyGuard);
     }
 
+    private static NotificationCommand buildCommand(
+            NotificationPurpose purpose,
+            NotificationChannel channel,
+            String dedupeKey
+    ) {
+        NotificationRequest request = NotificationRequest.of(
+                channel, "test@example.com", "제목", "본문", purpose
+        );
+        NotificationMetadata metadata = NotificationMetadata.of("trace-001", dedupeKey);
+        return NotificationCommand.of(request, metadata);
+    }
+
     static Stream<Arguments> purposeTtlProvider() {
         return Stream.of(NotificationPurpose.values())
                 .map(p -> Arguments.of(p, p.getDedupeTtl()));
     }
 
     @Test
-    @DisplayName("이미 처리된 중복 요청이면 발송을 생략한다")
+    @DisplayName("중복 요청(COMPLETED/PROCESSING)이면 발송을 생략한다")
     void skipDuplicateDispatch() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
-        given(request.getDedupeKey()).willReturn("key");
-        given(idempotencyGuard.tryAcquire(anyString(), any(Duration.class))).willReturn(false);
+        // given
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.VERIFICATION, NotificationChannel.EMAIL, "dedupe-123"
+        );
+        // tryAcquire 3인자 / IdempotencyResult 반환
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.COMPLETED);
 
-        dispatcher.dispatch(request);
+        // when
+        dispatcher.dispatch(command);
 
+        // then
         verify(emailSender, never()).send(any());
     }
 
     @Test
-    @DisplayName("등록되지 않은 채널이면 IllegalStateException을 던진다")
+    @DisplayName("등록되지 않은 채널이면 release() 후 IllegalStateException을 던진다")
     void noSenderFoundThrowsException() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.WELCOME);
-        given(request.getChannel()).willReturn(NotificationChannel.SMS);
-        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
+        // given - SMS 채널로 요청하지만 emailSender만 등록된 상황
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.WELCOME, NotificationChannel.SMS, "dedupe-456"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
 
-        assertThatThrownBy(() -> dispatcher.dispatch(request))
-                .isInstanceOf(IllegalStateException.class);
+        // when & then
+        assertThatThrownBy(() -> dispatcher.dispatch(command))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No sender for channel");
+
+        // Sync에서는 sender 없을 때 acquire한 key를 반드시 release 후 예외를 던져야 함
+        // release()가 없으면 해당 dedupeKey가 PROCESSING 상태로 영구 잠금됨
+        verify(idempotencyGuard).release(anyString(), eq("dedupe-456"));
     }
 
     @Test
-    @DisplayName("발송 중 예외가 발생하면 Sync 환경에서는 예외를 밖으로 던진다")
-    void exceptionDuringSendIsThrown() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
-        given(request.getChannel()).willReturn(NotificationChannel.EMAIL);
-        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
-        willThrow(new RuntimeException("Send error")).given(emailSender).send(request);
+    @DisplayName("발송 중 예외가 발생하면 release() 후 예외를 호출자에게 던진다")
+    void exceptionDuringSendIsRethrown() {
+        // given
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.VERIFICATION, NotificationChannel.EMAIL, "dedupe-789"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
+        willThrow(new RuntimeException("SMTP 연결 실패")).given(emailSender).send(any());
 
-        assertThatThrownBy(() -> dispatcher.dispatch(request))
+        // when & then - Sync는 예외를 호출자에게 전파해야 함 (트랜잭션 롤백 트리거)
+        assertThatThrownBy(() -> dispatcher.dispatch(command))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessage("Send error");
+                .hasMessage("SMTP 연결 실패");
+
+        // 발송 실패 시 반드시 release() 호출 → 재시도 가능 상태로 복구
+        // release()가 없으면 다음 요청이 PROCESSING으로 차단됨
+        verify(idempotencyGuard).release(anyString(), eq("dedupe-789"));
     }
 
     @ParameterizedTest(name = "{0} → TTL = {1}")
     @MethodSource("purposeTtlProvider")
-    @DisplayName("목적(Purpose)에 따라 올바른 TTL을 설정한다")
+    @DisplayName("알림 목적(Purpose)에 따라 올바른 TTL로 tryAcquire가 호출된다")
     void dedupeTtlMatchesPurpose(NotificationPurpose purpose, Duration expectedTtl) {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(purpose);
-        given(request.getChannel()).willReturn(NotificationChannel.EMAIL);
-        given(request.getDedupeKey()).willReturn("key");
-        given(idempotencyGuard.tryAcquire(eq("key"), eq(expectedTtl))).willReturn(true);
+        // given
+        NotificationCommand command = buildCommand(
+                purpose, NotificationChannel.EMAIL, "ttl-test-key"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
 
-        dispatcher.dispatch(request);
+        // when
+        dispatcher.dispatch(command);
 
-        verify(idempotencyGuard).tryAcquire("key", expectedTtl);
+        // then - scope는 "notification" 고정, key와 ttl만 검증
+        // SCOPE 상수가 바뀌면 테스트가 잡아줌
+        verify(idempotencyGuard).tryAcquire(eq("notification"), eq("ttl-test-key"), eq(expectedTtl));
     }
 
 }

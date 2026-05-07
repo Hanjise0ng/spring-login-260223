@@ -1,10 +1,9 @@
 package com.han.back.global.infra.notification.dispatcher;
 
-import com.han.back.global.infra.notification.NotificationChannel;
-import com.han.back.global.infra.notification.NotificationIdempotencyGuard;
-import com.han.back.global.infra.notification.NotificationPurpose;
-import com.han.back.global.infra.notification.NotificationRequest;
-import com.han.back.global.infra.notification.NotificationSender;
+import com.han.back.global.idempotency.IdempotencyGuard;
+import com.han.back.global.idempotency.IdempotencyResult;
+import com.han.back.global.infra.notification.model.*;
+import com.han.back.global.infra.notification.sender.NotificationSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +27,7 @@ import static org.mockito.BDDMockito.*;
 class AsyncNotificationDispatcherTest {
 
     @Mock private NotificationSender emailSender;
-    @Mock private NotificationIdempotencyGuard idempotencyGuard;
+    @Mock private IdempotencyGuard idempotencyGuard;
 
     private AsyncNotificationDispatcher dispatcher;
 
@@ -38,69 +37,93 @@ class AsyncNotificationDispatcherTest {
         dispatcher = new AsyncNotificationDispatcher(List.of(emailSender), idempotencyGuard);
     }
 
-    // ── 파라미터 소스 ──────────────────────────────────────────────
-    // Purpose가 TTL을 소유하므로 enum에서 직접 가져옴
-    // → Purpose TTL이 바뀌면 테스트도 자동으로 반영됨
+    private static NotificationCommand buildCommand(
+            NotificationPurpose purpose,
+            NotificationChannel channel,
+            String dedupeKey
+    ) {
+        NotificationRequest request = NotificationRequest.of(
+                channel, "test@example.com", "제목", "본문", purpose
+        );
+        NotificationMetadata metadata = NotificationMetadata.of("trace-001", dedupeKey);
+        return NotificationCommand.of(request, metadata);
+    }
+
     static Stream<Arguments> purposeTtlProvider() {
         return Stream.of(NotificationPurpose.values())
                 .map(p -> Arguments.of(p, p.getDedupeTtl()));
     }
 
-    // ── 테스트 ────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("이미 처리된 중복 요청(tryAcquire=false)이면 발송을 생략한다")
+    @DisplayName("중복 요청(COMPLETED/PROCESSING)이면 발송을 생략한다")
     void skipDuplicateDispatch() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
-        given(request.getDedupeKey()).willReturn("dedupe-123");
-        // Duration을 any()로 매칭 — tryAcquire 시그니처가 Duration으로 변경됨
-        given(idempotencyGuard.tryAcquire(anyString(), any(Duration.class))).willReturn(false);
+        // given
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.VERIFICATION, NotificationChannel.EMAIL, "dedupe-123"
+        );
 
-        dispatcher.dispatch(request);
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.COMPLETED);
 
+        // when
+        dispatcher.dispatch(command);
+
+        // then
         verify(emailSender, never()).send(any());
     }
 
     @Test
     @DisplayName("요청된 채널에 해당하는 Sender가 없으면 예외 없이 로깅 후 종료한다")
     void noSenderFound() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.WELCOME);
-        given(request.getChannel()).willReturn(NotificationChannel.SMS);
-        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
+        // given - SMS 채널로 요청하지만 emailSender만 등록된 상황
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.WELCOME, NotificationChannel.SMS, "dedupe-456"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
 
-        dispatcher.dispatch(request);
+        // when
+        dispatcher.dispatch(command);
 
+        // then
         verify(emailSender, never()).send(any());
     }
 
     @Test
-    @DisplayName("발송 중 예외가 발생해도 Async 환경에서는 예외를 던지지 않고 처리한다")
+    @DisplayName("발송 중 예외가 발생해도 Async 환경에서는 예외를 밖으로 전파하지 않는다")
     void exceptionDuringSendIsCaught() {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
-        given(request.getChannel()).willReturn(NotificationChannel.EMAIL);
-        given(idempotencyGuard.tryAcquire(any(), any(Duration.class))).willReturn(true);
-        willThrow(new RuntimeException("Send Failure")).given(emailSender).send(request);
+        // given
+        NotificationCommand command = buildCommand(
+                NotificationPurpose.VERIFICATION, NotificationChannel.EMAIL, "dedupe-789"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
+        willThrow(new RuntimeException("SMTP 연결 실패")).given(emailSender).send(any());
 
-        dispatcher.dispatch(request);
-        // then: 예외가 밖으로 던져지지 않아야 성공
+        // when & then: 예외가 밖으로 나오지 않으면 통과
+        dispatcher.dispatch(command);
+
+        // 실패 시 release()가 호출되는지 추가 검증
+        verify(idempotencyGuard).release(anyString(), eq("dedupe-789"));
     }
 
     @ParameterizedTest(name = "{0} → TTL = {1}")
     @MethodSource("purposeTtlProvider")
-    @DisplayName("알림 목적(Purpose)에 따라 올바른 TTL이 설정된다")
+    @DisplayName("알림 목적(Purpose)에 따라 올바른 TTL로 tryAcquire가 호출된다")
     void dedupeTtlMatchesPurpose(NotificationPurpose purpose, Duration expectedTtl) {
-        NotificationRequest request = mock(NotificationRequest.class);
-        given(request.getPurpose()).willReturn(purpose);
-        given(request.getChannel()).willReturn(NotificationChannel.EMAIL);
-        given(request.getDedupeKey()).willReturn("key");
-        given(idempotencyGuard.tryAcquire(eq("key"), eq(expectedTtl))).willReturn(true);
+        // given
+        NotificationCommand command = buildCommand(
+                purpose, NotificationChannel.EMAIL, "ttl-test-key"
+        );
+        given(idempotencyGuard.tryAcquire(anyString(), anyString(), any(Duration.class)))
+                .willReturn(IdempotencyResult.ACQUIRED);
 
-        dispatcher.dispatch(request);
+        // when
+        dispatcher.dispatch(command);
 
-        verify(idempotencyGuard).tryAcquire("key", expectedTtl);
+        // then - scope는 "notification" 고정, key와 ttl만 검증
+        // 실제 프로덕션 코드의 SCOPE 상수("notification")와 맞춤
+        verify(idempotencyGuard).tryAcquire(eq("notification"), eq("ttl-test-key"), eq(expectedTtl));
     }
 
 }
