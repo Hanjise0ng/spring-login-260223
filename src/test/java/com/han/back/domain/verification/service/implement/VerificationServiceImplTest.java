@@ -13,8 +13,10 @@ import com.han.back.global.infra.notification.model.NotificationCommand;
 import com.han.back.global.infra.notification.model.NotificationPurpose;
 import com.han.back.global.infra.notification.policy.NotificationKeyPolicy;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
+import com.han.back.global.infra.redis.util.RateLimitUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.util.RateLimitConst;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +41,7 @@ import static org.mockito.BDDMockito.*;
 class VerificationServiceImplTest {
 
     @Mock private RedisUtil redisUtil;
+    @Mock private RateLimitUtil rateLimitUtil;
     @Mock private MailTemplateUtil mailTemplateUtil;
     @Mock private NotificationDispatcher notificationDispatcher;
     @Mock private NotificationKeyPolicy keyPolicy;
@@ -65,16 +68,22 @@ class VerificationServiceImplTest {
                 .willReturn(Set.of(VerificationType.PASSWORD_RESET));
 
         verificationService = new VerificationServiceImpl(
-                redisUtil, mailTemplateUtil,
+                redisUtil, rateLimitUtil,
+                mailTemplateUtil,
                 notificationDispatcher,
                 keyPolicy,
                 List.of(signUpPolicy, passwordResetPolicy)
         );
     }
 
-    /** 쿨다운 통과 + 코드/쿨다운 저장 직전까지 필요한 stub */
+    /**
+     * 쿨다운 통과 + 시간당 제한 통과 stub.
+     * - hasKey(cooldownKey) → false
+     * - rateLimitUtil.incrementHourly(any) → 1L (첫 번째 발송)
+     */
     private void stubSendCodeBeforeDispatch() {
         given(redisUtil.hasKey(anyString())).willReturn(false);
+        given(rateLimitUtil.incrementHourly(anyString())).willReturn(1L);
     }
 
     /** dispatch 직전 전체 경로 — stubSendCodeBeforeDispatch 포함 */
@@ -105,7 +114,7 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("정상 요청 → 보안 검증 순서: 채널 → 정책 → 쿨다운 → 저장 → 발송")
+        @DisplayName("정상 요청 → 보안 검증 순서: 채널 → 정책 → 쿨다운 → 시간제한 → 저장 → 발송")
         void happyPath_executesInSecurityOrder() {
             stubSendCodeToDispatch();
 
@@ -113,10 +122,11 @@ class VerificationServiceImplTest {
                     new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
             );
 
-            var inOrder = inOrder(signUpPolicy, redisUtil, mailTemplateUtil, notificationDispatcher);
+            var inOrder = inOrder(signUpPolicy, redisUtil, rateLimitUtil, mailTemplateUtil, notificationDispatcher);
             inOrder.verify(signUpPolicy).check(EMAIL, NotificationChannel.EMAIL);
             inOrder.verify(redisUtil).hasKey(
                     VerificationConst.cooldownKey(VerificationType.SIGN_UP, EMAIL));
+            inOrder.verify(rateLimitUtil).incrementHourly(anyString());
             inOrder.verify(redisUtil).setDataExpire(
                     eq(VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL)),
                     anyString(), eq(VerificationConst.CODE_TTL));
@@ -195,6 +205,7 @@ class VerificationServiceImplTest {
 
             then(redisUtil).should(never()).hasKey(anyString());
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
+            then(rateLimitUtil).should(never()).incrementHourly(anyString());
             then(notificationDispatcher).should(never()).dispatch(any(NotificationCommand.class));
         }
 
@@ -212,6 +223,7 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
+            then(rateLimitUtil).should(never()).incrementHourly(anyString());
             then(notificationDispatcher).should(never()).dispatch(any(NotificationCommand.class));
         }
 
@@ -230,8 +242,64 @@ class VerificationServiceImplTest {
                     .isEqualTo(BaseResponseStatus.COOLDOWN_ACTIVE);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
+            then(rateLimitUtil).should(never()).incrementHourly(anyString());
             then(notificationDispatcher).should(never()).dispatch(any(NotificationCommand.class));
         }
+
+        @Test
+        @DisplayName("시간당 한도 초과 → RATE_LIMIT_EXCEEDED, 코드 저장/발송 없음")
+        void hourlyLimitExceeded_blocksDispatch() {
+            // 쿨다운은 없고 incrementHourly 결과가 한도(+1)를 초과
+            given(redisUtil.hasKey(anyString())).willReturn(false);
+            given(rateLimitUtil.incrementHourly(anyString()))
+                    .willReturn((long) RateLimitConst.VERIFY_SEND_HOURLY_MAX + 1);
+
+            assertThatThrownBy(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            ))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.RATE_LIMIT_EXCEEDED);
+
+            then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
+            then(notificationDispatcher).should(never()).dispatch(any(NotificationCommand.class));
+        }
+
+        @Test
+        @DisplayName("시간당 정확히 한도 → 발송 허용 (경계값: max 이하)")
+        void hourlyLimitAtMax_isAllowed() {
+            given(redisUtil.hasKey(anyString())).willReturn(false);
+            given(rateLimitUtil.incrementHourly(anyString()))
+                    .willReturn((long) RateLimitConst.VERIFY_SEND_HOURLY_MAX);
+            given(mailTemplateUtil.buildVerificationEmail(anyString(), anyString(), anyLong()))
+                    .willReturn(HTML_CONTENT);
+            given(keyPolicy.verification(anyString(), anyString())).willReturn(DEDUPE_KEY);
+
+            assertThatCode(() -> verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            )).doesNotThrowAnyException();
+
+            then(notificationDispatcher).should(times(1)).dispatch(any(NotificationCommand.class));
+        }
+
+        @Test
+        @DisplayName("incrementHourly키 prefix에 타입과 target이 포함된다")
+        void hourlyLimitKey_containsTypeAndTarget() {
+            stubSendCodeToDispatch();
+
+            verificationService.sendCode(
+                    new VerificationSendRequestDto(EMAIL, VerificationType.SIGN_UP, NotificationChannel.EMAIL)
+            );
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            then(rateLimitUtil).should().incrementHourly(keyCaptor.capture());
+
+            String capturedKey = keyCaptor.getValue();
+            assertThat(capturedKey)
+                    .contains(VerificationType.SIGN_UP.name())
+                    .contains(EMAIL);
+        }
+
     }
 
     @Nested
@@ -260,6 +328,21 @@ class VerificationServiceImplTest {
         }
 
         @Test
+        @DisplayName("정상 인증 → 실패 카운터 리셋")
+        void validCode_resetsFailCounter() {
+            String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
+            given(redisUtil.getData(codeKey)).willReturn(Optional.of(VALID_CODE));
+
+            verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, VALID_CODE, VerificationType.SIGN_UP)
+            );
+
+            String expectedFailKey = RateLimitConst.VERIFY_FAIL_PREFIX
+                    + VerificationType.SIGN_UP.name() + ":" + EMAIL;
+            then(rateLimitUtil).should(times(1)).reset(expectedFailKey);
+        }
+
+        @Test
         @DisplayName("코드 만료 (Redis 키 없음) → VERIFICATION_EXPIRED, 삭제 없음")
         void expiredCode_throwsExpiredWithNoDeletion() {
             String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
@@ -280,6 +363,8 @@ class VerificationServiceImplTest {
         void wrongCode_throwsFailWithCodePreserved() {
             String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
             given(redisUtil.getData(codeKey)).willReturn(Optional.of(STORED_CODE));
+            given(rateLimitUtil.increment(anyString(), any(Duration.class)))
+                    .willReturn(1L); // 첫 번째 실패 → 아직 한도 미달
 
             assertThatThrownBy(() -> verificationService.confirmCode(
                     new VerificationConfirmRequestDto(EMAIL, WRONG_CODE, VerificationType.SIGN_UP)
@@ -304,6 +389,90 @@ class VerificationServiceImplTest {
 
             then(redisUtil).should().setDataExpire(
                     confirmedKey, "CONFIRMED", VerificationConst.CONFIRMED_TTL);
+        }
+
+        @Test
+        @DisplayName("실패 4회 → VERIFICATION_FAIL, 코드 유지 (한도 미달)")
+        void failFourTimes_codePreservedAndThrowsFail() {
+            String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
+            given(redisUtil.getData(codeKey)).willReturn(Optional.of(STORED_CODE));
+            // 4번째 실패 → VERIFY_FAIL_MAX - 1 이하
+            given(rateLimitUtil.increment(anyString(), any(Duration.class)))
+                    .willReturn((long) RateLimitConst.VERIFY_FAIL_MAX - 1);
+
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, WRONG_CODE, VerificationType.SIGN_UP)
+            ))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.VERIFICATION_FAIL);
+
+            // 코드 삭제 없음
+            then(redisUtil).should(never()).deleteData(anyString());
+            // 실패 카운터 리셋 없음
+            then(rateLimitUtil).should(never()).reset(anyString());
+        }
+
+        @Test
+        @DisplayName("실패 5회(한도 도달) → VERIFICATION_EXPIRED, 코드 삭제 + 실패 카운터 리셋")
+        void failFiveTimes_codeInvalidatedAndCounterReset() {
+            String codeKey   = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
+            String failKey   = RateLimitConst.VERIFY_FAIL_PREFIX
+                    + VerificationType.SIGN_UP.name() + ":" + EMAIL;
+
+            given(redisUtil.getData(codeKey)).willReturn(Optional.of(STORED_CODE));
+            // 5번째 실패 → VERIFY_FAIL_MAX 이상
+            given(rateLimitUtil.increment(anyString(), any(Duration.class)))
+                    .willReturn((long) RateLimitConst.VERIFY_FAIL_MAX);
+
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, WRONG_CODE, VerificationType.SIGN_UP)
+            ))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.VERIFICATION_EXPIRED);
+
+            // 코드 무효화 (codeKey 삭제)
+            then(redisUtil).should(times(1)).deleteData(codeKey);
+            // 실패 카운터 리셋
+            then(rateLimitUtil).should(times(1)).reset(failKey);
+        }
+
+        @Test
+        @DisplayName("5회 실패 → increment 호출 시 정확한 failKey 사용")
+        void failAttempt_usesCorrectFailKey() {
+            String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
+            given(redisUtil.getData(codeKey)).willReturn(Optional.of(STORED_CODE));
+            given(rateLimitUtil.increment(anyString(), any(Duration.class))).willReturn(1L);
+
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, WRONG_CODE, VerificationType.SIGN_UP)
+            )).isInstanceOf(CustomException.class);
+
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            then(rateLimitUtil).should().increment(keyCaptor.capture(), any(Duration.class));
+
+            assertThat(keyCaptor.getValue())
+                    .startsWith(RateLimitConst.VERIFY_FAIL_PREFIX)
+                    .contains(VerificationType.SIGN_UP.name())
+                    .contains(EMAIL);
+        }
+
+        @Test
+        @DisplayName("5회 초과 실패 → increment에 CODE_TTL이 전달된다 (카운터는 코드와 함께 만료)")
+        void failAttempt_incrementCalledWithCodeTtl() {
+            String codeKey = VerificationConst.codeKey(VerificationType.SIGN_UP, EMAIL);
+            given(redisUtil.getData(codeKey)).willReturn(Optional.of(STORED_CODE));
+            given(rateLimitUtil.increment(anyString(), any(Duration.class))).willReturn(1L);
+
+            assertThatThrownBy(() -> verificationService.confirmCode(
+                    new VerificationConfirmRequestDto(EMAIL, WRONG_CODE, VerificationType.SIGN_UP)
+            )).isInstanceOf(CustomException.class);
+
+            ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
+            then(rateLimitUtil).should().increment(anyString(), ttlCaptor.capture());
+
+            assertThat(ttlCaptor.getValue()).isEqualTo(VerificationConst.CODE_TTL);
         }
     }
 

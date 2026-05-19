@@ -12,10 +12,12 @@ import com.han.back.global.infra.notification.dispatcher.NotificationDispatcher;
 import com.han.back.global.infra.notification.model.*;
 import com.han.back.global.infra.notification.policy.NotificationKeyPolicy;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
+import com.han.back.global.infra.redis.util.RateLimitUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.trace.TraceContext;
 import com.han.back.global.util.MaskingUtil;
+import com.han.back.global.util.RateLimitConst;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class VerificationServiceImpl implements VerificationService {
 
     private final RedisUtil redisUtil;
+    private final RateLimitUtil rateLimitUtil;
     private final MailTemplateUtil mailTemplateUtil;
     private final NotificationDispatcher notificationDispatcher;
     private final NotificationKeyPolicy keyPolicy;
@@ -36,11 +39,13 @@ public class VerificationServiceImpl implements VerificationService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public VerificationServiceImpl(RedisUtil redisUtil,
+                                   RateLimitUtil rateLimitUtil,
                                    MailTemplateUtil mailTemplateUtil,
                                    NotificationDispatcher notificationDispatcher,
                                    NotificationKeyPolicy keyPolicy,
                                    List<VerificationPolicy> policies) {
         this.redisUtil = redisUtil;
+        this.rateLimitUtil = rateLimitUtil;
         this.mailTemplateUtil = mailTemplateUtil;
         this.notificationDispatcher = notificationDispatcher;
         this.keyPolicy = keyPolicy;
@@ -60,6 +65,7 @@ public class VerificationServiceImpl implements VerificationService {
         channel.validateSupported();
         runPolicyCheck(type, target, channel);
         validateCooldown(type, target);
+        validateHourlyLimit(type, target);
 
         String code = generateCode();
         storeCodeAndCooldown(type, target, code);
@@ -94,8 +100,11 @@ public class VerificationServiceImpl implements VerificationService {
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.VERIFICATION_EXPIRED));
 
         if (!storedCode.equals(code)) {
-            throw new CustomException(BaseResponseStatus.VERIFICATION_FAIL);
+            handleFailedVerification(type, target, codeKey);
         }
+
+        String failKey = buildFailKey(type, target);
+        rateLimitUtil.reset(failKey);
 
         redisUtil.deleteData(codeKey);
         redisUtil.setDataExpire(
@@ -132,6 +141,17 @@ public class VerificationServiceImpl implements VerificationService {
         }
     }
 
+    private void validateHourlyLimit(VerificationType type, String target) {
+        String keyPrefix = RateLimitConst.VERIFY_SEND_PREFIX + type.name() + ":" + target;
+        long count = rateLimitUtil.incrementHourly(keyPrefix);
+
+        if (count > RateLimitConst.VERIFY_SEND_HOURLY_MAX) {
+            log.warn("Hourly send limit exceeded - Type: {} | Target: {}",
+                    type, MaskingUtil.maskTarget(target));
+            throw new CustomException(BaseResponseStatus.RATE_LIMIT_EXCEEDED);
+        }
+    }
+
     private void storeCodeAndCooldown(VerificationType type, String target, String code) {
         redisUtil.setDataExpire(VerificationConst.codeKey(type, target),
                 code, VerificationConst.CODE_TTL);
@@ -156,6 +176,25 @@ public class VerificationServiceImpl implements VerificationService {
             sb.append(secureRandom.nextInt(10));
         }
         return sb.toString();
+    }
+
+    private void handleFailedVerification(VerificationType type, String target, String codeKey) {
+        String failKey = buildFailKey(type, target);
+        long failCount = rateLimitUtil.increment(failKey, VerificationConst.CODE_TTL);
+
+        if (failCount >= RateLimitConst.VERIFY_FAIL_MAX) {
+            redisUtil.deleteData(codeKey);
+            rateLimitUtil.reset(failKey);
+            log.warn("Verification code invalidated by max failures - Type: {} | Target: {}",
+                    type, MaskingUtil.maskTarget(target));
+            throw new CustomException(BaseResponseStatus.VERIFICATION_EXPIRED);
+        }
+
+        throw new CustomException(BaseResponseStatus.VERIFICATION_FAIL);
+    }
+
+    private String buildFailKey(VerificationType type, String target) {
+        return RateLimitConst.VERIFY_FAIL_PREFIX + type.name() + ":" + target;
     }
 
 }
