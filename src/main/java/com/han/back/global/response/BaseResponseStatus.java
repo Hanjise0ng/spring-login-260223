@@ -23,7 +23,8 @@ public enum BaseResponseStatus {
     VERIFICATION_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "VNC", "Verification has not been completed."),
     SOCIAL_ONLY_ACCOUNT(HttpStatus.BAD_REQUEST, "SOA", "Social-only accounts cannot perform this action."),
     SELF_DEVICE_FORCE_LOGOUT(HttpStatus.BAD_REQUEST, "SDL", "Cannot force logout current device. Use normal logout."),
-
+    SOCIAL_SIGN_UP_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "STI", "Social sign-up token is invalid or expired."),
+    TAG_GENERATION_FAILED(HttpStatus.BAD_REQUEST, "TGF", "Tag generation failed. Please try again."),
 
     // ================== 인증 오류 (401 Unauthorized) ==================
     SIGN_IN_FAIL(HttpStatus.UNAUTHORIZED, "SF", "Login information mismatch."),
@@ -67,6 +68,8 @@ public enum BaseResponseStatus {
     ALREADY_DELETED(HttpStatus.CONFLICT, "AD", "The resource is already deleted."),
     SOCIAL_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "SAL", "This social account is already linked."),
     ACTIVE_DEVICE_CANNOT_DELETE(HttpStatus.CONFLICT, "ACD", "Active device cannot be deleted. Force logout first."),
+    EMAIL_CONFLICT(HttpStatus.CONFLICT, "EC", "This email is already registered with a different account."),
+    NICKNAME_TAG_DUPLICATE(HttpStatus.CONFLICT, "NTD", "This nickname and tag combination is already taken."),
 
 
     // ================== 지원하지 않는 미디어 타입 (415 Unsupported Media Type) ==================
@@ -80,6 +83,7 @@ public enum BaseResponseStatus {
 
     // ================== 요청 과다 (429 Too Many Requests) ==================
     COOLDOWN_ACTIVE(HttpStatus.TOO_MANY_REQUESTS, "CA", "Please wait before requesting a new code."),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "RLE", "Too many requests. Please try again later."),
 
 
     // ================== 서버 내부 오류 (500 Internal Server Error) ==================
