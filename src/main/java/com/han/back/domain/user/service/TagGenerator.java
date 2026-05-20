@@ -14,7 +14,7 @@ import java.security.SecureRandom;
 public class TagGenerator {
 
     private final UserRepository userRepository;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom;
 
     public String generate(String nickname) {
         for (int i = 0; i < OAuth2Const.TAG_GENERATION_RETRY; i++) {

@@ -1,5 +1,6 @@
 package com.han.back.global.config;
 
+import com.han.back.global.util.SecurityPathConst;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.media.*;
@@ -21,8 +22,8 @@ public class OpenApiFilterDocsConfig {
     @Bean
     public OpenApiCustomizer filterEndpointDocs() {
         return openApi -> {
-            openApi.path("/api/v1/auth/sign-in", signInPath());
-            openApi.path("/api/v1/auth/logout", logoutPath());
+            openApi.path(SecurityPathConst.LOGIN_PATH, signInPath());
+            openApi.path(SecurityPathConst.LOGOUT_PATH, logoutPath());
         };
     }
 

@@ -26,6 +26,7 @@ import static org.mockito.BDDMockito.*;
 class TagGeneratorTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private SecureRandom secureRandom;
 
     private TagGenerator tagGenerator;
 
@@ -35,7 +36,7 @@ class TagGeneratorTest {
 
     @BeforeEach
     void setUp() {
-        tagGenerator = new TagGenerator(userRepository);
+        tagGenerator = new TagGenerator(userRepository, secureRandom);
     }
 
     private void injectRandom(int... values) throws Exception {
@@ -67,16 +68,15 @@ class TagGeneratorTest {
     class Generate {
 
         @Test
-        @DisplayName("첫 시도 성공 → [0-9A-F]{4} 반환 + existsByNicknameAndTag 1회 호출")
-        void firstAttemptSucceeds_returnsHexTagAndCallsOnce() throws Exception {
-            injectRandom(0xA1B2);
-            stubNoDuplicate(NICKNAME);
+        @DisplayName("첫 시도 성공 → 태그 반환 + existsByNicknameAndTag 1회 호출")
+        void firstAttemptSucceeds() {
+            given(secureRandom.nextInt(0x10000)).willReturn(0xA1B2);
+            given(userRepository.existsByNicknameAndTag(eq(NICKNAME), anyString())).willReturn(false);
 
             String tag = tagGenerator.generate(NICKNAME);
 
-            assertThat(tag).matches("[0-9A-F]{4}");
-            then(userRepository).should(times(1))
-                    .existsByNicknameAndTag(eq(NICKNAME), anyString());
+            assertThat(tag).isEqualTo("A1B2");
+            then(userRepository).should(times(1)).existsByNicknameAndTag(NICKNAME, "A1B2");
         }
 
         @Test
