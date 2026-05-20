@@ -8,6 +8,7 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.event.UserSignedUpEvent;
 import com.han.back.domain.user.repository.UserRepository;
+import com.han.back.domain.user.service.TagGenerator;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.fixture.TokenFixture;
@@ -41,6 +42,7 @@ class AuthServiceImplTest {
 
     @Mock private UserRepository userRepository;
     @Mock private UserFactory userFactory;
+    @Mock private TagGenerator tagGenerator;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TokenService tokenService;
     @Mock private DeviceService deviceService;
@@ -179,25 +181,26 @@ class AuthServiceImplTest {
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
             given(dto.getEmail()).willReturn(EMAIL);
             given(dto.getPassword()).willReturn(UserFixture.RAW_PASSWORD);
+            given(dto.getNickname()).willReturn(UserFixture.DEFAULT_NICKNAME);  // ← 추가
             given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
             given(userRepository.existsByEmail(EMAIL)).willReturn(false);
             given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
+            given(tagGenerator.generate(UserFixture.DEFAULT_NICKNAME)).willReturn("A1B2");
             UserEntity newUser = UserFixture.localUser();
-            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW)).willReturn(newUser);
+            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW, "A1B2")).willReturn(newUser);
 
             authService.signUp(dto);
 
+            then(tagGenerator).should(times(1)).generate(UserFixture.DEFAULT_NICKNAME);
             then(passwordEncoder).should(times(1)).encode(UserFixture.RAW_PASSWORD);
-            then(userFactory).should(times(1)).createFromSignUpRequest(dto, ENCODED_PW);
+            then(userFactory).should(times(1)).createFromSignUpRequest(dto, ENCODED_PW, "A1B2");
             then(userRepository).should(times(1)).save(newUser);
 
-            // consumeConfirmation 대신 이벤트 발행 검증
             ArgumentCaptor<UserSignedUpEvent> eventCaptor = ArgumentCaptor.forClass(UserSignedUpEvent.class);
             then(eventPublisher).should(times(1)).publishEvent(eventCaptor.capture());
             UserSignedUpEvent event = eventCaptor.getValue();
             assertThat(event.getEmail()).isEqualTo(EMAIL);
 
-            // consumeConfirmation은 SignUpPostCommitListener의 책임으로 이동
             then(verificationService).should(never()).consumeConfirmation(any(), any());
         }
 
@@ -209,18 +212,24 @@ class AuthServiceImplTest {
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
             given(dto.getEmail()).willReturn(EMAIL);
             given(dto.getPassword()).willReturn(UserFixture.RAW_PASSWORD);
+            given(dto.getNickname()).willReturn(UserFixture.DEFAULT_NICKNAME);
             given(userRepository.existsByLoginId(LOGIN_ID)).willReturn(false);
             given(userRepository.existsByEmail(EMAIL)).willReturn(false);
             given(passwordEncoder.encode(UserFixture.RAW_PASSWORD)).willReturn(ENCODED_PW);
-            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW)).willReturn(UserFixture.localUser());
+            given(tagGenerator.generate(UserFixture.DEFAULT_NICKNAME)).willReturn("A1B2");
+            given(userFactory.createFromSignUpRequest(dto, ENCODED_PW, "A1B2"))
+                    .willReturn(UserFixture.localUser());
 
             authService.signUp(dto);
 
-            var inOrder = inOrder(loginIdTokenUtil, verificationService, userRepository, eventPublisher);
+            var inOrder = inOrder(loginIdTokenUtil, verificationService, userRepository,
+                    tagGenerator, userFactory, eventPublisher);
             inOrder.verify(loginIdTokenUtil).validate(LOGIN_ID, LOGIN_ID_TOKEN);
             inOrder.verify(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
             inOrder.verify(userRepository).existsByLoginId(LOGIN_ID);
             inOrder.verify(userRepository).existsByEmail(EMAIL);
+            inOrder.verify(tagGenerator).generate(UserFixture.DEFAULT_NICKNAME);
+            inOrder.verify(userFactory).createFromSignUpRequest(dto, ENCODED_PW, "A1B2");
             inOrder.verify(userRepository).save(any());
             inOrder.verify(eventPublisher).publishEvent(any(UserSignedUpEvent.class));
         }

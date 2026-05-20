@@ -86,6 +86,7 @@ public abstract class IntegrationTestBase {
                 .password(passwordEncoder.encode(UserFixture.RAW_PASSWORD))
                 .email(email)
                 .nickname(loginId)
+                .tag("0000")
                 .role(Role.USER)
                 .authProvider(AuthProvider.LOCAL)
                 .build());

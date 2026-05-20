@@ -1,8 +1,8 @@
 package com.han.back.domain.user.entity;
 
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.entity.BaseTime;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.util.UuidUtil;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,10 +17,12 @@ import lombok.experimental.SuperBuilder;
         name = "users",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_users_login_id", columnNames = {"login_id"}),
-                @UniqueConstraint(name = "uk_users_email",    columnNames = {"email"})
+                @UniqueConstraint(name = "uk_users_email", columnNames = {"email"}),
+                @UniqueConstraint(name = "uk_users_nickname_tag", columnNames = {"nickname", "tag"})
         },
         indexes = {
-                @Index(name = "idx_users_login_id", columnList = "login_id")
+                @Index(name = "idx_users_login_id", columnList = "login_id"),
+                @Index(name = "idx_users_nickname_tag", columnList = "nickname, tag")
         }
 )
 public class UserEntity extends BaseTime {
@@ -38,6 +40,9 @@ public class UserEntity extends BaseTime {
     @Column(nullable = false, length = 50)
     private String nickname;
 
+    @Column(nullable = false, length = 4)
+    private String tag;
+
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
@@ -51,6 +56,11 @@ public class UserEntity extends BaseTime {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateNicknameAndTag(String nickname, String tag) {
+        this.nickname = nickname;
+        this.tag = tag;
     }
 
     public void changeRole(Role role) {

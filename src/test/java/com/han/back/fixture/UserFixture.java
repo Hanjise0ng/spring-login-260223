@@ -5,8 +5,6 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.UUID;
-
 public final class UserFixture {
 
     private UserFixture() {}
@@ -14,10 +12,11 @@ public final class UserFixture {
     // 기본 로컬 사용자
     public static UserEntity localUser() {
         return UserEntity.builder()
-                .loginId("testuser")
-                .password("$2a$10$dummyEncodedPassword.ForTest")
+                .loginId(DEFAULT_LOGIN_ID)
+                .password("$2a$10$encodedPasswordForTest")
                 .email("test@test.com")
-                .nickname("테스트유저")
+                .nickname(DEFAULT_NICKNAME)
+                .tag("A1B2")
                 .role(Role.USER)
                 .authProvider(AuthProvider.LOCAL)
                 .build();
@@ -31,6 +30,7 @@ public final class UserFixture {
                 .password("$2a$10$dummyEncodedPassword.ForTest")
                 .email("admin@test.com")
                 .nickname("어드민유저")
+                .tag("C3D4")
                 .role(Role.ADMIN)
                 .authProvider(AuthProvider.LOCAL)
                 .build();
@@ -41,9 +41,10 @@ public final class UserFixture {
     public static UserEntity socialUser() {
         return UserEntity.builder()
                 .loginId("google_123456")
-                .password("SOCIAL_GOOGLE_" + UUID.randomUUID())
+                .password("{social}no-password")
                 .email("social@test.com")
                 .nickname("소셜유저")
+                .tag("E5F6")
                 .role(Role.USER)
                 .authProvider(AuthProvider.GOOGLE)
                 .build();
@@ -55,13 +56,15 @@ public final class UserFixture {
                 .loginId("testuser")
                 .password(encoder.encode("Test1234!"))
                 .email("test@test.com")
-                .nickname("테스트유저")
+                .nickname(DEFAULT_NICKNAME)
+                .tag("A1B2")
                 .role(Role.USER)
                 .authProvider(AuthProvider.LOCAL)
                 .build();
     }
 
     public static final String DEFAULT_LOGIN_ID = "testuser";
+    public static final String DEFAULT_NICKNAME = "테스트유저";
     public static final String RAW_PASSWORD = "Test1234!";
 
 }

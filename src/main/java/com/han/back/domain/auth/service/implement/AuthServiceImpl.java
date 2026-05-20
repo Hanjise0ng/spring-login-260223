@@ -11,6 +11,7 @@ import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.event.UserSignedUpEvent;
 import com.han.back.domain.user.repository.UserRepository;
+import com.han.back.domain.user.service.TagGenerator;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomAuthenticationException;
@@ -35,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final UserFactory userFactory;
+    private final TagGenerator tagGenerator;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final DeviceService deviceService;
@@ -66,7 +68,9 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
         }
 
-        UserEntity user = userFactory.createFromSignUpRequest(dto, passwordEncoder.encode(dto.getPassword()));
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+        String tag = tagGenerator.generate(dto.getNickname());
+        UserEntity user = userFactory.createFromSignUpRequest(dto, encodedPassword, tag);
         userRepository.save(user);
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
