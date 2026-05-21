@@ -9,7 +9,7 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
-import com.han.back.global.security.token.AuthHttpUtil;
+import com.han.back.global.security.token.util.AuthHttpUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

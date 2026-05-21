@@ -1,7 +1,8 @@
-package com.han.back.global.security.token;
+package com.han.back.global.security.token.util;
 
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.security.token.AuthConst;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

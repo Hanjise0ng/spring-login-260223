@@ -3,7 +3,7 @@ package com.han.back.integration;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.fixture.UserFixture;
 import com.han.back.global.security.token.AuthConst;
-import com.han.back.global.security.token.JwtUtil;
+import com.han.back.global.security.token.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;

@@ -20,7 +20,7 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.token.LoginIdTokenUtil;
+import com.han.back.global.security.token.util.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

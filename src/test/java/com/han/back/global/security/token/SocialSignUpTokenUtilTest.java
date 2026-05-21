@@ -3,6 +3,8 @@ package com.han.back.global.security.token;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.security.token.util.JwtUtil;
+import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,13 +25,13 @@ class SocialSignUpTokenUtilTest {
     private static final String TEST_ISSUER = "test-issuer";
 
     private JwtUtil jwtUtil;
-    private SocialSignUpTokenUtil socialSignUpTokenUtil;
+    private SocialSignUpTokenUtil SocialSignUpTokenUtil;
 
     @BeforeEach
     void setUp() {
         jwtUtil = new JwtUtil(TEST_SECRET);
         ReflectionTestUtils.setField(jwtUtil, "issuer", TEST_ISSUER);
-        socialSignUpTokenUtil = new SocialSignUpTokenUtil(jwtUtil);
+        SocialSignUpTokenUtil = new SocialSignUpTokenUtil(jwtUtil);
     }
 
     @Nested
@@ -39,8 +41,8 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("issue → validate 라운드트립: claims 값이 일치한다")
         void roundTrip_claimsMatch() {
-            String token = socialSignUpTokenUtil.issue("KAKAO", "123456", "카카오유저");
-            SocialSignUpClaims claims = socialSignUpTokenUtil.validate(token);
+            String token = SocialSignUpTokenUtil.issue("KAKAO", "123456", "카카오유저");
+            SocialSignUpClaims claims = SocialSignUpTokenUtil.validate(token);
 
             assertThat(claims.getProvider()).isEqualTo("KAKAO");
             assertThat(claims.getProviderId()).isEqualTo("123456");
@@ -50,8 +52,8 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("닉네임에 특수문자(콜론, 해시) 포함 시 정상 파싱")
         void specialCharsInNickname_parsedCorrectly() {
-            String token = socialSignUpTokenUtil.issue("KAKAO", "123", "유저:닉네임#특수");
-            SocialSignUpClaims claims = socialSignUpTokenUtil.validate(token);
+            String token = SocialSignUpTokenUtil.issue("KAKAO", "123", "유저:닉네임#특수");
+            SocialSignUpClaims claims = SocialSignUpTokenUtil.validate(token);
 
             assertThat(claims.getNickname()).isEqualTo("유저:닉네임#특수");
         }
@@ -59,11 +61,11 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("서로 다른 Provider로 발급한 토큰이 각각 정확한 claims를 반환한다")
         void differentProviders_eachReturnCorrectClaims() {
-            String kakaoToken = socialSignUpTokenUtil.issue("KAKAO", "111", "카카오");
-            String googleToken = socialSignUpTokenUtil.issue("GOOGLE", "222", "구글");
+            String kakaoToken = SocialSignUpTokenUtil.issue("KAKAO", "111", "카카오");
+            String googleToken = SocialSignUpTokenUtil.issue("GOOGLE", "222", "구글");
 
-            SocialSignUpClaims kakaoClaims = socialSignUpTokenUtil.validate(kakaoToken);
-            SocialSignUpClaims googleClaims = socialSignUpTokenUtil.validate(googleToken);
+            SocialSignUpClaims kakaoClaims = SocialSignUpTokenUtil.validate(kakaoToken);
+            SocialSignUpClaims googleClaims = SocialSignUpTokenUtil.validate(googleToken);
 
             assertThat(kakaoClaims.getProvider()).isEqualTo("KAKAO");
             assertThat(googleClaims.getProvider()).isEqualTo("GOOGLE");
@@ -80,7 +82,7 @@ class SocialSignUpTokenUtilTest {
             String wrongToken = jwtUtil.createTempToken(
                     "wrong_category", 60_000L, Map.of());
 
-            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(wrongToken))
+            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(wrongToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
@@ -98,7 +100,7 @@ class SocialSignUpTokenUtilTest {
                             "nickname", "유저"
                     ));
 
-            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(expiredToken))
+            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(expiredToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
@@ -120,7 +122,7 @@ class SocialSignUpTokenUtilTest {
                             "nickname", "유저"
                     ));
 
-            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(tamperedToken))
+            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(tamperedToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
@@ -129,7 +131,7 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("완전히 잘못된 문자열 → STI 예외")
         void malformedString_throwsSTI() {
-            assertThatThrownBy(() -> socialSignUpTokenUtil.validate("not.a.valid.jwt"))
+            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate("not.a.valid.jwt"))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
@@ -138,7 +140,7 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("null 토큰 → STI 예외")
         void nullToken_throwsSTI() {
-            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(null))
+            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(null))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);

@@ -1,8 +1,9 @@
-package com.han.back.global.security.token;
+package com.han.back.global.security.token.util;
 
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.security.token.AuthConst;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;

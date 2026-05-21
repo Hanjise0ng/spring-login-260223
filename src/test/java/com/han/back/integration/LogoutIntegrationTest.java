@@ -4,7 +4,7 @@ import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.fixture.UserFixture;
 import com.han.back.global.security.token.AuthConst;
-import com.han.back.global.security.token.JwtUtil;
+import com.han.back.global.security.token.util.JwtUtil;
 import com.han.back.global.util.SecurityPathConst;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;

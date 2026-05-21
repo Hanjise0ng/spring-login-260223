@@ -6,7 +6,7 @@ import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.mapper.DeviceInfoMapper;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
-import com.han.back.global.security.token.AuthHttpUtil;
+import com.han.back.global.security.token.util.AuthHttpUtil;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;

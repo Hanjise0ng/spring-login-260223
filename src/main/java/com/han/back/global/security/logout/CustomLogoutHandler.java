@@ -4,7 +4,7 @@ import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
-import com.han.back.global.security.token.AuthHttpUtil;
+import com.han.back.global.security.token.util.AuthHttpUtil;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
 import jakarta.servlet.http.HttpServletRequest;

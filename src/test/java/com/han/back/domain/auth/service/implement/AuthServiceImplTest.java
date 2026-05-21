@@ -19,7 +19,7 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.token.LoginIdTokenUtil;
+import com.han.back.global.security.token.util.LoginIdTokenUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

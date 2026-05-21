@@ -1,8 +1,10 @@
-package com.han.back.global.security.token;
+package com.han.back.global.security.token.util;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.SocialSignUpClaims;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,7 @@ public class SocialSignUpTokenUtil {
         Map<String, Object> claims = Map.of(
                 AuthConst.TEMP_PROVIDER, provider,
                 AuthConst.TEMP_PROVIDER_ID, providerId,
-                "nickname", nickname
+                AuthConst.CLAIM_NICKNAME, nickname
         );
         return jwtUtil.createTempToken(
                 OAuth2Const.TOKEN_CATEGORY_SOCIAL_SIGN_UP,

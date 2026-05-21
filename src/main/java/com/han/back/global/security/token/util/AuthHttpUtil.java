@@ -1,5 +1,7 @@
-package com.han.back.global.security.token;
+package com.han.back.global.security.token.util;
 
+import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
