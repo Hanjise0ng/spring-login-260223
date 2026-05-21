@@ -16,9 +16,14 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String loginId) {
+    public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
         UserEntity user = userRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new UsernameNotFoundException(BaseResponseStatus.SIGN_IN_FAIL.getMessage()));
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        BaseResponseStatus.SIGN_IN_FAIL.getMessage()));
+
+        if (user.isSocialUser()) {
+            throw new UsernameNotFoundException(BaseResponseStatus.SIGN_IN_FAIL.getMessage());
+        }
 
         return new CustomUserDetails(user.getId(), user.getPassword(), user.getRole());
     }
