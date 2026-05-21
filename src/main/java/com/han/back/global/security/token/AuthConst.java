@@ -26,6 +26,7 @@ public final class AuthConst {
     public static final String TEMP_USER_EMAIL  = "email";
     public static final String TEMP_PROVIDER    = "provider";
     public static final String TEMP_PROVIDER_ID = "providerId";
+    public static final String CLAIM_NICKNAME = "nickname";
 
     // ── 만료 시간 (Duration — 단일 진실의 원천) ───────────────────
     // JWT, Redis, 쿠키 모두 이 Duration 에서 필요한 단위를 추출해서 사용

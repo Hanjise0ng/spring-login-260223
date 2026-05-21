@@ -1,8 +1,8 @@
 package com.han.back.global.security.token;
 
 import com.han.back.domain.user.entity.Role;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
+import com.han.back.global.response.BaseResponseStatus;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +46,23 @@ public class JwtUtil {
                 .expiration(new Date(now.getTime() + expiredMs))
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public String createTempToken(String category, long expiresMs, Map<String, Object> extraClaims) {
+        Date now = new Date();
+
+        JwtBuilder builder = Jwts.builder()
+                .header().type("JWT").and()
+                .issuer(issuer)
+                .id(UUID.randomUUID().toString())
+                .claim(AuthConst.TOKEN_TYPE_CATEGORY, category)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + expiresMs))
+                .signWith(secretKey);
+
+        extraClaims.forEach(builder::claim);
+
+        return builder.compact();
     }
 
     public Claims parseClaims(String token) {
