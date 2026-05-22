@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.device;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

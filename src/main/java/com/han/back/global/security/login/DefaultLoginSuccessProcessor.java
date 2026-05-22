@@ -3,15 +3,13 @@ package com.han.back.global.security.login;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.domain.device.mapper.DeviceInfoMapper;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
-import com.han.back.global.security.token.util.AuthHttpUtil;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
-import com.han.back.global.security.util.DeviceRequestUtil;
-import com.han.back.global.security.util.RawDeviceData;
+import com.han.back.global.security.token.util.AuthHttpUtil;
+import com.han.back.global.device.DeviceInfoResolver;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,8 +22,7 @@ import org.springframework.stereotype.Component;
 public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
 
     private final AuthService authService;
-    private final DeviceRequestUtil deviceRequestUtil;
-    private final DeviceInfoMapper deviceInfoFactory;
+    private final DeviceInfoResolver deviceInfoResolver;
     private final TokenTransportResolver tokenTransportResolver;
     private final HttpResponseUtil httpResponseUtil;
 
@@ -37,9 +34,7 @@ public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         AuthToken previousTokens = AuthHttpUtil.extractTokenPairLeniently(request);
 
-        RawDeviceData rawData = deviceRequestUtil.extract(request);
-        DeviceInfo deviceInfo = deviceInfoFactory.create(rawData);
-
+        DeviceInfo deviceInfo = deviceInfoResolver.resolve(request);
         SignInResult result = authService.completeSignIn(userDetails, deviceInfo, previousTokens);
 
         TokenTransport transport = tokenTransportResolver.resolve(request);

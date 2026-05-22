@@ -1,9 +1,9 @@
-package com.han.back.domain.device.mapper;
+package com.han.back.domain.device.service;
 
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceType;
-import com.han.back.global.security.util.RawDeviceData;
+import com.han.back.global.device.RawDeviceData;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import ua_parser.Client;
@@ -45,24 +45,24 @@ import ua_parser.Parser;
  * @see DeviceInfo
  */
 @Component
-public class DeviceInfoMapper {
+public class DeviceInfoService {
 
     private final Parser parser;
 
-    public DeviceInfoMapper() {
+    public DeviceInfoService() {
         this.parser = new Parser();
     }
 
-    public DeviceInfo create(RawDeviceData raw) {
+    public DeviceInfo resolveDeviceInfo(RawDeviceData raw) {
         if (raw.isApp()) {
-            return createAppDevice(raw);
+            return createAppDeviceInfo(raw);
         }
-        return createWebDevice(raw);
+        return createWebDeviceInfo(raw);
     }
 
-    private DeviceInfo createAppDevice(RawDeviceData raw) {
+    private DeviceInfo createAppDeviceInfo(RawDeviceData raw) {
         DeviceType deviceType = classifyAppDeviceType(raw.getDeviceOs());
-        String osName = buildAppOsName(raw);
+        String osName = resolveAppOsName(raw);
         String browserName = extractAppName(raw.getUserAgent());
 
         return DeviceInfo.of(deviceType, osName, browserName, raw.getFingerprint(), raw.getLoginIp());
@@ -74,7 +74,7 @@ public class DeviceInfoMapper {
         return DeviceType.UNKNOWN;
     }
 
-    private String buildAppOsName(RawDeviceData raw) {
+    private String resolveAppOsName(RawDeviceData raw) {
         String baseName;
         if (DeviceConst.OS_IOS.equalsIgnoreCase(raw.getDeviceOs())) {
             baseName = DeviceConst.OS_IOS;
@@ -101,7 +101,7 @@ public class DeviceInfoMapper {
         return DeviceConst.FALLBACK_VALUE;
     }
 
-    private DeviceInfo createWebDevice(RawDeviceData raw) {
+    private DeviceInfo createWebDeviceInfo(RawDeviceData raw) {
         if (!StringUtils.hasText(raw.getUserAgent())) {
             return DeviceInfo.of(DeviceType.UNKNOWN, DeviceConst.FALLBACK_VALUE, DeviceConst.FALLBACK_VALUE,
                     raw.getFingerprint(), raw.getLoginIp());
@@ -109,8 +109,8 @@ public class DeviceInfoMapper {
 
         Client client = parser.parse(raw.getUserAgent());
         DeviceType deviceType = classifyWebDeviceType(client);
-        String osName = buildWebOsName(client);
-        String browserName = buildBrowserName(client);
+        String osName = resolveWebOsName(client);
+        String browserName = resolveBrowserName(client);
 
         return DeviceInfo.of(deviceType, osName, browserName, raw.getFingerprint(), raw.getLoginIp());
     }
@@ -135,12 +135,12 @@ public class DeviceInfoMapper {
                 || DeviceConst.DESKTOP_OS_FAMILIES.contains(osFamily);
     }
 
-    private String buildWebOsName(Client client) {
+    private String resolveWebOsName(Client client) {
         if (!StringUtils.hasText(client.os.family)) return DeviceConst.FALLBACK_VALUE;
         return appendOsVersion(client.os.family, client);
     }
 
-    private String buildBrowserName(Client client) {
+    private String resolveBrowserName(Client client) {
         if (!StringUtils.hasText(client.userAgent.family)) return DeviceConst.FALLBACK_VALUE;
         return client.userAgent.family;
     }

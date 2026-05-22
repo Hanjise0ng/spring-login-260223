@@ -1,13 +1,20 @@
 package com.han.back.domain.auth.service.implement;
 
+import com.han.back.domain.auth.dto.OAuth2SignInResult;
 import com.han.back.domain.auth.dto.SignInResult;
+import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.factory.UserFactory;
+import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
+import com.han.back.domain.auth.oauth2.entity.SocialAccountEntity;
+import com.han.back.domain.auth.oauth2.repository.SocialAccountRepository;
+import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
 import com.han.back.domain.auth.service.AuthService;
+import com.han.back.domain.auth.service.SignInProcessor;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.service.DeviceService;
+import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.event.UserSignedUpEvent;
 import com.han.back.domain.user.repository.UserRepository;
@@ -20,7 +27,9 @@ import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.token.SocialSignUpClaims;
 import com.han.back.global.security.token.util.LoginIdTokenUtil;
+import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,19 +38,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Optional;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final SocialAccountRepository socialAccountRepository;
     private final UserFactory userFactory;
     private final TagGenerator tagGenerator;
     private final PasswordEncoder passwordEncoder;
-    private final TokenService tokenService;
-    private final DeviceService deviceService;
     private final VerificationService verificationService;
     private final LoginIdTokenUtil loginIdTokenUtil;
+    private final SocialSignUpTokenUtil socialSignUpTokenUtil;
+    private final TokenService tokenService;
+    private final DeviceService deviceService;
+    private final SignInProcessor signInProcessor;
+    private final OAuth2CodeStore oauth2CodeStore;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -80,22 +95,105 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public SignInResult completeSignIn(CustomUserDetails userDetails,
-                                       DeviceInfo deviceInfo,
-                                       AuthToken previousTokens) {
-        Long userId = userDetails.getId();
-        invalidatePreviousSessionIfPresent(userId, previousTokens);
+    public SignInResult completeSignIn(CustomUserDetails userDetails, DeviceInfo deviceInfo, AuthToken previousTokens) {
+        return signInProcessor.execute(userDetails, deviceInfo, previousTokens);
+    }
 
-        DeviceRegistration registration = deviceService.registerLoginDevice(userId, deviceInfo);
+    @Override
+    @Transactional
+    public SocialSignInResult processSocialLogin(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        return socialAccountRepository
+                .findByProviderAndProviderId(userInfo.getProvider(), userInfo.getProviderId())
+                .map(account -> handleExistingSocialUser(account, userInfo, deviceInfo))
+                .orElseGet(() -> handleNewSocialUser(userInfo, deviceInfo));
+    }
 
-        AuthToken tokens = tokenService.issueTokens(
-                userId, userDetails.getRole(), registration.getSessionId());
+    @Override
+    @Transactional
+    public OAuth2SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo) {
+        SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
+        verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
 
-        log.info("Login Success - UserPK: {} | Role: {} | SessionId: {} | DeviceType: {}",
-                userId, userDetails.getRole().name(),
-                registration.getSessionId(), deviceInfo.getDeviceType().name());
+        if (userRepository.existsByEmail(email)) {
+            throw new CustomException(BaseResponseStatus.EMAIL_CONFLICT);
+        }
 
-        return SignInResult.of(tokens, registration.getDeviceFingerprint());
+        AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
+
+        if (socialAccountRepository.existsByProviderAndProviderId(provider, claims.getProviderId())) {
+            throw new CustomException(BaseResponseStatus.SOCIAL_ACCOUNT_ALREADY_LINKED);
+        }
+
+        String tag = tagGenerator.generate(claims.getNickname());
+        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, provider, tag);
+        userRepository.save(user);
+
+        SocialAccountEntity socialAccount = SocialAccountEntity.builder()
+                .userId(user.getId())
+                .provider(provider)
+                .providerId(claims.getProviderId())
+                .providerEmail(email)
+                .build();
+        socialAccountRepository.save(socialAccount);
+
+        eventPublisher.publishEvent(UserSignedUpEvent.of(user));
+
+        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
+        String code = oauth2CodeStore.save(signInResult);
+
+        log.info("OAuth2 Sign-up Complete - UserPK: {} | Provider: {}", user.getId(), provider);
+
+        return OAuth2SignInResult.of(code);
+    }
+
+    private SocialSignInResult handleExistingSocialUser(SocialAccountEntity existingAccount, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        existingAccount.updateProviderEmail(userInfo.getEmail());
+
+        UserEntity user = userRepository.findById(existingAccount.getUserId())
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.AUTHENTICATION_FAIL));
+
+        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
+        String code = oauth2CodeStore.save(signInResult);
+
+        log.info("OAuth2 Re-login - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
+
+        return SocialSignInResult.Authenticated.of(code);
+    }
+
+    private SocialSignInResult handleNewSocialUser(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        if (userInfo.getEmail() == null) {
+            return SocialSignInResult.EmailRequired.of(
+                    userInfo.getProvider().getValue(),
+                    userInfo.getProviderId(),
+                    userInfo.getNickname());
+        }
+
+        Optional<UserEntity> existing = userRepository.findByEmail(userInfo.getEmail());
+        if (existing.isPresent()) {
+            return SocialSignInResult.EmailConflict.of(existing.get().getAuthProvider().getValue());
+        }
+
+        String tag = tagGenerator.generate(userInfo.getNickname());
+        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), userInfo.getProvider(), tag);
+        userRepository.save(user);
+
+        SocialAccountEntity socialAccount = SocialAccountEntity.builder()
+                .userId(user.getId())
+                .provider(userInfo.getProvider())
+                .providerId(userInfo.getProviderId())
+                .providerEmail(userInfo.getEmail())
+                .build();
+        socialAccountRepository.save(socialAccount);
+
+        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
+        String code = oauth2CodeStore.save(signInResult);
+
+        log.info("OAuth2 Sign-up - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
+
+        return SocialSignInResult.Authenticated.of(code);
     }
 
     @Override
@@ -121,19 +219,4 @@ public class AuthServiceImpl implements AuthService {
 
         return newTokens;
     }
-
-    private void invalidatePreviousSessionIfPresent(Long userId, AuthToken previousTokens) {
-        if (previousTokens == null || previousTokens.isEmpty()) return;
-
-        tokenService.extractUserFromTokens(
-                        previousTokens.getAccessToken(),
-                        previousTokens.getRefreshToken())
-                .filter(prev -> prev.getSessionId() != null)
-                .ifPresent(prev -> {
-                    tokenService.invalidateSession(userId, prev.getSessionId());
-                    log.debug("Previous session invalidated on re-login - UserPK: {} | OldSessionId: {}",
-                            userId, prev.getSessionId());
-                });
-    }
-
 }

@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.device;
 
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.util.CookieUtil;
@@ -9,23 +9,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * HTTP 요청에서 디바이스 관련 원시 데이터를 추출한다.
+ * HTTP 요청에서 디바이스 관련 원시 데이터 추출
  *
- * <p>도메인 타입({@code DeviceType}, {@code DeviceInfo})을 일절 알지 못한다.
- * 추출한 원시 데이터를 {@link RawDeviceData}로 포장하여 도메인 레이어에 전달한다.</p>
- *
- * <p>의존 방향: {@code global → global} (도메인 의존 없음)</p>
- *
+ * <p>추출한 원시 데이터를 {@link RawDeviceData}로 포장하여 도메인 레이어에 전달</p>
  * @see RawDeviceData
  */
 @Component
-public class DeviceRequestUtil {
+public class DeviceRequestExtractor {
 
     private static final String HEADER_X_FORWARDED_FOR = "X-Forwarded-For";
     private static final String HEADER_X_REAL_IP = "X-Real-IP";
 
     /**
-     * HTTP 요청에서 디바이스 관련 원시 데이터를 추출한다.
+     * HTTP 요청에서 디바이스 관련 원시 데이터를 추출
      *
      * @param request HTTP 요청
      * @return 도메인 타입을 포함하지 않는 원시 데이터

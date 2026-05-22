@@ -1,4 +1,4 @@
-package com.han.back.global.security.util;
+package com.han.back.global.device;
 
 import com.han.back.global.security.token.AuthConst;
 import jakarta.servlet.http.Cookie;
@@ -16,9 +16,9 @@ import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class DeviceRequestUtilTest {
+class DeviceRequestExtractorTest {
 
-    private final DeviceRequestUtil deviceRequestUtil = new DeviceRequestUtil();
+    private final DeviceRequestExtractor deviceRequestExtractor = new DeviceRequestExtractor();
 
     @Mock
     private HttpServletRequest request;
@@ -32,7 +32,7 @@ class DeviceRequestUtilTest {
         given(request.getRemoteAddr()).willReturn("127.0.0.1");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.isApp()).isTrue();
@@ -49,7 +49,7 @@ class DeviceRequestUtilTest {
         given(request.getRemoteAddr()).willReturn("127.0.0.1");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.isApp()).isFalse();
@@ -65,7 +65,7 @@ class DeviceRequestUtilTest {
         given(request.getRemoteAddr()).willReturn("127.0.0.1");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.getFingerprint()).isNotBlank();
@@ -80,7 +80,7 @@ class DeviceRequestUtilTest {
         given(request.getHeader("X-Forwarded-For")).willReturn("192.168.0.1, 10.0.0.1");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.getLoginIp()).isEqualTo("192.168.0.1");
@@ -95,7 +95,7 @@ class DeviceRequestUtilTest {
         given(request.getHeader("X-Real-IP")).willReturn("10.10.10.10");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.getLoginIp()).isEqualTo("10.10.10.10");
@@ -111,7 +111,7 @@ class DeviceRequestUtilTest {
         given(request.getRemoteAddr()).willReturn("172.16.0.1");
 
         // when
-        RawDeviceData data = deviceRequestUtil.extract(request);
+        RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
         assertThat(data.getLoginIp()).isEqualTo("172.16.0.1");

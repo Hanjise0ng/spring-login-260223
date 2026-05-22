@@ -42,10 +42,8 @@ class OAuth2StateDto {
                 .redirectUri(redirectUri)
                 .scopes(scopes)
                 .state(state)
-                .additionalParameters(
-                        additionalParameters != null ? additionalParameters : Map.of())
-                .attributes(
-                        attributes != null ? attributes : Map.of())
+                .additionalParameters(additionalParameters != null ? additionalParameters : Map.of())
+                .attributes(attributes != null ? attributes : Map.of())
                 .authorizationRequestUri(authorizationRequestUri)
                 .build();
     }
