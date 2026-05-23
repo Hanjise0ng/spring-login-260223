@@ -3,7 +3,7 @@ package com.han.back.controller;
 import com.han.back.domain.auth.dto.OAuth2CodePayload;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
-import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
+import com.han.back.domain.auth.oauth2.service.OAuth2CodeService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoResolver;
@@ -33,14 +33,14 @@ public class SocialAuthController {
     private final AuthService authService;
     private final DeviceInfoResolver deviceInfoResolver;
     private final TokenTransportResolver tokenTransportResolver;
-    private final OAuth2CodeStore oauth2CodeStore;
+    private final OAuth2CodeService oauth2CodeService;
 
     @GetMapping("/token")
     public ResponseEntity<BaseResponse<Empty>> exchangeOAuth2Code(
             @RequestParam String code,
             HttpServletRequest request, HttpServletResponse response) {
 
-        OAuth2CodePayload payload = oauth2CodeStore.consume(code);
+        OAuth2CodePayload payload = oauth2CodeService.consume(code);
 
         TokenTransport transport = tokenTransportResolver.resolve(request);
         transport.write(response, AuthToken.of(payload.getAccessToken(), payload.getRefreshToken()));
@@ -58,7 +58,7 @@ public class SocialAuthController {
 
         SignInResult signInResult = authService.completeSocialSignUp(
                 request.getTempToken(), request.getEmail(), deviceInfo);
-        String code = oauth2CodeStore.save(signInResult);
+        String code = oauth2CodeService.save(signInResult);
 
         return BaseResponse.success(Map.of("code", code));
     }

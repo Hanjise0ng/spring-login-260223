@@ -3,7 +3,7 @@ package com.han.back.global.security.oauth2;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
-import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
+import com.han.back.domain.auth.oauth2.service.OAuth2CodeService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoResolver;
@@ -30,7 +30,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final AuthService authService;
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
     private final DeviceInfoResolver deviceInfoResolver;
-    private final OAuth2CodeStore oAuth2CodeStore;
+    private final OAuth2CodeService oAuth2CodeService;
 
     @Value("${app.front-base-url}")
     private String frontBaseUrl;
@@ -47,7 +47,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         switch (result) {
             case SocialSignInResult.Authenticated auth -> {
-                String code = oAuth2CodeStore.save(auth.getSignInResult());
+                String code = oAuth2CodeService.save(auth.getSignInResult());
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
                         Map.of("code", code)));
             }

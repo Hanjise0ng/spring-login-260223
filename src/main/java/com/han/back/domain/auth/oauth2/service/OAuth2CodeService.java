@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OAuth2CodeStore {
+public class OAuth2CodeService {
 
     private final RedisUtil redisUtil;
     private final ObjectMapper objectMapper;
