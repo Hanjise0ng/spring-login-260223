@@ -1,6 +1,5 @@
 package com.han.back.domain.auth.service.implement;
 
-import com.han.back.domain.auth.dto.OAuth2SignInResult;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
@@ -9,7 +8,6 @@ import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.SocialAccountEntity;
 import com.han.back.domain.auth.oauth2.repository.SocialAccountRepository;
-import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.auth.service.SignInProcessor;
 import com.han.back.domain.device.dto.DeviceInfo;
@@ -56,7 +54,6 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
     private final DeviceService deviceService;
     private final SignInProcessor signInProcessor;
-    private final OAuth2CodeStore oauth2CodeStore;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -110,7 +107,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public OAuth2SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo) {
+    public SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo) {
         SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
         verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
 
@@ -140,11 +137,10 @@ public class AuthServiceImpl implements AuthService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-        String code = oauth2CodeStore.save(signInResult);
 
         log.info("OAuth2 Sign-up Complete - UserPK: {} | Provider: {}", user.getId(), provider);
 
-        return OAuth2SignInResult.of(code);
+        return signInResult;
     }
 
     private SocialSignInResult handleExistingSocialUser(SocialAccountEntity existingAccount, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
@@ -155,11 +151,10 @@ public class AuthServiceImpl implements AuthService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-        String code = oauth2CodeStore.save(signInResult);
 
         log.info("OAuth2 Re-login - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
 
-        return SocialSignInResult.Authenticated.of(code);
+        return SocialSignInResult.Authenticated.of(signInResult);
     }
 
     private SocialSignInResult handleNewSocialUser(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
@@ -189,11 +184,10 @@ public class AuthServiceImpl implements AuthService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-        String code = oauth2CodeStore.save(signInResult);
 
         log.info("OAuth2 Sign-up - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
 
-        return SocialSignInResult.Authenticated.of(code);
+        return SocialSignInResult.Authenticated.of(signInResult);
     }
 
     @Override

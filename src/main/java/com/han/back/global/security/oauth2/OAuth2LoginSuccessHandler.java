@@ -3,10 +3,11 @@ package com.han.back.global.security.oauth2;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import com.han.back.global.device.DeviceInfoResolver;
+import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final AuthService authService;
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
     private final DeviceInfoResolver deviceInfoResolver;
+    private final OAuth2CodeStore oAuth2CodeStore;
 
     @Value("${app.front-base-url}")
     private String frontBaseUrl;
@@ -44,19 +46,22 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
 
         switch (result) {
-            case SocialSignInResult.Authenticated auth ->
+            case SocialSignInResult.Authenticated auth -> {
+                String code = oAuth2CodeStore.save(auth.getSignInResult());
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
-                                Map.of("code", auth.getCode())));
+                        Map.of("code", code)));
+            }
             case SocialSignInResult.EmailRequired info -> {
                 String tempToken = socialSignUpTokenUtil.issue(
                         info.getProvider(), info.getProviderId(), info.getNickname());
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
-                                Map.of("tempToken", tempToken, "needEmail", "true")));
+                        Map.of("tempToken", tempToken, "needEmail", "true")));
             }
-            case SocialSignInResult.EmailConflict conflict ->
+            case SocialSignInResult.EmailConflict conflict -> {
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_LOGIN_ERROR_PATH,
-                                Map.of("error", OAuth2Const.ERROR_EMAIL_CONFLICT,
-                                        "provider", conflict.getExistingProvider())));
+                        Map.of("error", OAuth2Const.ERROR_EMAIL_CONFLICT,
+                                "provider", conflict.getExistingProvider())));
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 package com.han.back.domain.auth.service;
 
-import com.han.back.domain.auth.dto.OAuth2SignInResult;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
@@ -25,7 +24,7 @@ public interface AuthService {
     SocialSignInResult processSocialLogin(OAuth2UserInfo userInfo, DeviceInfo deviceInfo);
 
     // 이메일을 제공하지 않는 소셜 가입 — 임시 토큰 + 이메일을 받아 회원가입 진행
-    OAuth2SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo);
+    SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo);
 
     // 토큰 재발급
     AuthToken reissue(String refreshToken);

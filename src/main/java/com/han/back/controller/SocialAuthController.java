@@ -1,13 +1,13 @@
 package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.OAuth2CodePayload;
-import com.han.back.domain.auth.dto.OAuth2SignInResult;
+import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
 import com.han.back.domain.auth.oauth2.service.OAuth2CodeStore;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.response.BaseResponse;
 import com.han.back.global.device.DeviceInfoResolver;
+import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransport;
@@ -56,10 +56,11 @@ public class SocialAuthController {
 
         DeviceInfo deviceInfo = deviceInfoResolver.resolve(httpRequest);
 
-        OAuth2SignInResult result = authService.completeSocialSignUp(
+        SignInResult signInResult = authService.completeSocialSignUp(
                 request.getTempToken(), request.getEmail(), deviceInfo);
+        String code = oauth2CodeStore.save(signInResult);
 
-        return BaseResponse.success(Map.of("code", result.getCode()));
+        return BaseResponse.success(Map.of("code", code));
     }
 
 }

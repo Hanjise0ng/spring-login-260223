@@ -4,19 +4,17 @@ public sealed interface SocialSignInResult {
 
     final class Authenticated implements SocialSignInResult {
 
-        private final String code;
+        private final SignInResult signInResult;
 
-        private Authenticated(String code) {
-            this.code = code;
+        private Authenticated(SignInResult signInResult) {
+            this.signInResult = signInResult;
         }
 
-        public static Authenticated of(String code) {
-            return new Authenticated(code);
+        public static Authenticated of(SignInResult signInResult) {
+            return new Authenticated(signInResult);
         }
 
-        public String getCode() {
-            return code;
-        }
+        public SignInResult getSignInResult() { return signInResult; }
     }
 
     final class EmailRequired implements SocialSignInResult {
