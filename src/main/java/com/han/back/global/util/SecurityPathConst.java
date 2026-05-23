@@ -17,7 +17,7 @@ public final class SecurityPathConst {
             "/api/v*/auth/oauth2/token",
             "/api/v*/auth/oauth2/complete",
             "/api/v*/verification/**",
-            "/oauth2/authorize/**",
+            "/oauth2/authorization/**",
             "/login/oauth2/code/**",
             "/swagger-ui/**",
             "/v3/api-docs/**",

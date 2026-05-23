@@ -4,11 +4,15 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
-import com.han.back.global.security.handler.*;
+import com.han.back.global.security.handler.CustomAuthenticationEntryPoint;
 import com.han.back.global.security.login.CustomLoginFailureHandler;
 import com.han.back.global.security.login.CustomLoginSuccessHandler;
 import com.han.back.global.security.logout.CustomLogoutHandler;
 import com.han.back.global.security.logout.CustomLogoutSuccessHandler;
+import com.han.back.global.security.oauth2.CustomOAuth2UserService;
+import com.han.back.global.security.oauth2.OAuth2LoginFailureHandler;
+import com.han.back.global.security.oauth2.OAuth2LoginSuccessHandler;
+import com.han.back.global.security.oauth2.RedisOAuth2StateRepository;
 import com.han.back.global.util.SecurityPathConst;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -42,6 +46,10 @@ public class SecurityConfig {
     private final CustomLoginFailureHandler customLoginFailureHandler;
     private final CustomLogoutHandler customLogoutHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
+    private final RedisOAuth2StateRepository redisOAuth2StateRepository;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
     public SecurityConfig(
             @Qualifier("appCorsConfigurationSource") CorsConfigurationSource corsConfig,
@@ -53,7 +61,11 @@ public class SecurityConfig {
             CustomLoginSuccessHandler customLoginSuccessHandler,
             CustomLoginFailureHandler customLoginFailureHandler,
             CustomLogoutHandler customLogoutHandler,
-            CustomLogoutSuccessHandler customLogoutSuccessHandler
+            CustomLogoutSuccessHandler customLogoutSuccessHandler,
+            RedisOAuth2StateRepository redisOAuth2StateRepository,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
+            OAuth2LoginFailureHandler oAuth2LoginFailureHandler
     ) {
         this.corsConfig = corsConfig;
         this.authConfig = authConfig;
@@ -65,6 +77,10 @@ public class SecurityConfig {
         this.customLoginFailureHandler = customLoginFailureHandler;
         this.customLogoutHandler = customLogoutHandler;
         this.customLogoutSuccessHandler = customLogoutSuccessHandler;
+        this.redisOAuth2StateRepository = redisOAuth2StateRepository;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+        this.oAuth2LoginFailureHandler = oAuth2LoginFailureHandler;
     }
 
     @Bean
@@ -78,6 +94,7 @@ public class SecurityConfig {
         configureSecurity(http);
         configureAuthorization(http);
         configureFilters(http, buildLoginFilter(authenticationManager()));
+        configureOAuth2Login(http);
         configureExceptionHandling(http);
         configureLogout(http);
 
@@ -121,6 +138,17 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, LogoutFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
+    }
+
+    private void configureOAuth2Login(HttpSecurity http) {
+        http.oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(endpoint -> endpoint
+                        .authorizationRequestRepository(redisOAuth2StateRepository))
+                .userInfoEndpoint(endpoint -> endpoint
+                        .userService(customOAuth2UserService))
+                .successHandler(oAuth2LoginSuccessHandler)
+                .failureHandler(oAuth2LoginFailureHandler)
+        );
     }
 
     private void configureExceptionHandling(HttpSecurity http) {
