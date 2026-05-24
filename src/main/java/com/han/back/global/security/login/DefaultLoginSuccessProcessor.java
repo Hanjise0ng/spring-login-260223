@@ -9,7 +9,7 @@ import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
 import com.han.back.global.security.token.util.AuthHttpUtil;
-import com.han.back.global.device.DeviceInfoResolver;
+import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
 
     private final AuthService authService;
-    private final DeviceInfoResolver deviceInfoResolver;
+    private final DeviceInfoProvider deviceInfoProvider;
     private final TokenTransportResolver tokenTransportResolver;
     private final HttpResponseUtil httpResponseUtil;
 
@@ -34,7 +34,7 @@ public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         AuthToken previousTokens = AuthHttpUtil.extractTokenPairLeniently(request);
 
-        DeviceInfo deviceInfo = deviceInfoResolver.resolve(request);
+        DeviceInfo deviceInfo = deviceInfoProvider.get(request);
         SignInResult result = authService.completeSignIn(userDetails, deviceInfo, previousTokens);
 
         TokenTransport transport = tokenTransportResolver.resolve(request);

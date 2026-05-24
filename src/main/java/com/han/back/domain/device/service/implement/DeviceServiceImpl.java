@@ -51,7 +51,7 @@ public class DeviceServiceImpl implements DeviceService {
         log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {}",
                 device.getUserId(), device.getId(), deviceInfo.getDeviceType().name(), sessionId, deviceInfo.getLoginIp());
 
-        return DeviceRegistration.of(sessionId, deviceInfo.getDeviceFingerprint());
+        return DeviceRegistration.of(sessionId);
     }
 
     @Override

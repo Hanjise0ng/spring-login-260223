@@ -1,4 +1,4 @@
-package com.han.back.domain.device.service;
+package com.han.back.domain.device.mapper;
 
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.entity.DeviceConst;
@@ -45,16 +45,16 @@ import ua_parser.Parser;
  * @see DeviceInfo
  */
 @Component
-public class DeviceInfoService {
+public class DeviceInfoMapper {
 
-    private final Parser parser;
+    private final Parser uaParser;
 
-    public DeviceInfoService() {
-        this.parser = new Parser();
+    public DeviceInfoMapper(Parser uaParser) {
+        this.uaParser = uaParser;
     }
 
-    public DeviceInfo resolveDeviceInfo(RawDeviceData raw) {
-        if (raw.isApp()) {
+    public DeviceInfo map(RawDeviceData raw) {
+        if (raw.isNativeApp()) {
             return createAppDeviceInfo(raw);
         }
         return createWebDeviceInfo(raw);
@@ -85,7 +85,7 @@ public class DeviceInfoService {
         }
 
         if (StringUtils.hasText(raw.getUserAgent())) {
-            return appendOsVersion(baseName, parser.parse(raw.getUserAgent()));
+            return appendOsVersion(baseName, uaParser.parse(raw.getUserAgent()));
         }
         return baseName;
     }
@@ -107,7 +107,7 @@ public class DeviceInfoService {
                     raw.getFingerprint(), raw.getLoginIp());
         }
 
-        Client client = parser.parse(raw.getUserAgent());
+        Client client = uaParser.parse(raw.getUserAgent());
         DeviceType deviceType = classifyWebDeviceType(client);
         String osName = resolveWebOsName(client);
         String browserName = resolveBrowserName(client);

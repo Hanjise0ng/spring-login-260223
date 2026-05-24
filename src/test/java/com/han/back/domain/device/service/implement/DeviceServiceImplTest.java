@@ -84,7 +84,7 @@ class DeviceServiceImplTest {
         }
 
         @Test
-        @DisplayName("반환값은 Entity의 sessionId와 입력 fingerprint를 담는다")
+        @DisplayName("반환값은 Entity의 sessionId를 담는다")
         void returns_sessionIdMatchingEntity_andInputFingerprint() {
             givenNoExistingDevice();
             givenActiveDevicesUnderMax();
@@ -92,7 +92,6 @@ class DeviceServiceImplTest {
             DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
             assertThat(result.getSessionId()).isNotBlank();
-            assertThat(result.getDeviceFingerprint()).isEqualTo(FINGERPRINT);
         }
 
         @Test

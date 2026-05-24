@@ -6,7 +6,7 @@ import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.domain.auth.oauth2.service.OAuth2CodeService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.device.DeviceInfoResolver;
+import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,7 +29,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final AuthService authService;
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
-    private final DeviceInfoResolver deviceInfoResolver;
+    private final DeviceInfoProvider deviceInfoProvider;
     private final OAuth2CodeService oAuth2CodeService;
 
     @Value("${app.front-base-url}")
@@ -42,7 +42,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         OAuth2UserInfo userInfo = (OAuth2UserInfo) oAuth2User.getAttributes().get(OAuth2Const.ATTR_USER_INFO);
 
-        DeviceInfo deviceInfo = deviceInfoResolver.resolve(request);
+        DeviceInfo deviceInfo = deviceInfoProvider.get(request);
         SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
 
         switch (result) {

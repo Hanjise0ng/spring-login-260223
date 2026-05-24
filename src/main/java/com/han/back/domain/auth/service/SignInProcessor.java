@@ -31,7 +31,7 @@ public class SignInProcessor {
         log.info("Login Success - UserPK: {} | Role: {} | SessionId: {} | DeviceType: {}",
                 userId, userDetails.getRole().name(), registration.getSessionId(), deviceInfo.getDeviceType().name());
 
-        return SignInResult.of(tokens, registration.getDeviceFingerprint());
+        return SignInResult.of(tokens, deviceInfo.getDeviceFingerprint());
     }
 
     private void invalidatePreviousSessionIfPresent(Long userId, AuthToken previousTokens) {

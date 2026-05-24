@@ -27,20 +27,20 @@ public class DeviceRequestExtractor {
      * @return 도메인 타입을 포함하지 않는 원시 데이터
      */
     public RawDeviceData extract(HttpServletRequest request) {
-        boolean isApp = AuthConst.CLIENT_TYPE_APP.equalsIgnoreCase(
+        boolean isNativeApp = AuthConst.CLIENT_TYPE_APP.equalsIgnoreCase(
                 request.getHeader(AuthConst.HEADER_CLIENT_TYPE));
 
         return RawDeviceData.of(
-                isApp,
+                isNativeApp,
                 request.getHeader(HttpHeaders.USER_AGENT),
                 request.getHeader(AuthConst.HEADER_DEVICE_OS),
-                extractFingerprint(request, isApp),
+                extractFingerprint(request, isNativeApp),
                 extractClientIp(request)
         );
     }
 
-    private String extractFingerprint(HttpServletRequest request, boolean isApp) {
-        if (isApp) {
+    private String extractFingerprint(HttpServletRequest request, boolean isNativeApp) {
+        if (isNativeApp) {
             String deviceId = request.getHeader(AuthConst.HEADER_DEVICE_ID);
             if (StringUtils.hasText(deviceId)) {
                 return deviceId;

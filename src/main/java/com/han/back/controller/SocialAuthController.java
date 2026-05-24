@@ -6,7 +6,7 @@ import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
 import com.han.back.domain.auth.oauth2.service.OAuth2CodeService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.device.DeviceInfoResolver;
+import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.token.AuthToken;
@@ -31,7 +31,7 @@ import java.util.Map;
 public class SocialAuthController {
 
     private final AuthService authService;
-    private final DeviceInfoResolver deviceInfoResolver;
+    private final DeviceInfoProvider deviceInfoProvider;
     private final TokenTransportResolver tokenTransportResolver;
     private final OAuth2CodeService oauth2CodeService;
 
@@ -54,7 +54,7 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest) {
 
-        DeviceInfo deviceInfo = deviceInfoResolver.resolve(httpRequest);
+        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
 
         SignInResult signInResult = authService.completeSocialSignUp(
                 request.getTempToken(), request.getEmail(), deviceInfo);

@@ -9,10 +9,9 @@ import lombok.Getter;
 public class DeviceRegistration {
 
     private final String sessionId;
-    private final String deviceFingerprint;
 
-    public static DeviceRegistration of(String sessionId, String deviceFingerprint) {
-        return new DeviceRegistration(sessionId, deviceFingerprint);
+    public static DeviceRegistration of(String sessionId) {
+        return new DeviceRegistration(sessionId);
     }
 
 }

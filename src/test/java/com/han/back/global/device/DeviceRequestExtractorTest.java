@@ -35,7 +35,7 @@ class DeviceRequestExtractorTest {
         RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
-        assertThat(data.isApp()).isTrue();
+        assertThat(data.isNativeApp()).isTrue();
         assertThat(data.getFingerprint()).isEqualTo("app-device-uuid");
     }
 
@@ -52,7 +52,7 @@ class DeviceRequestExtractorTest {
         RawDeviceData data = deviceRequestExtractor.extract(request);
 
         // then
-        assertThat(data.isApp()).isFalse();
+        assertThat(data.isNativeApp()).isFalse();
         assertThat(data.getFingerprint()).isEqualTo("cookie-device-uuid");
     }
 
