@@ -17,4 +17,8 @@ public class NotificationKeyPolicy {
         return "password-reset:" + email;
     }
 
+    public String newDeviceLogin(Long userId, String deviceFingerprint) {
+        return "new-device-login:user:" + userId + ":fp:" + deviceFingerprint;
+    }
+
 }

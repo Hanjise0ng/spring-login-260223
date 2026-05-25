@@ -73,6 +73,7 @@ public final class DeviceFixture {
         private String lastLoginIp = "127.0.0.1";
         private LocalDateTime loginAt = DEFAULT_LOGIN_AT;
         private String sessionId = DEFAULT_SESSION_ID;
+        private boolean trusted = false;
 
         private DeviceTestBuilder(Long userId) {
             this.userId = userId;
@@ -113,6 +114,11 @@ public final class DeviceFixture {
             return this;
         }
 
+        public DeviceTestBuilder trusted(boolean trusted) {
+            this.trusted = trusted;
+            return this;
+        }
+
         public DeviceEntity build() {
             return DeviceEntity.builder()
                     .userId(userId)
@@ -123,6 +129,7 @@ public final class DeviceFixture {
                     .lastLoginIp(lastLoginIp)
                     .lastLoginAt(loginAt)
                     .sessionId(sessionId)
+                    .trusted(trusted)
                     .build();
         }
     }

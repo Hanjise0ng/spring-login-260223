@@ -30,6 +30,17 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
             "ORDER BY d.lastLoginAt ASC")
     List<DeviceEntity> findActiveDevicesByUserIdOldestFirst(@Param("userId") Long userId);
 
+    // 활성 세션 + 안심 기기 제외 — 오래된 순 (퇴출 후보)
+    @Query("SELECT d FROM DeviceEntity d " +
+            "WHERE d.userId = :userId AND d.sessionId IS NOT NULL AND d.trusted = false " +
+            "ORDER BY d.lastLoginAt ASC")
+    List<DeviceEntity> findActiveUntrustedDevicesByUserIdOldestFirst(@Param("userId") Long userId);
+
+    // 안심 기기 수 조회
+    @Query("SELECT COUNT(d) FROM DeviceEntity d " +
+            "WHERE d.userId = :userId AND d.trusted = true")
+    int countTrustedDevicesByUserId(@Param("userId") Long userId);
+
     // 특정 세션 ID로 디바이스 세션 비활성화 — LogoutHandler, 강제 로그아웃에서 사용
     @Modifying(clearAutomatically = true)
     @Query("UPDATE DeviceEntity d SET d.sessionId = NULL WHERE d.userId = :userId AND d.sessionId = :sessionId")

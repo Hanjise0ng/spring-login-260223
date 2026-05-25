@@ -1,5 +1,6 @@
 package com.han.back.global.infra.notification.template;
 
+import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class MailTemplateUtil {
     private static final String LAYOUT_TEMPLATE = "templates/mail/layout.html";
     private static final String VERIFICATION_TEMPLATE = "templates/mail/verification-code.html";
     private static final String WELCOME_TEMPLATE = "templates/mail/welcome.html";
+    private static final String NEW_DEVICE_LOGIN_TEMPLATE = "templates/mail/new-device-login.html";
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
 
@@ -49,6 +51,20 @@ public class MailTemplateUtil {
                 "MY_PAGE_URL", escapeHtml(frontBaseUrl + "/mypage")
         ));
         return wrapWithLayout(body, "가입을 환영합니다");
+    }
+
+    public String buildNewDeviceLoginEmail(String nickname, DeviceType deviceType,
+                                           String osName, String loginIp,
+                                           LocalDateTime loginAt) {
+        String body = render(NEW_DEVICE_LOGIN_TEMPLATE, Map.of(
+                "NICKNAME", escapeHtml(nickname),
+                "DEVICE_TYPE", escapeHtml(deviceType.name()),
+                "OS_NAME", escapeHtml(osName),
+                "LOGIN_IP", escapeHtml(loginIp),
+                "LOGIN_AT", loginAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                "SECURITY_URL", escapeHtml(frontBaseUrl + "/settings/security")
+        ));
+        return wrapWithLayout(body, "새로운 기기에서 로그인되었습니다");
     }
 
     private String wrapWithLayout(String bodyContent, String title) {

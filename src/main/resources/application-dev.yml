@@ -19,6 +19,11 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-UNTRACED}] [%X{loginId:-}] %-5level %logger{36} - %msg%n"
 
+app:
+  device:
+    max-sessions-per-user: 2
+    max-trusted-devices: 2
+
 springdoc:
   api-docs:
     enabled: true

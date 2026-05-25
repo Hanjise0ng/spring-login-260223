@@ -45,6 +45,9 @@ public class DeviceDetailResponseDto {
     @Schema(description = "활성 세션 존재 여부", example = "true")
     private final boolean activeSession;
 
+    @Schema(description = "안심 기기 여부", example = "false")
+    private final boolean trusted;
+
     public static DeviceDetailResponseDto from(DeviceEntity device, String currentSessionId) {
         boolean isActive = device.hasActiveSession();
         boolean isCurrent = isActive && device.getSessionId().equals(currentSessionId);
@@ -60,6 +63,7 @@ public class DeviceDetailResponseDto {
                 .firstLoginAt(device.getCreatedAt())
                 .currentDevice(isCurrent)
                 .activeSession(isActive)
+                .trusted(device.isTrusted())
                 .build();
     }
 

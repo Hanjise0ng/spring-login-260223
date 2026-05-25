@@ -135,7 +135,12 @@ public class AuthServiceImpl implements AuthService {
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
 
-        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        CustomUserDetails userDetails = new CustomUserDetails(
+                user.getId(),
+                user.getRole(),
+                user.getEmail(),
+                user.getNickname()
+        );
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
 
         log.info("OAuth2 Sign-up Complete - UserPK: {} | Provider: {}", user.getId(), provider);
@@ -149,7 +154,12 @@ public class AuthServiceImpl implements AuthService {
         UserEntity user = userRepository.findById(existingAccount.getUserId())
                 .orElseThrow(() -> new CustomException(BaseResponseStatus.AUTHENTICATION_FAIL));
 
-        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        CustomUserDetails userDetails = new CustomUserDetails(
+                user.getId(),
+                user.getRole(),
+                user.getEmail(),
+                user.getNickname()
+        );
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
 
         log.info("OAuth2 Re-login - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
@@ -182,7 +192,12 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         socialAccountRepository.save(socialAccount);
 
-        CustomUserDetails userDetails = new CustomUserDetails(user.getId(), user.getRole(), null);
+        CustomUserDetails userDetails = new CustomUserDetails(
+                user.getId(),
+                user.getRole(),
+                user.getEmail(),
+                user.getNickname()
+        );
         SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
 
         log.info("OAuth2 Sign-up - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());

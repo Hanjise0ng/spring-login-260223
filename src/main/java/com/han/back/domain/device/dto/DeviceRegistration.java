@@ -9,9 +9,10 @@ import lombok.Getter;
 public class DeviceRegistration {
 
     private final String sessionId;
+    private final boolean newDevice;
 
-    public static DeviceRegistration of(String sessionId) {
-        return new DeviceRegistration(sessionId);
+    public static DeviceRegistration of(String sessionId, boolean newDevice) {
+        return new DeviceRegistration(sessionId, newDevice);
     }
 
 }

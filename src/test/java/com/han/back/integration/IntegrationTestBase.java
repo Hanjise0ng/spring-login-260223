@@ -7,16 +7,21 @@ import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.fixture.UserFixture;
 import com.han.back.global.security.token.AuthConst;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.ObjectMapper;
@@ -24,6 +29,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Set;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -38,6 +46,8 @@ public abstract class IntegrationTestBase {
     @Autowired protected DeviceRepository deviceRepository;
     @Autowired protected PasswordEncoder passwordEncoder;
 
+    @MockitoBean protected JavaMailSender javaMailSender;
+
     @Autowired
     @Qualifier("customStringRedisTemplate")
     protected RedisTemplate<String, String> redisTemplate;
@@ -48,6 +58,13 @@ public abstract class IntegrationTestBase {
             AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX,
             "verification:",
     };
+
+    @BeforeEach
+    void setUpMailSender() {
+        MimeMessage mimeMessage = new MimeMessage((Session) null);
+        when(javaMailSender.createMimeMessage()).thenReturn(mimeMessage);
+        doNothing().when(javaMailSender).send(any(MimeMessage.class));
+    }
 
     @AfterEach
     void cleanUp() {
@@ -64,8 +81,8 @@ public abstract class IntegrationTestBase {
     }
 
     /**
-     * flushAll() 대신 테스트가 생성한 키만 선택적으로 삭제.
-     * 테스트 병렬 실행 시 다른 테스트의 Redis 데이터를 보호한다.
+     flushAll() 대신 테스트가 생성한 키만 선택적으로 삭제.
+     테스트 병렬 실행 시 다른 테스트의 Redis 데이터를 보호한다.
      */
     private void cleanUpRedisTestKeys() {
         for (String prefix : TEST_KEY_PREFIXES) {

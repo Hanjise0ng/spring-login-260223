@@ -45,6 +45,42 @@ public class DeviceController {
         return BaseResponse.success(devices);
     }
 
+    @Operation(summary = "안심 기기 등록",
+            description = "특정 디바이스를 안심 기기로 등록합니다. "
+                    + "안심 기기는 최대 세션 초과 시 자동 퇴출 대상에서 제외됩니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "등록 성공"),
+            @ApiResponse(responseCode = "401", description = "AUF: 인증 실패"),
+            @ApiResponse(responseCode = "404", description = "NFD: 디바이스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "TDL: 안심 기기 한도 초과")
+    })
+    @PostMapping("/{devicePublicId}/trust")
+    public ResponseEntity<BaseResponse<Empty>> trustDevice(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String devicePublicId) {
+
+        deviceService.trustDevice(userDetails.getId(), devicePublicId);
+        return BaseResponse.success();
+    }
+
+    @Operation(summary = "안심 기기 해제",
+            description = "안심 기기 등록을 해제합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "해제 성공"),
+            @ApiResponse(responseCode = "401", description = "AUF: 인증 실패"),
+            @ApiResponse(responseCode = "404", description = "NFD: 디바이스를 찾을 수 없음")
+    })
+    @DeleteMapping("/{devicePublicId}/trust")
+    public ResponseEntity<BaseResponse<Empty>> untrustDevice(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String devicePublicId) {
+
+        deviceService.untrustDevice(userDetails.getId(), devicePublicId);
+        return BaseResponse.success();
+    }
+
     @Operation(summary = "디바이스 강제 로그아웃",
             description = "특정 디바이스의 세션을 강제로 종료합니다. "
                     + "현재 사용 중인 디바이스는 강제 로그아웃할 수 없습니다.")

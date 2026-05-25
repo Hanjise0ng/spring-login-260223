@@ -1,5 +1,6 @@
 package com.han.back.global.infra.notification.template;
 
+import com.han.back.domain.device.entity.DeviceType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,41 @@ class MailTemplateUtilTest {
         assertThat(result).contains("<!DOCTYPE html>");        // layout 시작
         assertThat(result).contains("발신 전용");               // layout 푸터
         assertThat(result).contains("© HAN Service");          // layout 푸터
+    }
+
+    @Test
+    @DisplayName("신규 기기 로그인 메일 — 닉네임, 기기 정보, 보안 URL이 치환된다")
+    void newDeviceLoginEmail_replacesPlaceholders() {
+        String result = mailTemplateUtil.buildNewDeviceLoginEmail(
+                "홍길동",
+                DeviceType.WEB_DESKTOP,
+                "Windows 10",
+                "192.168.0.1",
+                LocalDateTime.of(2026, 5, 1, 14, 30)
+        );
+
+        assertThat(result).contains("홍길동");
+        assertThat(result).contains("WEB_DESKTOP");
+        assertThat(result).contains("Windows 10");
+        assertThat(result).contains("192.168.0.1");
+        assertThat(result).contains("2026-05-01 14:30");
+        assertThat(result).contains("https://test.han.com/settings/security");
+        assertThat(result).contains("HAN");
+    }
+
+    @Test
+    @DisplayName("신규 기기 로그인 메일 — 닉네임에 HTML 태그가 있으면 escape 된다")
+    void newDeviceLoginEmail_escapesHtmlInNickname() {
+        String result = mailTemplateUtil.buildNewDeviceLoginEmail(
+                "<script>alert(1)</script>",
+                DeviceType.WEB_MOBILE,
+                "Android 14",
+                "10.0.0.1",
+                LocalDateTime.now()
+        );
+
+        assertThat(result).doesNotContain("<script>");
+        assertThat(result).contains("&lt;script&gt;");
     }
 
 }

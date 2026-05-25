@@ -3,10 +3,10 @@ package com.han.back.domain.device.service.implement;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
-import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.device.service.DeviceService;
+import com.han.back.global.device.DeviceProperties;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -27,14 +28,20 @@ public class DeviceServiceImpl implements DeviceService {
 
     private final DeviceRepository deviceRepository;
     private final TokenService tokenService;
+    private final DeviceProperties deviceProperties;
 
     @Override
     @Transactional
     public DeviceRegistration registerLoginDevice(Long userId, DeviceInfo deviceInfo) {
         String sessionId = UuidUtil.generateString();
 
-        DeviceEntity device = deviceRepository
-                .findByUserIdAndDeviceFingerprint(userId, deviceInfo.getDeviceFingerprint())
+        Optional<DeviceEntity> registeredDevice =
+                deviceRepository.findByUserIdAndDeviceFingerprint(
+                        userId, deviceInfo.getDeviceFingerprint());
+
+        boolean isNewDevice = registeredDevice.isEmpty();
+
+        DeviceEntity device = registeredDevice
                 .orElseGet(() -> createNewDevice(userId, deviceInfo));
 
         device.activateSession(
@@ -48,10 +55,42 @@ public class DeviceServiceImpl implements DeviceService {
         deviceRepository.save(device);
         enforceMaxSessionPolicy(userId, sessionId);
 
-        log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {}",
-                device.getUserId(), device.getId(), deviceInfo.getDeviceType().name(), sessionId, deviceInfo.getLoginIp());
+        log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {} | NewDevice: {}",
+                device.getUserId(), device.getId(), deviceInfo.getDeviceType().name(),
+                sessionId, deviceInfo.getLoginIp(), isNewDevice);
 
-        return DeviceRegistration.of(sessionId);
+        return DeviceRegistration.of(sessionId, isNewDevice);
+    }
+
+    @Override
+    @Transactional
+    public void trustDevice(Long userId, String devicePublicId) {
+        DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+
+        if (device.isTrusted()) return;
+
+        int trustedCount = deviceRepository.countTrustedDevicesByUserId(userId);
+        if (trustedCount >= deviceProperties.getMaxTrustedDevices()) {
+            throw new CustomException(BaseResponseStatus.TRUSTED_DEVICE_LIMIT_EXCEEDED);
+        }
+
+        device.markAsTrusted();
+
+        log.info("Device Trusted - UserPK: {} | DevicePublicId: {}", userId, devicePublicId);
+    }
+
+    @Override
+    @Transactional
+    public void untrustDevice(Long userId, String devicePublicId) {
+        DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
+                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+
+        if (!device.isTrusted()) return;
+
+        device.unmarkTrusted();
+
+        log.info("Device Untrusted - UserPK: {} | DevicePublicId: {}", userId, devicePublicId);
     }
 
     @Override
@@ -126,27 +165,34 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     private void enforceMaxSessionPolicy(Long userId, String currentSessionId) {
-        List<DeviceEntity> activeDevices = deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
+        List<DeviceEntity> activeDevices =
+                deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
-        if (activeDevices.size() <= DeviceConst.MAX_SESSIONS_PER_USER) {
+        if (activeDevices.size() <= deviceProperties.getMaxSessionsPerUser()) {
             return;
         }
 
-        int excessCount = activeDevices.size() - DeviceConst.MAX_SESSIONS_PER_USER;
+        int excessCount = activeDevices.size() - deviceProperties.getMaxSessionsPerUser();
 
+        // 안심 기기 제외하고 오래된 순으로 퇴출 대상 선정
         List<DeviceEntity> evictionTargets = activeDevices.stream()
-                .filter(device -> !device.getSessionId().equals(currentSessionId))
+                .filter(d -> !d.getSessionId().equals(currentSessionId))
+                .filter(d -> !d.isTrusted())
                 .limit(excessCount)
                 .toList();
 
         for (DeviceEntity target : evictionTargets) {
-            String evictedSessionId = target.getSessionId();
-
-            tokenService.invalidateSession(userId, evictedSessionId);
+            tokenService.invalidateSession(userId, target.getSessionId());
             target.deactivateSession();
 
-            log.info("Max Session Policy - Evicted oldest session | UserPK: {} | DeviceId: {} | EvictedSessionId: {}",
-                    userId, target.getId(), evictedSessionId);
+            log.info("Max Session Policy - Evicted | UserPK: {} | DeviceId: {} | SessionId: {}",
+                    userId, target.getId(), target.getSessionId());
+        }
+
+        // 퇴출할 일반 기기가 부족한 경우 (안심 기기가 너무 많을 때) — 허용
+        if (evictionTargets.size() < excessCount) {
+            log.info("Max Session Policy - Excess sessions allowed due to trusted devices | UserPK: {} | ActiveSessions: {} | Max: {}",
+                    userId, activeDevices.size(), deviceProperties.getMaxSessionsPerUser());
         }
     }
 

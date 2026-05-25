@@ -59,6 +59,10 @@ public class DeviceEntity extends BaseTime {
     @Column(name = "session_id", length = 36)
     private String sessionId;
 
+    @Column(name = "trusted", nullable = false)
+    @Builder.Default
+    private boolean trusted = false;
+
     /** 로그인 시 디바이스 정보 갱신 + 세션 활성화 */
     public void activateSession(String sessionId, DeviceType deviceType, String osName,
                                 String browserName, String lastLoginIp) {
@@ -84,6 +88,21 @@ public class DeviceEntity extends BaseTime {
     /** 현재 활성 세션이 존재하는지 확인 */
     public boolean hasActiveSession() {
         return this.sessionId != null;
+    }
+
+    /** 안심 기기로 등록 */
+    public void markAsTrusted() {
+        this.trusted = true;
+    }
+
+    /** 안심 기기 해제 */
+    public void unmarkTrusted() {
+        this.trusted = false;
+    }
+
+    /** 안심 기기 여부 확인 */
+    public boolean isTrusted() {
+        return this.trusted;
     }
 
 }

@@ -3,17 +3,13 @@ package com.han.back.integration;
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.global.security.token.util.LoginIdTokenUtil;
-import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
@@ -21,7 +17,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,9 +27,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("회원가입 통합 테스트")
 class SignUpIntegrationTest extends IntegrationTestBase {
 
-    @MockitoBean
-    private JavaMailSender javaMailSender;
-
     @Autowired
     private LoginIdTokenUtil loginIdTokenUtil;
 
@@ -40,13 +34,6 @@ class SignUpIntegrationTest extends IntegrationTestBase {
     private static final String EMAIL = "newuser@test.com";
     private static final String PASSWORD = "Test1234!";
     private static final String NICKNAME = "신규유저";
-
-    @BeforeEach
-    void setUpMailSenderMock() {
-        MimeMessage mimeMessage = new MimeMessage((Session) null);
-        when(javaMailSender.createMimeMessage()).thenReturn(mimeMessage);
-        doNothing().when(javaMailSender).send(any(MimeMessage.class));
-    }
 
     private String checkLoginId(String loginId) throws Exception {
         ResultActions result = mockMvc.perform(get("/api/v1/auth/check-login-id")

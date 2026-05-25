@@ -1,9 +1,9 @@
 package com.han.back.integration;
 
-import com.han.back.domain.device.entity.DeviceConst;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.fixture.UserFixture;
+import com.han.back.global.device.DeviceProperties;
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.security.token.util.JwtUtil;
 import io.jsonwebtoken.Claims;
@@ -28,18 +28,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 //   1. 디바이스 등록     — 로그인 시 DeviceEntity 생성, sessionId 일관성
 //   2. 재로그인 처리     — 같은 기기 재사용, sessionId 갱신
 //   3. 이전 세션 무효화  — AT+RT 재로그인 시 이전 세션 블랙리스트
-//   4. 최대 세션 정책    — MAX_SESSIONS_PER_USER 초과 시 가장 오래된 세션 퇴출
+//   4. 최대 세션 정책    — yml 설정값 초과 시 가장 오래된 세션 퇴출
 //   5. 공유 기기 격리    — 다른 사용자 간 세션 독립성
 //   6. 디바이스 목록 API — GET /api/v1/devices
 //   7. 강제 로그아웃 API — POST /api/v1/devices/{publicId}/logout
 //   8. 디바이스 삭제 API — DELETE /api/v1/devices/{publicId}
+//   9. 안심 기기 API     — POST/DELETE /api/v1/devices/{publicId}/trust
 @DisplayName("디바이스 통합 테스트")
 class DeviceIntegrationTest extends IntegrationTestBase {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private DeviceProperties deviceProperties;  // DeviceConst 대체
 
-    // 존재하지 않는 디바이스 publicId — 실제 UUID 형식
     private static final String NON_EXISTENT_PUBLIC_ID = "00000000-0000-0000-0000-000000000000";
 
     private String extractSessionId(String at) {
@@ -47,15 +47,13 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         return jwtUtil.getSessionId(claims);
     }
 
-    // 디바이스 목록 API 호출 후 파싱
     private List<Map<String, Object>> getDeviceList(String at) throws Exception {
         String body = mockMvc.perform(get("/api/v1/devices")
                         .header("Authorization", "Bearer " + at))
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readValue(
                 objectMapper.readTree(body).path("result").toString(),
-                new TypeReference<List<Map<String, Object>>>() {
-                }
+                new TypeReference<List<Map<String, Object>>>() {}
         );
     }
 
@@ -65,6 +63,13 @@ class DeviceIntegrationTest extends IntegrationTestBase {
                 .findFirst()
                 .map(d -> (String) d.get("publicId"))
                 .orElseThrow(() -> new IllegalStateException("다른 기기가 없음 — 2개 이상 로그인 필요"));
+    }
+
+    // publicId로 기기 trust API 호출 헬퍼
+    private void trustDevice(String at, String publicId) throws Exception {
+        mockMvc.perform(post("/api/v1/devices/{publicId}/trust", publicId)
+                        .header("Authorization", "Bearer " + at))
+                .andExpect(status().isOk());
     }
 
     @Nested
@@ -160,11 +165,8 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             ResultActions first = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
             String deviceId = getCookieValue(first, AuthConst.COOKIE_DEVICE_ID_NAME);
 
-            // AT/RT 없이 재로그인 → invalidatePreviousSessionIfPresent 미발동
-            // 같은 DeviceEntity 재사용 → 활성 세션 수 DB 기준 1개 → MAX 정책 미발동
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, deviceId);
 
-            // 이전 세션의 RT는 Redis에 그대로 남아있어야 함
             assertThat(getRtKeys(user.getId())).hasSize(2);
         }
     }
@@ -215,26 +217,19 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         @DisplayName("(MAX+1)번째 기기 로그인 시 가장 오래된 세션이 Redis에서 삭제되고 블랙리스트에 등록된다")
         void maxPlusOneLogin_evictsOldestSessionFromRedis() throws Exception {
             UserEntity user = signUp();
-            int max = DeviceConst.MAX_SESSIONS_PER_USER;
+            int max = deviceProperties.getMaxSessionsPerUser();  // DeviceConst 대체
 
-            // 1번째 로그인 — 가장 오래된 세션
             ResultActions first = signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-1");
             String oldestSessionId = extractSessionId(getAt(first));
 
-            // 2 ~ MAX번째까지 로그인
             for (int i = 2; i <= max; i++) {
                 signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-" + i);
             }
-            // MAX개 세션 — 아직 퇴출 없음 (size == MAX, 퇴출 조건: size > MAX)
             assertThat(getRtKeys(user.getId())).hasSize(max);
 
-            // (MAX+1)번째 로그인 → 가장 오래된 세션(fp-1) 자동 퇴출
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-" + (max + 1));
 
-            // 퇴출 후에도 여전히 MAX개 세션
             assertThat(getRtKeys(user.getId())).hasSize(max);
-
-            // 가장 오래된 세션의 RT 삭제 + 블랙리스트 등록
             assertThat(getRedisValue(
                     AuthConst.TOKEN_REFRESH_REDIS_PREFIX + user.getId() + ":" + oldestSessionId))
                     .isNull();
@@ -245,7 +240,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         @DisplayName("(MAX+1)번째 기기 로그인 시 가장 오래된 DeviceEntity의 세션이 DB에서 비활성화된다")
         void maxPlusOneLogin_deactivatesOldestDeviceInDb() throws Exception {
             UserEntity user = signUp();
-            int max = DeviceConst.MAX_SESSIONS_PER_USER;
+            int max = deviceProperties.getMaxSessionsPerUser();  // DeviceConst 대체
 
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-1");
             for (int i = 2; i <= max; i++) {
@@ -317,8 +312,6 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         void getDevices_currentDeviceIsExactlyOne() throws Exception {
             UserEntity user = signUp();
 
-            // 2개 기기 로그인 후 두 번째 AT로 목록 조회
-            // MAX=2이므로 3번 로그인하면 퇴출 발생 — 2번으로 충분
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-1");
             ResultActions second = signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-2");
             String currentAt = getAt(second);
@@ -332,11 +325,6 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         }
 
         @Test
-        //   AT 없이 요청 시 동작 분석:
-        //   JwtFilter → AT 없음 → SecurityContext 미설정 → 통과
-        //   AnonymousAuthenticationFilter → anonymous 인증 설정
-        //   AuthorizationFilter → anonymous에게 USER 권한 없음
-        //   → CustomAuthenticationEntryPoint → 401 AUF
         @DisplayName("AT 없이 목록 조회 시 401 AUF가 반환된다")
         void getDevicesWithoutAt_returns401Auf() throws Exception {
             mockMvc.perform(get("/api/v1/devices"))
@@ -421,15 +409,12 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-A");
             ResultActions loginB = signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-B");
             String atB = getAt(loginB);
-
             String publicIdA = getOtherDevicePublicId(atB);
 
-            // 첫 번째 강제 로그아웃
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", publicIdA)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isOk());
 
-            // 이미 비활성화된 기기에 재요청 → 200 (멱등)
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", publicIdA)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isOk());
@@ -448,10 +433,8 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-A");
             ResultActions loginB = signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-B");
             String atB = getAt(loginB);
-
             String publicIdA = getOtherDevicePublicId(atB);
 
-            // 강제 로그아웃으로 비활성화
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", publicIdA)
                     .header("Authorization", "Bearer " + atB));
 
@@ -476,7 +459,6 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-A");
             ResultActions loginB = signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-B");
             String atB = getAt(loginB);
-
             String publicIdA = getOtherDevicePublicId(atB);
 
             mockMvc.perform(delete("/api/v1/devices/{publicId}", publicIdA)
@@ -492,6 +474,142 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
 
             mockMvc.perform(delete("/api/v1/devices/{publicId}", NON_EXISTENT_PUBLIC_ID)
+                            .header("Authorization", "Bearer " + getAt(login)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NFD"));
+        }
+    }
+
+    @Nested
+    @DisplayName("안심 기기")
+    class TrustedDevice {
+
+        @Test
+        @DisplayName("기기를 안심 기기로 등록하면 목록에서 trusted=true로 조회된다")
+        void trustDevice_deviceMarkedAsTrusted() throws Exception {
+            UserEntity user = signUp();
+            ResultActions login = signInWithDevice(user.getLoginId(),
+                    UserFixture.RAW_PASSWORD, "fp-trust");
+            String at = getAt(login);
+            String publicId = getDeviceList(at).getFirst().get("publicId").toString();
+
+            trustDevice(at, publicId);
+
+            List<Map<String, Object>> devices = getDeviceList(at);
+            assertThat(devices.getFirst().get("trusted")).isEqualTo(true);
+        }
+
+        @Test
+        @DisplayName("안심 기기는 MAX 세션 초과 시 퇴출되지 않고 일반 기기가 퇴출된다")
+        void trustedDevice_survivesMaxSessionEviction() throws Exception {
+            UserEntity user = signUp();
+            int max = deviceProperties.getMaxSessionsPerUser();
+
+            // fp-1 로그인 후 안심 기기 등록
+            ResultActions first = signInWithDevice(user.getLoginId(),
+                    UserFixture.RAW_PASSWORD, "fp-1");
+            String atFirst = getAt(first);
+            String sessionFirst = extractSessionId(atFirst);
+
+            // DB에서 직접 publicId 조회 — fingerprint로 필터링
+            String publicIdFirst = deviceRepository
+                    .findAllByUserIdOrderByLastLoginAtDesc(user.getId())
+                    .stream()
+                    .filter(d -> "fp-1".equals(d.getDeviceFingerprint()))
+                    .findFirst().orElseThrow()
+                    .getPublicId();
+
+            trustDevice(atFirst, publicIdFirst);
+
+            for (int i = 2; i <= max; i++) {
+                signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-" + i);
+            }
+
+            signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-" + (max + 1));
+
+            assertThat(isBlacklisted(sessionFirst)).isFalse();
+
+            DeviceEntity fp2 = deviceRepository.findAllByUserIdOrderByLastLoginAtDesc(user.getId())
+                    .stream()
+                    .filter(d -> "fp-2".equals(d.getDeviceFingerprint()))
+                    .findFirst().orElseThrow();
+            assertThat(fp2.hasActiveSession()).isFalse();
+        }
+
+        @Test
+        @DisplayName("안심 기기 한도 초과 등록 시 409 TDL이 반환된다")
+        void trustDevice_overLimit_returns409Tdl() throws Exception {
+            UserEntity user = signUp();
+            int maxTrusted = deviceProperties.getMaxTrustedDevices();
+
+            for (int i = 1; i <= maxTrusted; i++) {
+                final int index = i;
+                signInWithDevice(user.getLoginId(), UserFixture.RAW_PASSWORD, "fp-" + index);
+
+                // DB에서 직접 publicId 조회
+                String publicId = deviceRepository
+                        .findAllByUserIdOrderByLastLoginAtDesc(user.getId())
+                        .stream()
+                        .filter(d -> ("fp-" + index).equals(d.getDeviceFingerprint()))
+                        .findFirst().orElseThrow()
+                        .getPublicId();
+
+                // 가장 최근 AT 획득 — 재로그인 없이 현재 AT 재사용
+                // 이미 로그인된 상태이므로 목록 조회용 AT가 필요
+                ResultActions login = signInWithDevice(user.getLoginId(),
+                        UserFixture.RAW_PASSWORD, "fp-" + index);
+                String at = getAt(login);
+
+                trustDevice(at, publicId);
+            }
+
+            ResultActions extraLogin = signInWithDevice(user.getLoginId(),
+                    UserFixture.RAW_PASSWORD, "fp-extra");
+            String extraAt = getAt(extraLogin);
+            String extraPublicId = deviceRepository
+                    .findAllByUserIdOrderByLastLoginAtDesc(user.getId())
+                    .stream()
+                    .filter(d -> "fp-extra".equals(d.getDeviceFingerprint()))
+                    .findFirst().orElseThrow()
+                    .getPublicId();
+
+            mockMvc.perform(post("/api/v1/devices/{publicId}/trust", extraPublicId)
+                            .header("Authorization", "Bearer " + extraAt))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("TDL"));
+        }
+
+        @Test
+        @DisplayName("안심 기기 해제 후 다시 등록하면 trusted=true로 조회된다")
+        void untrustThenTrustAgain_succeeds() throws Exception {
+            UserEntity user = signUp();
+            ResultActions login = signInWithDevice(user.getLoginId(),
+                    UserFixture.RAW_PASSWORD, "fp-t");
+            String at = getAt(login);
+            String publicId = getDeviceList(at).getFirst().get("publicId").toString();
+
+            trustDevice(at, publicId);
+
+            mockMvc.perform(delete("/api/v1/devices/{publicId}/trust", publicId)
+                            .header("Authorization", "Bearer " + at))
+                    .andExpect(status().isOk());
+
+            // 해제 후 trusted=false 확인
+            assertThat(getDeviceList(at).getFirst().get("trusted")).isEqualTo(false);
+
+            // 재등록
+            trustDevice(at, publicId);
+
+            assertThat(getDeviceList(at).getFirst().get("trusted")).isEqualTo(true);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 publicId로 안심 기기 등록 시 404 NFD가 반환된다")
+        void trustNonExistent_returns404Nfd() throws Exception {
+            UserEntity user = signUp();
+            ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+
+            mockMvc.perform(post("/api/v1/devices/{publicId}/trust", NON_EXISTENT_PUBLIC_ID)
                             .header("Authorization", "Bearer " + getAt(login)))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("NFD"));

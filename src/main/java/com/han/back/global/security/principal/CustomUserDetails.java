@@ -14,22 +14,37 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final Role role;
     private final String sessionId;
+    private final String email;
+    private final String nickname;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public CustomUserDetails(Long id, String password, Role role) {
-        this(id, password, role, null);
+    // 로컬 로그인용
+    public CustomUserDetails(Long id, String password, Role role,
+                             String email, String nickname) {
+        this(id, password, role, null, email, nickname);
     }
 
+    // OAuth2용
+    public CustomUserDetails(Long id, Role role,
+                             String email, String nickname) {
+        this(id, null, role, null, email, nickname);
+    }
+
+    // 토큰 재발급용
     public CustomUserDetails(Long id, Role role, String sessionId) {
-        this(id, null, role, sessionId);
+        this(id, null, role, sessionId, null, null);
     }
 
-    private CustomUserDetails(Long id, String password, Role role, String sessionId) {
+    private CustomUserDetails(Long id, String password, Role role,
+                              String sessionId, String email, String nickname) {
         this.id = id;
         this.password = password;
         this.role = role;
         this.sessionId = sessionId;
-        this.authorities = Collections.singletonList(new SimpleGrantedAuthority(role.getAuthority()));
+        this.email = email;
+        this.nickname = nickname;
+        this.authorities = Collections.singletonList(
+                new SimpleGrantedAuthority(role.getAuthority()));
     }
 
     public Long getId() {
@@ -42,6 +57,14 @@ public class CustomUserDetails implements UserDetails {
 
     public String getSessionId() {
         return this.sessionId;
+    }
+
+    public String getEmail() {
+        return this.email;
+    }
+
+    public String getNickname() {
+        return this.nickname;
     }
 
     @Override

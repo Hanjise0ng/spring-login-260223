@@ -47,6 +47,11 @@ spring:
     virtual:
       enabled: true
 
+app:
+  device:
+    max-sessions-per-user: 2
+    max-trusted-devices: 2
+
 notification:
   dispatcher: sync
 

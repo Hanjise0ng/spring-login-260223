@@ -6,8 +6,6 @@ public final class DeviceConst {
 
     private DeviceConst() {}
 
-    public static final int MAX_SESSIONS_PER_USER = 2;
-
     public static final String FALLBACK_VALUE = "알 수 없음";
 
     public static final Set<String> TABLET_FAMILIES =

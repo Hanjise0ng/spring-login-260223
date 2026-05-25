@@ -35,6 +35,10 @@ spring:
 app:
   front-base-url: ${FRONT_BASE_URL:http://localhost:3000}
 
+  device:
+    max-sessions-per-user: 10
+    max-trusted-devices: 5
+
 notification:
   dispatcher: async
 

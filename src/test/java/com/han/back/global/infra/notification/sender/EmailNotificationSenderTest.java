@@ -30,20 +30,22 @@ class EmailNotificationSenderTest {
 
     private MailSendStrategy verificationStrategy;
     private MailSendStrategy welcomeStrategy;
-
+    private MailSendStrategy newDeviceLoginStrategy;
     private EmailNotificationSender senderWithAllStrategies;
 
     @BeforeEach
     void setUp() {
         verificationStrategy = mock(MailSendStrategy.class);
         welcomeStrategy = mock(MailSendStrategy.class);
+        newDeviceLoginStrategy = mock(MailSendStrategy.class);
 
         given(verificationStrategy.getPurpose()).willReturn(NotificationPurpose.VERIFICATION);
         given(welcomeStrategy.getPurpose()).willReturn(NotificationPurpose.WELCOME);
+        given(newDeviceLoginStrategy.getPurpose()).willReturn(NotificationPurpose.NEW_DEVICE_LOGIN);
 
         // PASSWORD_RESET은 의도적으로 등록하지 않음 → unknownPurpose 시나리오에서 재사용
         senderWithAllStrategies = new EmailNotificationSender(
-                List.of(verificationStrategy, welcomeStrategy));
+                List.of(verificationStrategy, welcomeStrategy, newDeviceLoginStrategy));
     }
 
     private static NotificationRequest buildRequest(NotificationPurpose purpose) {
@@ -98,23 +100,27 @@ class EmailNotificationSenderTest {
     class Send {
 
         @ParameterizedTest(name = "{0} → 해당 Purpose의 Strategy에만 위임한다")
-        @EnumSource(value = NotificationPurpose.class, names = {"VERIFICATION", "WELCOME"})
+        @EnumSource(value = NotificationPurpose.class, names = {"VERIFICATION", "WELCOME", "NEW_DEVICE_LOGIN"})
         @DisplayName("등록된 purpose → 해당 Strategy에만 위임하고, 다른 Strategy는 호출되지 않는다")
         void registeredPurpose_delegatesToCorrectStrategyOnly(NotificationPurpose purpose) {
-            // given
             NotificationRequest request = buildRequest(purpose);
 
-            // when
             senderWithAllStrategies.send(request);
 
-            // then - 해당 purpose의 전략만 호출, 다른 전략은 절대 호출되지 않아야 함
-            MailSendStrategy expectedStrategy = purpose == NotificationPurpose.VERIFICATION
-                    ? verificationStrategy : welcomeStrategy;
-            MailSendStrategy otherStrategy = purpose == NotificationPurpose.VERIFICATION
-                    ? welcomeStrategy : verificationStrategy;
+            MailSendStrategy expectedStrategy = switch (purpose) {
+                case VERIFICATION -> verificationStrategy;
+                case WELCOME -> welcomeStrategy;
+                case NEW_DEVICE_LOGIN -> newDeviceLoginStrategy;
+                default -> throw new IllegalArgumentException("unexpected: " + purpose);
+            };
 
             then(expectedStrategy).should(times(1)).send(request);
-            then(otherStrategy).should(never()).send(any());
+
+            // 나머지 전략은 절대 호출되지 않아야 함
+            List.of(verificationStrategy, welcomeStrategy, newDeviceLoginStrategy)
+                    .stream()
+                    .filter(s -> s != expectedStrategy)
+                    .forEach(s -> then(s).should(never()).send(any()));
         }
 
         @Test

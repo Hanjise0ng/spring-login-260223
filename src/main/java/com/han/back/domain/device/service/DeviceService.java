@@ -20,4 +20,8 @@ public interface DeviceService {
 
     void deleteDevice(Long userId, String devicePublicId);
 
+    void trustDevice(Long userId, String devicePublicId);
+
+    void untrustDevice(Long userId, String devicePublicId);
+
 }

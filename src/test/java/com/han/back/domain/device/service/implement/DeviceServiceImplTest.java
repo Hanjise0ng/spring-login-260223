@@ -7,6 +7,7 @@ import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.fixture.DeviceFixture;
+import com.han.back.global.device.DeviceProperties;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponseStatus;
@@ -16,7 +17,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,19 +35,50 @@ class DeviceServiceImplTest {
     @Mock private DeviceRepository deviceRepository;
     @Mock private TokenService tokenService;
 
-    @InjectMocks private DeviceServiceImpl deviceService;
-
-    private static final Long   USER_ID      = 1L;
-    private static final String SESSION_ID   = "session-current-001";
-    private static final String FINGERPRINT  = DeviceFixture.DEFAULT_WEB_FINGERPRINT;
-    private static final String DEVICE_PID   = "device-public-uuid-001";
-
+    private DeviceServiceImpl deviceService;
     private DeviceInfo webDeviceInfo;
+
+    private static final Long USER_ID = 1L;
+    private static final String SESSION_ID = "session-current-001";
+    private static final String FINGERPRINT = DeviceFixture.DEFAULT_WEB_FINGERPRINT;
+    private static final String DEVICE_PID = "device-public-uuid-001";
+    private static final int MAX_SESSIONS = 2;
+    private static final int MAX_TRUSTED = 2;
 
     @BeforeEach
     void setUp() {
+        DeviceProperties properties = new DeviceProperties(MAX_SESSIONS, MAX_TRUSTED);
+        deviceService = new DeviceServiceImpl(deviceRepository, tokenService, properties);
         webDeviceInfo = DeviceFixture.webDeviceInfo();
     }
+
+    private void givenNoExistingDevice() {
+        given(deviceRepository.findByUserIdAndDeviceFingerprint(USER_ID, FINGERPRINT))
+                .willReturn(Optional.empty());
+    }
+
+    private void givenActiveDevicesUnderMax() {
+        given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
+                .willReturn(List.of());
+    }
+
+    private DeviceEntity activeDeviceWith(String sessionId, LocalDateTime loginAt) {
+        return DeviceFixture.builder(USER_ID)
+                .sessionId(sessionId)
+                .fingerprint("fp-" + sessionId)
+                .loginAt(loginAt)
+                .build();
+    }
+
+    private DeviceEntity trustedDeviceWith(String sessionId, LocalDateTime loginAt) {
+        return DeviceFixture.builder(USER_ID)
+                .sessionId(sessionId)
+                .fingerprint("fp-trusted-" + sessionId)
+                .loginAt(loginAt)
+                .trusted(true)
+                .build();
+    }
+
 
     @Nested
     @DisplayName("registerLoginDevice()")
@@ -107,9 +138,8 @@ class DeviceServiceImplTest {
         }
 
         @Test
-        @DisplayName("활성 세션이 MAX 초과 → 가장 오래된 세션만 퇴출하고 나머지는 보존한다")
-        void activeSessionsExceedMax_evictsOldestOnly() {
-            // Repository 반환 순서: 오래된 순(ASC) → index 0 = 퇴출 대상
+        @DisplayName("활성 세션이 MAX 초과 → 가장 오래된 일반 기기 세션만 퇴출한다")
+        void activeSessionsExceedMax_evictsOldestUntrustedOnly() {
             DeviceEntity oldest = activeDeviceWith("oldest-session",
                     LocalDateTime.of(2024, 1, 1, 0, 0));
             DeviceEntity middle = activeDeviceWith("middle-session",
@@ -126,9 +156,6 @@ class DeviceServiceImplTest {
             then(tokenService).should().invalidateSession(USER_ID, "oldest-session");
             then(tokenService).should(never()).invalidateSession(USER_ID, "middle-session");
             then(tokenService).should(never()).invalidateSession(USER_ID, "newest-session");
-            assertThat(oldest.hasActiveSession()).isFalse();
-            assertThat(middle.hasActiveSession()).isTrue();
-            assertThat(newest.hasActiveSession()).isTrue();
         }
 
         private void givenNoExistingDevice() {
@@ -367,6 +394,147 @@ class DeviceServiceImplTest {
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
+        }
+    }
+
+    @Nested
+    @DisplayName("안심 기기 퇴출 정책")
+    class TrustedDeviceEviction {
+
+        @Test
+        @DisplayName("안심 기기는 MAX 초과 시에도 퇴출되지 않는다")
+        void trustedDevice_notEvictedOnMaxExceed() {
+            DeviceEntity trustedOldest = trustedDeviceWith("trusted-session",
+                    LocalDateTime.of(2024, 1, 1, 0, 0));
+            DeviceEntity normalMiddle = activeDeviceWith("normal-session",
+                    LocalDateTime.of(2024, 6, 1, 0, 0));
+            DeviceEntity normalNewest = activeDeviceWith("newest-session",
+                    LocalDateTime.of(2024, 12, 1, 0, 0));
+
+            givenNoExistingDevice();
+            given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
+                    .willReturn(List.of(trustedOldest, normalMiddle, normalNewest));
+
+            deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            // 안심 기기는 퇴출 안 됨, 일반 기기(normalMiddle)가 퇴출됨
+            then(tokenService).should(never()).invalidateSession(USER_ID, "trusted-session");
+            then(tokenService).should().invalidateSession(USER_ID, "normal-session");
+        }
+
+        @Test
+        @DisplayName("모두 안심 기기일 때 새 로그인 → 퇴출 없이 세션 수 초과 허용")
+        void allTrusted_noEvictionAllowed() {
+            DeviceEntity trusted1 = trustedDeviceWith("trusted-1",
+                    LocalDateTime.of(2024, 1, 1, 0, 0));
+            DeviceEntity trusted2 = trustedDeviceWith("trusted-2",
+                    LocalDateTime.of(2024, 6, 1, 0, 0));
+            DeviceEntity trusted3 = trustedDeviceWith("trusted-3",
+                    LocalDateTime.of(2024, 12, 1, 0, 0));
+
+            givenNoExistingDevice();
+            given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
+                    .willReturn(List.of(trusted1, trusted2, trusted3));
+
+            deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
+        }
+    }
+
+    // --- trustDevice 테스트 추가 ---
+
+    @Nested
+    @DisplayName("trustDevice()")
+    class TrustDevice {
+
+        @Test
+        @DisplayName("일반 기기 → 안심 기기로 등록된다")
+        void normalDevice_markedAsTrusted() {
+            DeviceEntity device = DeviceFixture.builder(USER_ID)
+                    .fingerprint("fp-trust").sessionId("s1").build();
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.of(device));
+            given(deviceRepository.countTrustedDevicesByUserId(USER_ID))
+                    .willReturn(0);
+
+            deviceService.trustDevice(USER_ID, DEVICE_PID);
+
+            assertThat(device.isTrusted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("이미 안심 기기 → 멱등 처리, 카운트 조회 없이 그냥 반환")
+        void alreadyTrusted_idempotent() {
+            DeviceEntity device = DeviceFixture.builder(USER_ID)
+                    .fingerprint("fp-trust").sessionId("s1").trusted(true).build();
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.of(device));
+
+            deviceService.trustDevice(USER_ID, DEVICE_PID);
+
+            then(deviceRepository).should(never()).countTrustedDevicesByUserId(anyLong());
+            assertThat(device.isTrusted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("안심 기기 한도 초과 → TRUSTED_DEVICE_LIMIT_EXCEEDED")
+        void trustedLimitExceeded_throwsException() {
+            DeviceEntity device = DeviceFixture.builder(USER_ID)
+                    .fingerprint("fp-trust").sessionId("s1").build();
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.of(device));
+            given(deviceRepository.countTrustedDevicesByUserId(USER_ID))
+                    .willReturn(MAX_TRUSTED);  // 이미 한도 도달
+
+            assertThatThrownBy(() -> deviceService.trustDevice(USER_ID, DEVICE_PID))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.TRUSTED_DEVICE_LIMIT_EXCEEDED);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 기기 → NOT_FOUND_DEVICE")
+        void deviceNotFound_throwsException() {
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> deviceService.trustDevice(USER_ID, DEVICE_PID))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
+        }
+    }
+
+    @Nested
+    @DisplayName("untrustDevice()")
+    class UntrustDevice {
+
+        @Test
+        @DisplayName("안심 기기 → 일반 기기로 해제된다")
+        void trustedDevice_unmarkedAsTrusted() {
+            DeviceEntity device = DeviceFixture.builder(USER_ID)
+                    .fingerprint("fp-trust").sessionId("s1").trusted(true).build();
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.of(device));
+
+            deviceService.untrustDevice(USER_ID, DEVICE_PID);
+
+            assertThat(device.isTrusted()).isFalse();
+        }
+
+        @Test
+        @DisplayName("이미 일반 기기 → 멱등 처리")
+        void alreadyUntrusted_idempotent() {
+            DeviceEntity device = DeviceFixture.builder(USER_ID)
+                    .fingerprint("fp-trust").sessionId("s1").build();
+            given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
+                    .willReturn(Optional.of(device));
+
+            assertThatCode(() -> deviceService.untrustDevice(USER_ID, DEVICE_PID))
+                    .doesNotThrowAnyException();
+
+            assertThat(device.isTrusted()).isFalse();
         }
     }
 

@@ -25,7 +25,13 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException(BaseResponseStatus.SIGN_IN_FAIL.getMessage());
         }
 
-        return new CustomUserDetails(user.getId(), user.getPassword(), user.getRole());
+        return new CustomUserDetails(
+                user.getId(),
+                user.getPassword(),
+                user.getRole(),
+                user.getEmail(),
+                user.getNickname()
+        );
     }
 
 }

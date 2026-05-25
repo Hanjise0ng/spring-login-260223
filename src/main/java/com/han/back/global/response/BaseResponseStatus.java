@@ -68,6 +68,7 @@ public enum BaseResponseStatus {
     ALREADY_DELETED(HttpStatus.CONFLICT, "AD", "The resource is already deleted."),
     SOCIAL_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "SAL", "This social account is already linked."),
     ACTIVE_DEVICE_CANNOT_DELETE(HttpStatus.CONFLICT, "ACD", "Active device cannot be deleted. Force logout first."),
+    TRUSTED_DEVICE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "TDL", "Trusted device limit exceeded. Remove a trusted device first."),
     EMAIL_CONFLICT(HttpStatus.CONFLICT, "EC", "This email is already registered with a different account."),
     NICKNAME_TAG_DUPLICATE(HttpStatus.CONFLICT, "NTD", "This nickname and tag combination is already taken."),
 
