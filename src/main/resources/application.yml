@@ -42,6 +42,9 @@ app:
 notification:
   dispatcher: async
 
+trace:
+  strict-mode: false
+
 logging:
   level:
     org.hibernate.orm.jdbc.bind: TRACE

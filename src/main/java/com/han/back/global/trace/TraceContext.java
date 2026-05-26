@@ -11,7 +11,7 @@ public final class TraceContext {
     private static final String KEY = "traceId";
     private static final String UNTRACED = "UNTRACED";
 
-    private static boolean strictMode = false;
+    private static volatile boolean strictMode = false;
 
     static void configureStrictMode(boolean strict) {
         strictMode = strict;
@@ -33,7 +33,7 @@ public final class TraceContext {
         MDC.put(KEY, traceId);
     }
 
-    public static void clearTraceId() {
+    public static void removeTraceId() {
         MDC.remove(KEY);
     }
 

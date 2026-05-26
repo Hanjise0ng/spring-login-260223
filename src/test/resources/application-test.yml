@@ -55,6 +55,9 @@ app:
 notification:
   dispatcher: sync
 
+trace:
+  strict-mode: false
+
 logging:
   level:
     com.han.back: DEBUG
