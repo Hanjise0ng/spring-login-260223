@@ -13,10 +13,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UserFactory {
 
-    public UserEntity createFromSignUpRequest(SignUpRequestDto dto, String encodedPassword, String tag) {
+    public UserEntity createFromSignUpRequest(SignUpRequestDto dto, String password, String tag) {
         return UserEntity.builder()
                 .loginId(dto.getLoginId())
-                .password(encodedPassword)
+                .password(password)
                 .email(dto.getEmail())
                 .nickname(dto.getNickname())
                 .tag(tag)
@@ -25,7 +25,7 @@ public class UserFactory {
                 .build();
     }
 
-    public UserEntity createSocialUser(String nickname, String email, AuthProvider provider, String tag) {
+    public UserEntity createSocialUser(String nickname, String email, String password, AuthProvider provider, String tag) {
         String publicId = UuidUtil.generateString();
         String dummyLoginId = String.format(
                 OAuth2Const.DUMMY_LOGIN_ID_FORMAT,
@@ -35,7 +35,7 @@ public class UserFactory {
         return UserEntity.builder()
                 .publicId(publicId)
                 .loginId(dummyLoginId)
-                .password(OAuth2Const.SOCIAL_PASSWORD_PLACEHOLDER)
+                .password(password)
                 .nickname(nickname)
                 .email(email)
                 .tag(tag)

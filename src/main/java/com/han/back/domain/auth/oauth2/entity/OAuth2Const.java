@@ -20,9 +20,6 @@ public final class OAuth2Const {
 
     // ── 소셜 유저 더미값 ──────────────────────────────────────────
     public static final String DUMMY_LOGIN_ID_FORMAT = "%s_%s";
-    public static final String SOCIAL_PASSWORD_PLACEHOLDER = "{social}no-password";
-
-    // ── 닉네임 기본값 ─────────────────────────────────────────────
     public static final String DEFAULT_NICKNAME = "social_user";
 
     // ── OAuth2User attributes 키 ──────────────────────────────────

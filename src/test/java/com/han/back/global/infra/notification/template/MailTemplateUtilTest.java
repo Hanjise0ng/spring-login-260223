@@ -28,7 +28,7 @@ class MailTemplateUtilTest {
 
         assertThat(result).contains("123456");
         assertThat(result).contains("5분");
-        assertThat(result).contains("HAN");  // layout 헤더 포함 확인
+        assertThat(result).contains("HAN");
     }
 
     @Test
@@ -40,7 +40,7 @@ class MailTemplateUtilTest {
         assertThat(result).contains("홍길동");
         assertThat(result).contains("2026-04-26");
         assertThat(result).contains("https://test.han.com/mypage");
-        assertThat(result).contains("HAN");  // layout 헤더
+        assertThat(result).contains("HAN");
     }
 
     @Test
@@ -58,9 +58,9 @@ class MailTemplateUtilTest {
     void allEmails_includeLayoutHeaderAndFooter() {
         String result = mailTemplateUtil.buildVerificationEmail("000000", "테스트", 3);
 
-        assertThat(result).contains("<!DOCTYPE html>");        // layout 시작
-        assertThat(result).contains("발신 전용");               // layout 푸터
-        assertThat(result).contains("© HAN Service");          // layout 푸터
+        assertThat(result).containsIgnoringCase("<!DOCTYPE html>");
+        assertThat(result).contains("발신 전용");
+        assertThat(result).contains("© HAN Service");
     }
 
     @Test

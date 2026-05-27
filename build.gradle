@@ -68,6 +68,7 @@ dependencies {
     // Utility & Additional Features (유틸리티 및 기타 기능)
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-mail'          // 이메일 전송 기능 (인증 메일)
+    implementation 'org.jsoup:jsoup:1.17.2'                                     // HTML <style> 블록 인라인 style="" 속성으로 변환 (웹메일 CSS 제거 대응)
     implementation 'com.github.ua-parser:uap-java:1.6.1'                        // User-Agent 문자열 파싱 (브라우저, OS 정보 추출)
     implementation 'org.springframework.boot:spring-boot-starter-aspectj'       // AOP 기반 부가 기능
 

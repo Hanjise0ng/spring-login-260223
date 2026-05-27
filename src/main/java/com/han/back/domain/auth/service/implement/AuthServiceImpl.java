@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -80,9 +81,9 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
         }
 
-        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+        String password = passwordEncoder.encode(dto.getPassword());
         String tag = tagGenerator.generate(dto.getNickname());
-        UserEntity user = userFactory.createFromSignUpRequest(dto, encodedPassword, tag);
+        UserEntity user = userFactory.createFromSignUpRequest(dto, password, tag);
         userRepository.save(user);
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
@@ -121,8 +122,9 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(BaseResponseStatus.SOCIAL_ACCOUNT_ALREADY_LINKED);
         }
 
+        String password = passwordEncoder.encode(UUID.randomUUID().toString());
         String tag = tagGenerator.generate(claims.getNickname());
-        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, provider, tag);
+        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, password, provider, tag);
         userRepository.save(user);
 
         SocialAccountEntity socialAccount = SocialAccountEntity.builder()
@@ -180,8 +182,9 @@ public class AuthServiceImpl implements AuthService {
             return SocialSignInResult.EmailConflict.of(existing.get().getAuthProvider().getValue());
         }
 
+        String password = passwordEncoder.encode(UUID.randomUUID().toString());
         String tag = tagGenerator.generate(userInfo.getNickname());
-        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), userInfo.getProvider(), tag);
+        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), password, userInfo.getProvider(), tag);
         userRepository.save(user);
 
         SocialAccountEntity socialAccount = SocialAccountEntity.builder()

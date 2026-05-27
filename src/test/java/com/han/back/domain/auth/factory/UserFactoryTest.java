@@ -1,7 +1,6 @@
 package com.han.back.domain.auth.factory;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
-import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
@@ -97,7 +96,7 @@ class UserFactoryTest {
         @Test
         @DisplayName("nickname, email, tag가 UserEntity에 올바르게 매핑된다")
         void fields_mappedToUserEntity() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             assertThat(user.getNickname()).isEqualTo(NICKNAME);
             assertThat(user.getEmail()).isEqualTo(EMAIL);
@@ -107,7 +106,7 @@ class UserFactoryTest {
         @Test
         @DisplayName("role은 항상 USER로 설정된다")
         void role_isAlwaysUser() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             assertThat(user.getRole()).isEqualTo(Role.USER);
         }
@@ -115,25 +114,17 @@ class UserFactoryTest {
         @Test
         @DisplayName("authProvider가 인자로 받은 provider로 설정된다")
         void authProvider_matchesGivenProvider() {
-            UserEntity googleUser = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
-            UserEntity kakaoUser = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.KAKAO, TAG);
+            UserEntity googleUser = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
+            UserEntity kakaoUser = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.KAKAO, TAG);
 
             assertThat(googleUser.getAuthProvider()).isEqualTo(AuthProvider.GOOGLE);
             assertThat(kakaoUser.getAuthProvider()).isEqualTo(AuthProvider.KAKAO);
         }
 
         @Test
-        @DisplayName("password는 소셜 플레이스홀더로 설정된다")
-        void password_isSocialPlaceholder() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
-
-            assertThat(user.getPassword()).isEqualTo(OAuth2Const.SOCIAL_PASSWORD_PLACEHOLDER);
-        }
-
-        @Test
         @DisplayName("loginId는 provider 값과 publicId 앞 8자리 대문자를 포함한 더미 포맷이다")
         void loginId_matchesDummyFormat() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             // provider value가 포함되어야 한다
             assertThat(user.getLoginId()).contains(AuthProvider.GOOGLE.getValue());
@@ -142,7 +133,7 @@ class UserFactoryTest {
         @Test
         @DisplayName("publicId는 null이 아니다")
         void publicId_isNotNull() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             assertThat(user.getPublicId()).isNotNull();
         }
@@ -150,8 +141,8 @@ class UserFactoryTest {
         @Test
         @DisplayName("두 번 호출 시 서로 다른 publicId가 생성된다")
         void twoCallsProduceDifferentPublicIds() {
-            UserEntity user1 = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
-            UserEntity user2 = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user1 = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
+            UserEntity user2 = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             assertThat(user1.getPublicId()).isNotEqualTo(user2.getPublicId());
         }
@@ -159,7 +150,7 @@ class UserFactoryTest {
         @Test
         @DisplayName("loginId는 provider 값과 publicId 기반 더미 포맷이다")
         void loginId_containsProviderAndFollowsDummyFormat() {
-            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, AuthProvider.GOOGLE, TAG);
+            UserEntity user = userFactory.createSocialUser(NICKNAME, EMAIL, ENCODED_PASSWORD, AuthProvider.GOOGLE, TAG);
 
             // "GOOGLE_XXXXXXXX" 형식 검증
             assertThat(user.getLoginId())

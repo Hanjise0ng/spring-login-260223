@@ -68,10 +68,12 @@ public class MailTemplateUtil {
     }
 
     private String wrapWithLayout(String bodyContent, String title) {
-        return render(LAYOUT_TEMPLATE, Map.of(
-                "BODY", bodyContent,
-                "TITLE", escapeHtml(title)
-        ));
+        return MailStyleInliner.process(
+                render(LAYOUT_TEMPLATE, Map.of(
+                        "BODY", bodyContent,
+                        "TITLE", escapeHtml(title)
+                ))
+        );
     }
 
     private String render(String templatePath, Map<String, String> values) {
