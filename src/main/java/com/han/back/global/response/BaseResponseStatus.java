@@ -93,6 +93,7 @@ public enum BaseResponseStatus {
     SMS_SEND_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "SSF", "SMS send failed."),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "DBE", "Database error."),
     REDIS_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "RE", "Redis operation failed."),
+    SERIALIZATION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SE", "Serialization failed."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "ISE", "Internal server error.");
 
 

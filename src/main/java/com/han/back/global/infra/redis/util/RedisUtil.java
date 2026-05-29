@@ -44,6 +44,11 @@ public class RedisUtil {
         }
     }
 
+    public Optional<String> getAndDelete(String key) {
+        String value = redisTemplate.opsForValue().getAndDelete(key);
+        return Optional.ofNullable(value);
+    }
+
     public void deleteData(String key) {
         try {
             redisTemplate.delete(key);
