@@ -24,7 +24,6 @@ public final class OAuth2Const {
 
     // ── OAuth2User attributes 키 ──────────────────────────────────
     public static final String ATTR_USER_INFO = "oauth2UserInfo";
-    public static final String ATTR_EXISTING_USER = "existingUserId";
 
     // ── 프론트 리다이렉트 경로 ────────────────────────────────────
     public static final String FRONT_CALLBACK_PATH = "/callback";
