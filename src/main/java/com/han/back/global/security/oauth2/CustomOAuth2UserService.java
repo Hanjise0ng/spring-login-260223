@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,40 +25,42 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
     private final OAuth2UserResolver oauth2UserResolver;
     private final SocialAccountRepository socialAccountRepository;
+    private final DefaultOAuth2UserService defaultOAuth2UserService;
 
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest request)
-            throws OAuth2AuthenticationException {
+    @Transactional(readOnly = true)
+    public OAuth2User loadUser(OAuth2UserRequest request) throws OAuth2AuthenticationException {
+        OAuth2User oAuth2User = defaultOAuth2UserService.loadUser(request);
+        OAuth2UserInfo userInfo = resolveUserInfo(request, oAuth2User);
+        return buildOAuth2User(oAuth2User, userInfo, request);
+    }
 
-        OAuth2User oAuth2User = fetchOAuth2User(request);
-
+    private OAuth2UserInfo resolveUserInfo(OAuth2UserRequest request, OAuth2User oAuth2User) {
         String registrationId = request.getClientRegistration().getRegistrationId();
-        OAuth2UserInfo userInfo = oauth2UserResolver.resolve(
-                registrationId, oAuth2User.getAttributes());
+        return oauth2UserResolver.resolve(registrationId, oAuth2User.getAttributes());
+    }
 
+    private OAuth2User buildOAuth2User(OAuth2User oAuth2User,
+                                       OAuth2UserInfo userInfo,
+                                       OAuth2UserRequest request) {
         Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
         attributes.put(OAuth2Const.ATTR_USER_INFO, userInfo);
-
-        socialAccountRepository
-                .findByProviderAndProviderId(
-                        userInfo.getProvider(), userInfo.getProviderId())
-                .ifPresent(account ->
-                        attributes.put(OAuth2Const.ATTR_EXISTING_USER,
-                                account.getUserId()));
+        enrichWithExistingUser(attributes, userInfo);
 
         String userNameAttributeName = request.getClientRegistration()
                 .getProviderDetails()
                 .getUserInfoEndpoint()
                 .getUserNameAttributeName();
 
-        return new DefaultOAuth2User(
-                oAuth2User.getAuthorities(),
-                attributes,
-                userNameAttributeName);
+        return new DefaultOAuth2User(oAuth2User.getAuthorities(), attributes, userNameAttributeName);
     }
 
-    protected OAuth2User fetchOAuth2User(OAuth2UserRequest request) {
-        return new DefaultOAuth2UserService().loadUser(request);
+    private void enrichWithExistingUser(Map<String, Object> attributes, OAuth2UserInfo userInfo) {
+        socialAccountRepository
+                .findByProviderAndProviderId(userInfo.getProvider(), userInfo.getProviderId())
+                .ifPresent(account ->
+                        attributes.put(OAuth2Const.ATTR_EXISTING_USER, account.getUserId()));
     }
+
 
 }
