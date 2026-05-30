@@ -45,8 +45,11 @@ public class RedisUtil {
     }
 
     public Optional<String> getAndDelete(String key) {
-        String value = redisTemplate.opsForValue().getAndDelete(key);
-        return Optional.ofNullable(value);
+        try {
+            return Optional.ofNullable(redisTemplate.opsForValue().getAndDelete(key));
+        } catch (Exception e) {
+            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+        }
     }
 
     public void deleteData(String key) {

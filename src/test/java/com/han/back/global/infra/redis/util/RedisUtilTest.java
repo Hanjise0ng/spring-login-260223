@@ -153,4 +153,41 @@ class RedisUtilTest {
                 .isInstanceOf(CustomException.class);
     }
 
+    @Test
+    @DisplayName("getAndDelete - 키가 존재하면 값을 Optional에 담아 반환한다")
+    void getAndDelete_Success() {
+        // given
+        given(valueOperations.getAndDelete("testKey")).willReturn("testValue");
+
+        // when
+        Optional<String> result = redisUtil.getAndDelete("testKey");
+
+        // then
+        assertThat(result).isPresent().contains("testValue");
+    }
+
+    @Test
+    @DisplayName("getAndDelete - 키가 없으면 Optional.empty()를 반환한다")
+    void getAndDelete_Empty() {
+        // given
+        given(valueOperations.getAndDelete("testKey")).willReturn(null);
+
+        // when
+        Optional<String> result = redisUtil.getAndDelete("testKey");
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getAndDelete - 예외 발생 시 REDIS_ERROR CustomException을 던진다")
+    void getAndDelete_Exception() {
+        // given
+        given(redisTemplate.opsForValue()).willThrow(new RuntimeException("Redis connection error"));
+
+        // when & then
+        assertThatThrownBy(() -> redisUtil.getAndDelete("testKey"))
+                .isInstanceOf(CustomException.class);
+    }
+
 }
