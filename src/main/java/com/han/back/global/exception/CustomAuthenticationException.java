@@ -1,15 +1,15 @@
 package com.han.back.global.exception;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ApiResponseStatus;
 import lombok.Getter;
 import org.springframework.security.core.AuthenticationException;
 
 @Getter
 public class CustomAuthenticationException extends AuthenticationException {
 
-    private final BaseResponseStatus status;
+    private final ApiResponseStatus status;
 
-    public CustomAuthenticationException(BaseResponseStatus status) {
+    public CustomAuthenticationException(ApiResponseStatus status) {
         super(status.getMessage());
         this.status = status;
     }

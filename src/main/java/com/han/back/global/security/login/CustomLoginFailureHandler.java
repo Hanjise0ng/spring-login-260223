@@ -1,6 +1,7 @@
 package com.han.back.global.security.login;
 
 import com.han.back.global.exception.CustomAuthenticationException;
+import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,8 +26,8 @@ public class CustomLoginFailureHandler implements AuthenticationFailureHandler {
     public void onAuthenticationFailure(HttpServletRequest request,
                                         HttpServletResponse response,
                                         AuthenticationException exception) {
-        BaseResponseStatus logStatus = determineLogStatus(exception);
-        BaseResponseStatus clientStatus = determineClientStatus(exception);
+        ApiResponseStatus logStatus = determineLogStatus(exception);
+        ApiResponseStatus clientStatus = determineClientStatus(exception);
 
         String loginId = MDC.get("loginId");
         if (loginId == null) loginId = "UNIDENTIFIED";
@@ -37,7 +38,7 @@ public class CustomLoginFailureHandler implements AuthenticationFailureHandler {
         httpResponseUtil.writeResponse(response, clientStatus);
     }
 
-    private BaseResponseStatus determineLogStatus(AuthenticationException failed) {
+    private ApiResponseStatus determineLogStatus(AuthenticationException failed) {
         Throwable cause = (failed.getCause() != null) ? failed.getCause() : failed;
 
         if (cause instanceof CustomAuthenticationException e) return e.getStatus();
@@ -46,7 +47,7 @@ public class CustomLoginFailureHandler implements AuthenticationFailureHandler {
         return BaseResponseStatus.AUTHENTICATION_FAIL;
     }
 
-    private BaseResponseStatus determineClientStatus(AuthenticationException failed) {
+    private ApiResponseStatus determineClientStatus(AuthenticationException failed) {
         Throwable cause = (failed.getCause() != null) ? failed.getCause() : failed;
         return (cause instanceof CustomAuthenticationException e)
                 ? e.getStatus()

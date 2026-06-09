@@ -17,13 +17,13 @@ public class BaseResponse<T> {
     @Schema(description = "응답 데이터 (없으면 빈 객체)")
     private final T result;
 
-    private BaseResponse(BaseResponseStatus status, T result) {
+    private BaseResponse(ApiResponseStatus status, T result) {
         this.code = status.getCode();
         this.message = status.getMessage();
         this.result = result;
     }
 
-    private BaseResponse(BaseResponseStatus status, String customMessage) {
+    private BaseResponse(ApiResponseStatus status, String customMessage) {
         this.code = status.getCode();
         this.message = customMessage;
         this.result = null;
@@ -42,13 +42,13 @@ public class BaseResponse<T> {
                 .body(successBody(result));
     }
 
-    public static ResponseEntity<BaseResponse<Empty>> error(BaseResponseStatus status) {
+    public static ResponseEntity<BaseResponse<Empty>> error(ApiResponseStatus status) {
         return ResponseEntity
                 .status(status.getHttpStatus())
                 .body(errorBody(status));
     }
 
-    public static ResponseEntity<BaseResponse<Empty>> error(BaseResponseStatus status, String customMessage) {
+    public static ResponseEntity<BaseResponse<Empty>> error(ApiResponseStatus status, String customMessage) {
         return ResponseEntity
                 .status(status.getHttpStatus())
                 .body(errorBody(status, customMessage));
@@ -63,11 +63,11 @@ public class BaseResponse<T> {
         return new BaseResponse<>(BaseResponseStatus.SUCCESS, result);
     }
 
-    public static BaseResponse<Empty> errorBody(BaseResponseStatus status) {
+    public static BaseResponse<Empty> errorBody(ApiResponseStatus status) {
         return new BaseResponse<>(status, Empty.getInstance());
     }
 
-    public static BaseResponse<Empty> errorBody(BaseResponseStatus status, String customMessage) {
+    public static BaseResponse<Empty> errorBody(ApiResponseStatus status, String customMessage) {
         return new BaseResponse<>(status, customMessage);
     }
 

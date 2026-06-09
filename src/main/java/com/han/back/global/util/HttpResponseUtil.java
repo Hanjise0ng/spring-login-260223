@@ -1,5 +1,6 @@
 package com.han.back.global.util;
 
+import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
@@ -18,7 +19,7 @@ public class HttpResponseUtil {
 
     private final ObjectMapper objectMapper;
 
-    public void writeResponse(HttpServletResponse response, BaseResponseStatus status) {
+    public void writeResponse(HttpServletResponse response, ApiResponseStatus status) {
         try {
             response.setStatus(status.getHttpStatusCode());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

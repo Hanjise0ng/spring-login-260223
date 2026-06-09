@@ -1,19 +1,20 @@
 package com.han.back.global.exception;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ApiResponseStatus;
 import lombok.Getter;
 
 @Getter
 public class CustomException extends RuntimeException {
-    private final BaseResponseStatus status;
+    private final ApiResponseStatus status;
 
-    public CustomException(BaseResponseStatus status) {
+    public CustomException(ApiResponseStatus status) {
         super(status.getMessage());
         this.status = status;
     }
 
-    public CustomException(BaseResponseStatus status, String detailMessage) {
+    public CustomException(ApiResponseStatus status, String detailMessage) {
         super(detailMessage);
         this.status = status;
     }
+
 }
