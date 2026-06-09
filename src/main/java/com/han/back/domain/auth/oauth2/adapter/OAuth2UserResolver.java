@@ -27,7 +27,7 @@ public class OAuth2UserResolver {
         OAuth2UserAdapter adapter = adapterMap.get(provider);
 
         if (adapter == null) {
-            throw new CustomException(SocialResponseStatus.SOCIAL_UNSUPPORTED_PROVIDER);
+            throw new CustomException(SocialResponseStatus.SOCIAL_PROVIDER_UNSUPPORTED);
         }
 
         return adapter.convert(attributes);

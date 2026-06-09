@@ -255,7 +255,7 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.authenticateAccessToken(FAKE_AT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
 
         @Test
@@ -302,7 +302,7 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.authenticateRefreshToken(FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
     }
 

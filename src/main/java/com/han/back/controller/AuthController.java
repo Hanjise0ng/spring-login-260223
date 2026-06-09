@@ -90,7 +90,7 @@ public class AuthController {
             HttpServletRequest request, HttpServletResponse response) {
 
         String refreshToken = AuthHttpUtil.extractRefreshToken(request)
-                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_MISSING_REFRESH_TOKEN));
+                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_REFRESH_TOKEN_MISSING));
         AuthToken newTokens = authService.reissue(refreshToken);
 
         tokenTransportResolver.resolve(request).write(response, newTokens);

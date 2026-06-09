@@ -203,7 +203,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_CHANNEL_UNSUPPORTED);
 
             then(redisUtil).should(never()).hasKey(anyString());
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));

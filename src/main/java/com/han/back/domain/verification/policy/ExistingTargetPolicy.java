@@ -31,7 +31,7 @@ public class ExistingTargetPolicy implements VerificationPolicy {
                     throw new CustomException(AccountResponseStatus.ACCOUNT_USER_NOT_FOUND);
                 }
             }
-            case SMS -> throw new CustomException(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
+            case SMS -> throw new CustomException(VerificationResponseStatus.VERIFY_CHANNEL_UNSUPPORTED);
         }
     }
 

@@ -136,7 +136,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims(createExpiredToken(AuthConst.TOKEN_TYPE_ACCESS)))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_EXPIRED_ACCESS_TOKEN);
+                    .isEqualTo(AuthResponseStatus.AUTH_ACCESS_TOKEN_EXPIRED);
         }
 
         @Test
@@ -149,7 +149,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims(foreignToken))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_INVALID_JWT_SIGNATURE);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_SIGNATURE_INVALID);
         }
 
         @Test
@@ -158,7 +158,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims(""))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_EMPTY_JWT);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_EMPTY);
         }
 
         @Test
@@ -167,7 +167,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims("not.a.valid.jwt.token"))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_INVALID_JWT_SIGNATURE);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_SIGNATURE_INVALID);
         }
 
         @Test
@@ -176,7 +176,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims(null))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_EMPTY_JWT);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_EMPTY);
         }
 
         @Test
@@ -190,7 +190,7 @@ class JwtUtilTest {
             assertThatThrownBy(() -> jwtUtil.parseClaims(unsignedToken))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+                    .isEqualTo(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
     }
 

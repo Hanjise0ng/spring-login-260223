@@ -22,7 +22,7 @@ public enum AuthProvider {
         return Arrays.stream(values())
                 .filter(provider -> provider.getValue().equalsIgnoreCase(registrationId))
                 .findFirst()
-                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_UNSUPPORTED_PROVIDER));
+                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_PROVIDER_UNSUPPORTED));
     }
 
     public boolean isSocial() {

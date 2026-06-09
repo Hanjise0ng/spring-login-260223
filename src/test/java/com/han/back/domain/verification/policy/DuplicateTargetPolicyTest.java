@@ -77,7 +77,7 @@ class DuplicateTargetPolicyTest {
             assertThatThrownBy(() -> duplicateTargetPolicy.check("01012345678", NotificationChannel.SMS))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_CHANNEL_UNSUPPORTED);
         }
     }
 

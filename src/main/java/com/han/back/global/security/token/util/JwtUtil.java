@@ -70,15 +70,15 @@ public class JwtUtil {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (ExpiredJwtException e) { // 토큰 만료
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_EXPIRED_ACCESS_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_ACCESS_TOKEN_EXPIRED);
         } catch (SecurityException | MalformedJwtException e) { // 서명 불일치 또는 토큰 구조 손상
             log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_INVALID_JWT_SIGNATURE);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_SIGNATURE_INVALID);
         } catch (UnsupportedJwtException e) { // 지원하지 않는 JWT 알고리즘 또는 형식
             log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         } catch (IllegalArgumentException e) { // 토큰 문자열이 null 또는 빈 값
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_EMPTY_JWT);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_EMPTY);
         }
     }
 

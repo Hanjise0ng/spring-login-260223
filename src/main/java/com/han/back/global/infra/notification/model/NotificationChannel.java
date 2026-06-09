@@ -17,7 +17,7 @@ public enum NotificationChannel {
 
     public void validateSupported() {
         if (!this.supported) {
-            throw new CustomException(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
+            throw new CustomException(VerificationResponseStatus.VERIFY_CHANNEL_UNSUPPORTED);
         }
     }
 

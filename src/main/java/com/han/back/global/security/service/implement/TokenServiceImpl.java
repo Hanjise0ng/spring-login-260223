@@ -47,7 +47,7 @@ public class TokenServiceImpl implements TokenService {
         Claims claims = jwtUtil.parseClaims(accessToken);
 
         if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
 
         String sessionId = jwtUtil.getSessionId(claims);
@@ -73,7 +73,7 @@ public class TokenServiceImpl implements TokenService {
 
         if (!AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(claims))) {
             log.warn("Reissue Failed - Reason: Not a Refresh Token");
-            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
 
         return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims));

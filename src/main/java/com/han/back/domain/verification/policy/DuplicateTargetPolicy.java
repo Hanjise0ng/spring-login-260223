@@ -31,7 +31,7 @@ public class DuplicateTargetPolicy implements VerificationPolicy {
                     throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
                 }
             }
-            case SMS -> throw new CustomException(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
+            case SMS -> throw new CustomException(VerificationResponseStatus.VERIFY_CHANNEL_UNSUPPORTED);
         }
     }
 
