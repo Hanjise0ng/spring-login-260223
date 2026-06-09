@@ -1,10 +1,11 @@
 package com.han.back.domain.verification.policy;
 
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.domain.verification.service.UserExistencePort;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.model.NotificationChannel;
-import com.han.back.global.response.BaseResponseStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -67,7 +68,7 @@ class DuplicateTargetPolicyTest {
             assertThatThrownBy(() -> duplicateTargetPolicy.check(EMAIL, NotificationChannel.EMAIL))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
         }
 
         @Test
@@ -76,7 +77,7 @@ class DuplicateTargetPolicyTest {
             assertThatThrownBy(() -> duplicateTargetPolicy.check("01012345678", NotificationChannel.SMS))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
         }
     }
 

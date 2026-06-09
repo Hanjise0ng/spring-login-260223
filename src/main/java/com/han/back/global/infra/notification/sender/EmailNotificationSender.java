@@ -5,7 +5,7 @@ import com.han.back.global.infra.notification.model.NotificationChannel;
 import com.han.back.global.infra.notification.model.NotificationPurpose;
 import com.han.back.global.infra.notification.model.NotificationRequest;
 import com.han.back.global.infra.notification.strategy.MailSendStrategy;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.MaskingUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -45,7 +45,7 @@ public class EmailNotificationSender implements NotificationSender {
         if (strategy == null) {
             log.error("No strategy for purpose: {} | target: {}",
                     request.getPurpose(), MaskingUtil.maskTarget(request.getTarget()));
-            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
         }
 
         log.debug("Dispatching to {} strategy - target: {}",

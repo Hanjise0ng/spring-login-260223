@@ -1,10 +1,11 @@
 package com.han.back.global.security.service.implement;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.redis.util.RedisUtil;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.security.token.AuthToken;
@@ -241,7 +242,7 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.authenticateAccessToken(FAKE_AT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         @Test
@@ -254,7 +255,7 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.authenticateAccessToken(FAKE_AT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+                    .isEqualTo(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
         }
 
         @Test
@@ -265,12 +266,12 @@ class TokenServiceImplTest {
             given(jwtUtil.getSessionId(claims)).willReturn(SESSION_ID);
             given(jwtUtil.parseClaims(FAKE_AT)).willReturn(claims);
             given(redisUtil.hasKey(BLACKLIST_KEY))
-                    .willThrow(new CustomException(BaseResponseStatus.REDIS_ERROR));
+                    .willThrow(new CustomException(ResponseStatus.REDIS_ERROR));
 
             assertThatThrownBy(() -> tokenService.authenticateAccessToken(FAKE_AT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
     }
 
@@ -301,7 +302,7 @@ class TokenServiceImplTest {
             assertThatThrownBy(() -> tokenService.authenticateRefreshToken(FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+                    .isEqualTo(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
         }
     }
 
@@ -327,7 +328,7 @@ class TokenServiceImplTest {
                     tokenService.validateRefreshToken(USER_PK, SESSION_ID, FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         @Test
@@ -339,7 +340,7 @@ class TokenServiceImplTest {
                     tokenService.validateRefreshToken(USER_PK, SESSION_ID, FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
     }
 

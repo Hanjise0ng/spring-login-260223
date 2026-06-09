@@ -1,5 +1,7 @@
 package com.han.back.global.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.han.back.global.trace.TraceContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import org.springframework.http.ResponseEntity;
@@ -8,37 +10,36 @@ import org.springframework.http.ResponseEntity;
 @Getter
 public class BaseResponse<T> {
 
-    @Schema(description = "응답 코드", example = "SU")
+    @Schema(description = "응답 코드", example = "SUCCESS")
     private final String code;
 
-    @Schema(description = "응답 메시지", example = "Success.")
+    @Schema(description = "응답 메시지(개발자용)", example = "성공")
     private final String message;
+
+    @Schema(description = "요청 추적 식별자 (오류 응답에만 포함)", example = "3f9a1c2e-...")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String traceId;
 
     @Schema(description = "응답 데이터 (없으면 빈 객체)")
     private final T result;
 
-    private BaseResponse(ApiResponseStatus status, T result) {
+    private BaseResponse(ApiResponseStatus status, String message, String traceId, T result) {
         this.code = status.getCode();
-        this.message = status.getMessage();
+        this.message = message;
+        this.traceId = traceId;
         this.result = result;
-    }
-
-    private BaseResponse(ApiResponseStatus status, String customMessage) {
-        this.code = status.getCode();
-        this.message = customMessage;
-        this.result = null;
     }
 
     // Spring MVC (Controller)
     public static ResponseEntity<BaseResponse<Empty>> success() {
         return ResponseEntity
-                .status(BaseResponseStatus.SUCCESS.getHttpStatus())
+                .status(ResponseStatus.SUCCESS.getHttpStatus())
                 .body(successBody());
     }
 
     public static <T> ResponseEntity<BaseResponse<T>> success(T result) {
         return ResponseEntity
-                .status(BaseResponseStatus.SUCCESS.getHttpStatus())
+                .status(ResponseStatus.SUCCESS.getHttpStatus())
                 .body(successBody(result));
     }
 
@@ -56,19 +57,19 @@ public class BaseResponse<T> {
 
     // Servlet Filter / Handler (ResponseEntity 생성 없이 body만)
     public static BaseResponse<Empty> successBody() {
-        return new BaseResponse<>(BaseResponseStatus.SUCCESS, Empty.getInstance());
+        return new BaseResponse<>(ResponseStatus.SUCCESS, ResponseStatus.SUCCESS.getMessage(), null, Empty.getInstance());
     }
 
     public static <T> BaseResponse<T> successBody(T result) {
-        return new BaseResponse<>(BaseResponseStatus.SUCCESS, result);
+        return new BaseResponse<>(ResponseStatus.SUCCESS, ResponseStatus.SUCCESS.getMessage(), null, result);
     }
 
     public static BaseResponse<Empty> errorBody(ApiResponseStatus status) {
-        return new BaseResponse<>(status, Empty.getInstance());
+        return new BaseResponse<>(status, status.getMessage(), TraceContext.getTraceIdOrNull(), Empty.getInstance());
     }
 
     public static BaseResponse<Empty> errorBody(ApiResponseStatus status, String customMessage) {
-        return new BaseResponse<>(status, customMessage);
+        return new BaseResponse<>(status, customMessage, TraceContext.getTraceIdOrNull(), Empty.getInstance());
     }
 
 }

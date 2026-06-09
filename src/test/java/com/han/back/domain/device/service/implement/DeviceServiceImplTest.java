@@ -1,16 +1,17 @@
 package com.han.back.domain.device.service.implement;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.entity.DeviceEntity;
 import com.han.back.domain.device.entity.DeviceType;
+import com.han.back.domain.device.exception.DeviceResponseStatus;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.fixture.DeviceFixture;
 import com.han.back.global.device.DeviceProperties;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.service.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -205,7 +206,7 @@ class DeviceServiceImplTest {
             assertThatThrownBy(() -> deviceService.rotateDeviceSession(USER_ID, SESSION_ID))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
     }
 
@@ -334,7 +335,7 @@ class DeviceServiceImplTest {
                     deviceService.forceLogoutDevice(USER_ID, DEVICE_PID, SESSION_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SELF_DEVICE_FORCE_LOGOUT);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_SELF_LOGOUT_FORBIDDEN);
 
             then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
         }
@@ -349,7 +350,7 @@ class DeviceServiceImplTest {
                     deviceService.forceLogoutDevice(USER_ID, DEVICE_PID, SESSION_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_NOT_FOUND);
         }
     }
 
@@ -379,7 +380,7 @@ class DeviceServiceImplTest {
             assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_PID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.ACTIVE_DEVICE_CANNOT_DELETE);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_ACTIVE_DELETE_FORBIDDEN);
 
             then(deviceRepository).should(never()).delete(any());
         }
@@ -393,7 +394,7 @@ class DeviceServiceImplTest {
             assertThatThrownBy(() -> deviceService.deleteDevice(USER_ID, DEVICE_PID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_NOT_FOUND);
         }
     }
 
@@ -490,7 +491,7 @@ class DeviceServiceImplTest {
             assertThatThrownBy(() -> deviceService.trustDevice(USER_ID, DEVICE_PID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.TRUSTED_DEVICE_LIMIT_EXCEEDED);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_TRUSTED_LIMIT_EXCEEDED);
         }
 
         @Test
@@ -502,7 +503,7 @@ class DeviceServiceImplTest {
             assertThatThrownBy(() -> deviceService.trustDevice(USER_ID, DEVICE_PID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.NOT_FOUND_DEVICE);
+                    .isEqualTo(DeviceResponseStatus.DEVICE_NOT_FOUND);
         }
     }
 

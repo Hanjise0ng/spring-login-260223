@@ -1,7 +1,7 @@
 package com.han.back.global.infra.redis.util;
 
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,7 +25,7 @@ public class RateLimitUtil {
         try {
             Long count = redisTemplate.opsForValue().increment(key);
             if (count == null) {
-                throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+                throw new CustomException(ResponseStatus.REDIS_ERROR);
             }
             if (count == 1L) {
                 redisTemplate.expire(key, ttl);
@@ -35,7 +35,7 @@ public class RateLimitUtil {
             throw e;
         } catch (Exception e) {
             log.error("RateLimit increment failed - key: {} | error: {}", key, e.getMessage());
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -49,7 +49,7 @@ public class RateLimitUtil {
             redisTemplate.delete(key);
         } catch (Exception e) {
             log.error("RateLimit reset failed - key: {} | error: {}", key, e.getMessage());
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 

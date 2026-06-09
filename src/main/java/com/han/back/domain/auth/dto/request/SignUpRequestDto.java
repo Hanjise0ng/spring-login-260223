@@ -14,26 +14,26 @@ import lombok.Getter;
 public class SignUpRequestDto {
 
     @Schema(description = "로그인 ID", example = "testuser01")
-    @NotBlank(message = "Login ID is required.")
+    @NotBlank(message = "아이디가 필요합니다.")
     private final String loginId;
 
     @Schema(description = "비밀번호 (영문 + 숫자 포함, 8~13자)", example = "Test1234!")
-    @NotBlank(message = "Password is required.")
+    @NotBlank(message = "비밀번호가 필요합니다.")
     @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9!@#$%^&*]{8,13}$")
     private final String password;
 
     @Schema(description = "이메일 (인증 완료 필수)", example = "user@example.com")
-    @NotBlank(message = "Email is required.")
-    @Email(message = "Invalid email format.")
+    @NotBlank(message = "메일이 필요합니다.")
+    @Email(message = "잘못된 이메일 형식입니다.")
     private final String email;
 
     @Schema(description = "닉네임 (2~20자)", example = "테스트유저")
-    @NotBlank(message = "Nickname is required.")
+    @NotBlank(message = "닉네임이 필요합니다.")
     @Size(min = 2, max = 20)
     private final String nickname;
 
     @Schema(description = "로그인 ID 중복 확인 시 발급받은 토큰", example = "eyJhbGciOiJIUzI1NiJ9...")
-    @NotBlank(message = "Login ID check token is required.")
+    @NotBlank(message = "로그인 ID 확인 토큰이 필요합니다.")
     private final String loginIdToken;
 
 }

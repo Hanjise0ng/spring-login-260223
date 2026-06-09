@@ -1,8 +1,8 @@
 package com.han.back.global.security.token;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.token.util.JwtUtil;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import io.jsonwebtoken.Claims;
@@ -85,7 +85,7 @@ class SocialSignUpTokenUtilTest {
             assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(wrongToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                    .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
 
         @Test
@@ -103,7 +103,7 @@ class SocialSignUpTokenUtilTest {
             assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(expiredToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                    .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
 
         @Test
@@ -125,7 +125,7 @@ class SocialSignUpTokenUtilTest {
             assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(tamperedToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                    .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
 
         @Test
@@ -134,7 +134,7 @@ class SocialSignUpTokenUtilTest {
             assertThatThrownBy(() -> SocialSignUpTokenUtil.validate("not.a.valid.jwt"))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                    .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
 
         @Test
@@ -143,7 +143,7 @@ class SocialSignUpTokenUtilTest {
             assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(null))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                    .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
     }
 

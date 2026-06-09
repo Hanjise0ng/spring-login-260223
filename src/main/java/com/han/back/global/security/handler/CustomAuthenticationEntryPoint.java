@@ -1,6 +1,6 @@
 package com.han.back.global.security.handler;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +18,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) {
-        httpResponseUtil.writeResponse(response, BaseResponseStatus.AUTHENTICATION_FAIL); // 401
+        httpResponseUtil.writeResponse(response, AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
     }
 
 }

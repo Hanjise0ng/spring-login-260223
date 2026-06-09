@@ -1,10 +1,10 @@
 package com.han.back.global.util;
 
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponse;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
-import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.ResponseStatus;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -25,13 +25,13 @@ public class HttpResponseUtil {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
 
-            BaseResponse<Empty> body = (status == BaseResponseStatus.SUCCESS)
+            BaseResponse<Empty> body = (status == ResponseStatus.SUCCESS)
                     ? BaseResponse.successBody()
                     : BaseResponse.errorBody(status);
 
             objectMapper.writeValue(response.getWriter(), body);
         } catch (IOException e) {
-            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

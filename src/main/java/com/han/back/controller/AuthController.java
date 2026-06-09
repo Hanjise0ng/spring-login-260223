@@ -2,10 +2,10 @@ package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
@@ -90,7 +90,7 @@ public class AuthController {
             HttpServletRequest request, HttpServletResponse response) {
 
         String refreshToken = AuthHttpUtil.extractRefreshToken(request)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.MISSING_REFRESH_TOKEN));
+                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_MISSING_REFRESH_TOKEN));
         AuthToken newTokens = authService.reissue(refreshToken);
 
         tokenTransportResolver.resolve(request).write(response, newTokens);

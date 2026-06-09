@@ -1,7 +1,7 @@
 package com.han.back.global.infra.redis.util;
 
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ public class RedisUtil {
         try {
             redisTemplate.opsForValue().set(key, value, ttl);
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -32,7 +32,7 @@ public class RedisUtil {
                     redisTemplate.opsForValue().setIfAbsent(key, value, ttl)
             );
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -40,7 +40,7 @@ public class RedisUtil {
         try {
             return Optional.ofNullable(redisTemplate.opsForValue().get(key));
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -48,7 +48,7 @@ public class RedisUtil {
         try {
             return Optional.ofNullable(redisTemplate.opsForValue().getAndDelete(key));
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -56,7 +56,7 @@ public class RedisUtil {
         try {
             redisTemplate.delete(key);
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -64,7 +64,7 @@ public class RedisUtil {
         try {
             return Boolean.TRUE.equals(redisTemplate.hasKey(key));
         } catch (Exception e) {
-            throw new CustomException(BaseResponseStatus.REDIS_ERROR);
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
         }
     }
 

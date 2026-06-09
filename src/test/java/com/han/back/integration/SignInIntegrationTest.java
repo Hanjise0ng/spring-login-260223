@@ -52,7 +52,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
             ResultActions result = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
 
             result.andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SU"));
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
 
             assertThat(getAt(result)).isNotBlank();
             assertThat(getCookieValue(result, AuthConst.COOKIE_REFRESH_TOKEN_NAME)).isNotBlank();
@@ -85,7 +85,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
 
             signIn(user.getLoginId(), "WrongPass999!")
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("SF"));
+                    .andExpect(jsonPath("$.code").value("AUTH_SIGN_IN_FAIL"));
         }
 
         @Test
@@ -93,7 +93,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
         void nonExistentLoginId_returns401Sf() throws Exception {
             signIn("ghost_user", UserFixture.RAW_PASSWORD)
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("SF"));
+                    .andExpect(jsonPath("$.code").value("AUTH_SIGN_IN_FAIL"));
         }
 
         @Test
@@ -145,7 +145,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(get("/api/v1/devices")
                             .header("Authorization", "Bearer " + firstAt))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("AUF"));
+                    .andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_FAIL"));
         }
     }
 
@@ -171,7 +171,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
                     .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)));
 
             reissue.andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SU"));
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
 
             String newAt        = getAt(reissue);
             String newSessionId = extractSessionId(newAt);
@@ -196,7 +196,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/auth/reissue")
                             .header("Authorization", "Bearer " + at))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("MRT"));
+                    .andExpect(jsonPath("$.code").value("AUTH_MISSING_REFRESH_TOKEN"));
         }
     }
 
@@ -220,7 +220,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
                         .header("Authorization", "Bearer " + at)
                         .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUF"));
+                .andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_FAIL"));
     }
 
 }

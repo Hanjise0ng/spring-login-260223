@@ -1,8 +1,9 @@
 package com.han.back.global.exception;
 
+import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponse;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.response.Empty;
+import com.han.back.global.response.ResponseStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -34,7 +35,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
 
         String uri = extractUri(request);
-        BaseResponseStatus mappedStatus = mapHttpStatus(statusCode);
+        ApiResponseStatus mappedStatus = mapHttpStatus(statusCode);
 
         if (statusCode.is5xxServerError()) {
             log.error("Spring MVC internal server error - uri: {} | status: {} | message: {}",
@@ -63,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(BaseResponse.errorBody(BaseResponseStatus.VALIDATION_FAIL, detailMessage));
+                .body(BaseResponse.errorBody(ResponseStatus.VALIDATION_FAIL, detailMessage));
     }
 
     // @RequestBody 역직렬화 실패 — 잘못된 JSON 형식 또는 타입 불일치
@@ -75,7 +76,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(BaseResponse.errorBody(BaseResponseStatus.INVALID_REQUEST_BODY));
+                .body(BaseResponse.errorBody(ResponseStatus.MALFORMED_REQUEST_BODY));
     }
 
     // @RequestParam, @PathVariable 검증 실패 — 메서드 파라미터 레벨 @Valid 위반
@@ -93,7 +94,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(BaseResponse.errorBody(BaseResponseStatus.VALIDATION_FAIL, detailMessage));
+                .body(BaseResponse.errorBody(ResponseStatus.VALIDATION_FAIL, detailMessage));
     }
 
     // HTTP 메서드 불일치 — 존재하는 엔드포인트에 허용되지 않은 메서드로 요청
@@ -106,7 +107,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(BaseResponse.errorBody(BaseResponseStatus.METHOD_NOT_ALLOWED));
+                .body(BaseResponse.errorBody(ResponseStatus.METHOD_NOT_ALLOWED));
     }
 
     // 지원하지 않는 미디어 타입 — Content-Type 불일치
@@ -119,7 +120,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .body(BaseResponse.errorBody(BaseResponseStatus.UNSUPPORTED_MEDIA_TYPE));
+                .body(BaseResponse.errorBody(ResponseStatus.UNSUPPORTED_MEDIA_TYPE));
     }
 
     // 비즈니스 예외 — 서비스·도메인 레이어에서 명시적으로 던진 오류
@@ -152,7 +153,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("DataAccessException - uri: {} | message: {}",
                 request.getRequestURI(), ex.getMessage(), ex);
 
-        return BaseResponse.error(BaseResponseStatus.DATABASE_ERROR);
+        return BaseResponse.error(ResponseStatus.DB_ERROR);
     }
 
     // 위 핸들러에서 처리되지 않은 모든 예외
@@ -162,7 +163,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         log.error("Unhandled exception - uri: {}", request.getRequestURI(), ex);
 
-        return BaseResponse.error(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+        return BaseResponse.error(ResponseStatus.INTERNAL_SERVER_ERROR);
     }
 
     private String extractUri(WebRequest request) {
@@ -172,11 +173,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return request.getDescription(false);
     }
 
-    private BaseResponseStatus mapHttpStatus(HttpStatusCode statusCode) {
+    private ApiResponseStatus mapHttpStatus(HttpStatusCode statusCode) {
         if (statusCode.is4xxClientError()) {
-            return BaseResponseStatus.VALIDATION_FAIL;
+            return ResponseStatus.VALIDATION_FAIL;
         }
-        return BaseResponseStatus.INTERNAL_SERVER_ERROR;
+        return ResponseStatus.INTERNAL_SERVER_ERROR;
     }
 
 }

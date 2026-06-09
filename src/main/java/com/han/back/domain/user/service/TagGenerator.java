@@ -1,9 +1,9 @@
 package com.han.back.domain.user.service;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +23,7 @@ public class TagGenerator {
                 return tag;
             }
         }
-        throw new CustomException(BaseResponseStatus.TAG_GENERATION_FAILED);
+        throw new CustomException(AccountResponseStatus.ACCOUNT_TAG_GENERATION_FAIL);
     }
 
     private String randomHexTag() {

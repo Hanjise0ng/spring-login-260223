@@ -110,7 +110,7 @@ class LogoutIntegrationTest extends IntegrationTestBase {
 
             // 세션 블랙리스트로 인해 인증 실패
             reuse.andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("AUF"));
+                    .andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_FAIL"));
         }
 
         @Test

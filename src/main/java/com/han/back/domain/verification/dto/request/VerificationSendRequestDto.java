@@ -14,15 +14,15 @@ import lombok.Getter;
 public class VerificationSendRequestDto {
 
     @Schema(description = "인증 대상 (이메일 또는 전화번호)", example = "user@example.com")
-    @NotBlank(message = "Target is required.")
+    @NotBlank(message = "인증 대상이 필요합니다.")
     private final String target;
 
     @Schema(description = "인증 용도", example = "SIGN_UP")
-    @NotNull(message = "Verification type is required.")
+    @NotNull(message = "인증 유형이 필요합니다.")
     private final VerificationType type;
 
     @Schema(description = "발송 채널", example = "EMAIL")
-    @NotNull(message = "Notification channel is required.")
+    @NotNull(message = "발송 채널이 필요합니다.")
     private final NotificationChannel channel;
 
 }

@@ -1,8 +1,8 @@
 package com.han.back.global.security.filter;
 
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,7 +36,7 @@ public class JwtExceptionFilter extends OncePerRequestFilter {
         } catch (Exception e) { // 예상치 못한 런타임 오류 — 필터 체인 전체 범위
             log.error("JWT Filter Critical Error - Type: {} | Message: {} | ClientIP: {}",
                     e.getClass().getSimpleName(), e.getMessage(), request.getRemoteAddr(), e);
-            httpResponseUtil.writeResponse(response, BaseResponseStatus.INTERNAL_SERVER_ERROR);
+            httpResponseUtil.writeResponse(response, ResponseStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

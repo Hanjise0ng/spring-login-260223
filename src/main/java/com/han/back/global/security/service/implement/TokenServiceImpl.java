@@ -1,10 +1,10 @@
 package com.han.back.global.security.service.implement;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.redis.util.RedisUtil;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthConst;
@@ -47,21 +47,21 @@ public class TokenServiceImpl implements TokenService {
         Claims claims = jwtUtil.parseClaims(accessToken);
 
         if (!AuthConst.TOKEN_TYPE_ACCESS.equals(jwtUtil.getCategory(claims))) {
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
         }
 
         String sessionId = jwtUtil.getSessionId(claims);
 
         try {
             if (isSessionBlacklisted(sessionId)) {
-                throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+                throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
             }
         } catch (CustomAuthenticationException e) { // 블랙리스트 히트 — 정상 인증 거부 흐름
             throw e;
         } catch (CustomException e) { // Redis 장애 — 블랙리스트 확인 불가, 보안 우선으로 인증 거부
             log.error("Redis unavailable during session blacklist check - denying access | SessionId: {} | Error: {}",
                     sessionId, e.getMessage());
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), sessionId);
@@ -73,7 +73,7 @@ public class TokenServiceImpl implements TokenService {
 
         if (!AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(claims))) {
             log.warn("Reissue Failed - Reason: Not a Refresh Token");
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
         }
 
         return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims));
@@ -89,7 +89,7 @@ public class TokenServiceImpl implements TokenService {
 
         if (!isValid) {
             log.error("Token Mismatch or Hijacking Suspected - UserPK: {} | SessionId: {}", id, sessionId);
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
     }
 

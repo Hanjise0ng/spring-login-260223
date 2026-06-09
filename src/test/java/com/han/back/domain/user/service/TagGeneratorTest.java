@@ -1,9 +1,9 @@
 package com.han.back.domain.user.service;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -102,7 +102,7 @@ class TagGeneratorTest {
             assertThatThrownBy(() -> tagGenerator.generate("인기닉네임"))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.TAG_GENERATION_FAILED);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_TAG_GENERATION_FAIL);
 
             then(userRepository).should(times(OAuth2Const.TAG_GENERATION_RETRY))
                     .existsByNicknameAndTag(eq("인기닉네임"), anyString());

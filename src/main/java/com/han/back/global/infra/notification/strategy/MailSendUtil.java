@@ -1,8 +1,8 @@
 package com.han.back.global.infra.notification.strategy;
 
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.model.NotificationRequest;
-import com.han.back.global.response.BaseResponseStatus;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public final class MailSendUtil {
             throw e;
         } catch (MessagingException e) {
             log.error("Mail message assembly failed", e);
-            throw new CustomException(BaseResponseStatus.MAIL_FAIL);
+            throw new CustomException(VerificationResponseStatus.VERIFY_MAIL_SEND_FAIL);
         }
     }
 

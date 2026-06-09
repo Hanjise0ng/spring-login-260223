@@ -1,8 +1,9 @@
 package com.han.back.global.security.filter;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.verify;
+import static org.mockito.BDDMockito.willThrow;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -40,23 +42,23 @@ class JwtExceptionFilterTest {
     @Test
     @DisplayName("CustomAuthenticationException 발생 시 지정된 상태로 응답을 작성한다")
     void doFilter_CustomAuthenticationException() throws Exception {
-        willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL))
+        willThrow(new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL))
                 .given(filterChain).doFilter(request, response);
 
         filter.doFilterInternal(request, response, filterChain);
 
-        verify(httpResponseUtil).writeResponse(response, BaseResponseStatus.AUTHENTICATION_FAIL);
+        verify(httpResponseUtil).writeResponse(response, AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
     }
 
     @Test
     @DisplayName("CustomException 발생 시 지정된 상태로 응답을 작성한다")
     void doFilter_CustomException() throws Exception {
-        willThrow(new CustomException(BaseResponseStatus.REDIS_ERROR))
+        willThrow(new CustomException(ResponseStatus.REDIS_ERROR))
                 .given(filterChain).doFilter(request, response);
 
         filter.doFilterInternal(request, response, filterChain);
 
-        verify(httpResponseUtil).writeResponse(response, BaseResponseStatus.REDIS_ERROR);
+        verify(httpResponseUtil).writeResponse(response, ResponseStatus.REDIS_ERROR);
     }
 
     @Test
@@ -67,7 +69,7 @@ class JwtExceptionFilterTest {
 
         filter.doFilterInternal(request, response, filterChain);
 
-        verify(httpResponseUtil).writeResponse(response, BaseResponseStatus.INTERNAL_SERVER_ERROR);
+        verify(httpResponseUtil).writeResponse(response, ResponseStatus.INTERNAL_SERVER_ERROR);
     }
 
 }

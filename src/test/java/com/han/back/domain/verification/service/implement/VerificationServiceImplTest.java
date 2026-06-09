@@ -1,10 +1,12 @@
 package com.han.back.domain.verification.service.implement;
 
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.verification.dto.request.VerificationConfirmRequestDto;
 import com.han.back.domain.verification.dto.request.VerificationSendRequestDto;
 import com.han.back.domain.verification.dto.response.VerificationSendResponseDto;
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.dispatcher.NotificationDispatcher;
@@ -15,7 +17,7 @@ import com.han.back.global.infra.notification.policy.NotificationKeyPolicy;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RateLimitUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.RateLimitConst;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -201,7 +203,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
 
             then(redisUtil).should(never()).hasKey(anyString());
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
@@ -212,7 +214,7 @@ class VerificationServiceImplTest {
         @Test
         @DisplayName("정책 검증 실패 → 예외 원본 전파, 코드 저장/발송 없음")
         void policyCheckFails_propagatesWithNoSideEffects() {
-            willThrow(new CustomException(BaseResponseStatus.DUPLICATE_EMAIL))
+            willThrow(new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL))
                     .given(signUpPolicy).check(EMAIL, NotificationChannel.EMAIL);
 
             assertThatThrownBy(() -> verificationService.sendCode(
@@ -220,7 +222,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
             then(rateLimitUtil).should(never()).incrementHourly(anyString());
@@ -239,7 +241,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.COOLDOWN_ACTIVE);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_COOLDOWN);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
             then(rateLimitUtil).should(never()).incrementHourly(anyString());
@@ -259,7 +261,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.RATE_LIMIT_EXCEEDED);
+                    .isEqualTo(ResponseStatus.RATE_LIMIT_EXCEEDED);
 
             then(redisUtil).should(never()).setDataExpire(anyString(), anyString(), any(Duration.class));
             then(notificationDispatcher).should(never()).dispatch(any(NotificationCommand.class));
@@ -353,7 +355,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_EXPIRED);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_CODE_EXPIRED);
 
             then(redisUtil).should(never()).deleteData(anyString());
         }
@@ -371,7 +373,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_FAIL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_CODE_MISMATCH);
 
             then(redisUtil).should(never()).deleteData(anyString());
         }
@@ -405,7 +407,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_FAIL);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_CODE_MISMATCH);
 
             // 코드 삭제 없음
             then(redisUtil).should(never()).deleteData(anyString());
@@ -430,7 +432,7 @@ class VerificationServiceImplTest {
             ))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_EXPIRED);
+                    .isEqualTo(	VerificationResponseStatus.VERIFY_CODE_EXPIRED);
 
             // 코드 무효화 (codeKey 삭제)
             then(redisUtil).should(times(1)).deleteData(codeKey);
@@ -502,7 +504,7 @@ class VerificationServiceImplTest {
             )
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_NOT_COMPLETED);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_NOT_COMPLETED);
         }
     }
 

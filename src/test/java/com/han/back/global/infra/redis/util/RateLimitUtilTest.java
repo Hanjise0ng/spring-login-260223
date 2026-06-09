@@ -1,7 +1,7 @@
 package com.han.back.global.infra.redis.util;
 
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -76,7 +76,7 @@ class RateLimitUtilTest {
             assertThatThrownBy(() -> rateLimitUtil.increment(KEY, TTL))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.REDIS_ERROR);
+                    .isEqualTo(ResponseStatus.REDIS_ERROR);
         }
 
         @Test
@@ -87,13 +87,13 @@ class RateLimitUtilTest {
             assertThatThrownBy(() -> rateLimitUtil.increment(KEY, TTL))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.REDIS_ERROR);
+                    .isEqualTo(ResponseStatus.REDIS_ERROR);
         }
 
         @Test
         @DisplayName("CustomException은 그대로 전파 (이중 래핑 방지)")
         void customException_propagatesUnwrapped() {
-            CustomException original = new CustomException(BaseResponseStatus.REDIS_ERROR);
+            CustomException original = new CustomException(ResponseStatus.REDIS_ERROR);
             given(valueOps.increment(KEY)).willThrow(original);
 
             assertThatThrownBy(() -> rateLimitUtil.increment(KEY, TTL))
@@ -196,7 +196,7 @@ class RateLimitUtilTest {
             assertThatThrownBy(() -> rateLimitUtil.incrementHourly(KEY_PREFIX))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.REDIS_ERROR);
+                    .isEqualTo(ResponseStatus.REDIS_ERROR);
         }
     }
 
@@ -222,7 +222,7 @@ class RateLimitUtilTest {
             assertThatThrownBy(() -> rateLimitUtil.reset(KEY))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.REDIS_ERROR);
+                    .isEqualTo(ResponseStatus.REDIS_ERROR);
         }
 
         @Test

@@ -1,7 +1,8 @@
 package com.han.back.global.security.token.util;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.security.token.AuthConst;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,7 +50,7 @@ public class LoginIdTokenUtil {
                     sign(payload).getBytes(StandardCharsets.UTF_8),
                     receivedSignature.getBytes(StandardCharsets.UTF_8))) {
                 log.warn("LoginId token signature mismatch - loginId: {}", loginId);
-                throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+                throw new CustomException(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED);
             }
 
             String[] parts = payload.split(SEPARATOR, 2);
@@ -59,11 +60,11 @@ public class LoginIdTokenUtil {
             if (!tokenLoginId.equals(loginId)) {
                 log.warn("LoginId token loginId mismatch - expected: {}, actual: {}",
                         loginId, tokenLoginId);
-                throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+                throw new CustomException(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED);
             }
 
             if (System.currentTimeMillis() > expiresAt) {
-                throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+                throw new CustomException(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED);
             }
 
         } catch (CustomException e) {
@@ -71,7 +72,7 @@ public class LoginIdTokenUtil {
         } catch (Exception e) {
             log.warn("LoginId token validation failed - loginId: {}, cause: {}",
                     loginId, e.getMessage());
-            throw new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+            throw new CustomException(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED);
         }
     }
 
@@ -85,7 +86,7 @@ public class LoginIdTokenUtil {
             );
         } catch (Exception e) {
             log.error("HMAC signing failed", e);
-            throw new CustomException(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

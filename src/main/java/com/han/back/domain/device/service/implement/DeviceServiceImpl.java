@@ -1,15 +1,16 @@
 package com.han.back.domain.device.service.implement;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.dto.DeviceRegistration;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.entity.DeviceEntity;
+import com.han.back.domain.device.exception.DeviceResponseStatus;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.global.device.DeviceProperties;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.util.UuidUtil;
 import lombok.RequiredArgsConstructor;
@@ -66,13 +67,13 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void trustDevice(Long userId, String devicePublicId) {
         DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+                .orElseThrow(() -> new CustomException(DeviceResponseStatus.DEVICE_NOT_FOUND));
 
         if (device.isTrusted()) return;
 
         int trustedCount = deviceRepository.countTrustedDevicesByUserId(userId);
         if (trustedCount >= deviceProperties.getMaxTrustedDevices()) {
-            throw new CustomException(BaseResponseStatus.TRUSTED_DEVICE_LIMIT_EXCEEDED);
+            throw new CustomException(DeviceResponseStatus.DEVICE_TRUSTED_LIMIT_EXCEEDED);
         }
 
         device.markAsTrusted();
@@ -84,7 +85,7 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void untrustDevice(Long userId, String devicePublicId) {
         DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+                .orElseThrow(() -> new CustomException(DeviceResponseStatus.DEVICE_NOT_FOUND));
 
         if (!device.isTrusted()) return;
 
@@ -97,7 +98,7 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public String rotateDeviceSession(Long userId, String oldSessionId) {
         DeviceEntity device = deviceRepository.findByUserIdAndSessionId(userId, oldSessionId)
-                .orElseThrow(() -> new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
+                .orElseThrow(() -> new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
 
         String newSessionId = UuidUtil.generateString();
         device.rotateSession(newSessionId);
@@ -132,12 +133,12 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void forceLogoutDevice(Long userId, String devicePublicId, String currentSessionId) {
         DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+                .orElseThrow(() -> new CustomException(DeviceResponseStatus.DEVICE_NOT_FOUND));
 
         if (!device.hasActiveSession()) return;
 
         if (device.getSessionId().equals(currentSessionId)) {
-            throw new CustomException(BaseResponseStatus.SELF_DEVICE_FORCE_LOGOUT);
+            throw new CustomException(DeviceResponseStatus.DEVICE_SELF_LOGOUT_FORBIDDEN);
         }
 
         String targetSessionId = device.getSessionId();
@@ -152,10 +153,10 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void deleteDevice(Long userId, String devicePublicId) {
         DeviceEntity device = deviceRepository.findByPublicIdAndUserId(devicePublicId, userId)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.NOT_FOUND_DEVICE));
+                .orElseThrow(() -> new CustomException(DeviceResponseStatus.DEVICE_NOT_FOUND));
 
         if (device.hasActiveSession()) {
-            throw new CustomException(BaseResponseStatus.ACTIVE_DEVICE_CANNOT_DELETE);
+            throw new CustomException(DeviceResponseStatus.DEVICE_ACTIVE_DELETE_FORBIDDEN);
         }
 
         deviceRepository.delete(device);

@@ -5,6 +5,7 @@ import com.han.back.domain.verification.dto.request.VerificationSendRequestDto;
 import com.han.back.domain.verification.dto.response.VerificationSendResponseDto;
 import com.han.back.domain.verification.entity.VerificationConst;
 import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomException;
@@ -14,7 +15,7 @@ import com.han.back.global.infra.notification.policy.NotificationKeyPolicy;
 import com.han.back.global.infra.notification.template.MailTemplateUtil;
 import com.han.back.global.infra.redis.util.RateLimitUtil;
 import com.han.back.global.infra.redis.util.RedisUtil;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.trace.TraceContext;
 import com.han.back.global.util.MaskingUtil;
 import com.han.back.global.util.RateLimitConst;
@@ -97,7 +98,7 @@ public class VerificationServiceImpl implements VerificationService {
 
         String codeKey = VerificationConst.codeKey(type, target);
         String storedCode = redisUtil.getData(codeKey)
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.VERIFICATION_EXPIRED));
+                .orElseThrow(() -> new CustomException(VerificationResponseStatus.VERIFY_CODE_EXPIRED));
 
         if (!storedCode.equals(code)) {
             handleFailedVerification(type, target, codeKey);
@@ -119,7 +120,7 @@ public class VerificationServiceImpl implements VerificationService {
     @Override
     public void validateConfirmed(String target, VerificationType type) {
         if (!redisUtil.hasKey(VerificationConst.confirmedKey(type, target))) {
-            throw new CustomException(BaseResponseStatus.VERIFICATION_NOT_COMPLETED);
+            throw new CustomException(VerificationResponseStatus.VERIFY_NOT_COMPLETED);
         }
     }
 
@@ -137,7 +138,7 @@ public class VerificationServiceImpl implements VerificationService {
 
     private void validateCooldown(VerificationType type, String target) {
         if (redisUtil.hasKey(VerificationConst.cooldownKey(type, target))) {
-            throw new CustomException(BaseResponseStatus.COOLDOWN_ACTIVE);
+            throw new CustomException(VerificationResponseStatus.VERIFY_COOLDOWN);
         }
     }
 
@@ -148,7 +149,7 @@ public class VerificationServiceImpl implements VerificationService {
         if (count > RateLimitConst.VERIFY_SEND_HOURLY_MAX) {
             log.warn("Hourly send limit exceeded - Type: {} | Target: {}",
                     type, MaskingUtil.maskTarget(target));
-            throw new CustomException(BaseResponseStatus.RATE_LIMIT_EXCEEDED);
+            throw new CustomException(ResponseStatus.RATE_LIMIT_EXCEEDED);
         }
     }
 
@@ -187,10 +188,10 @@ public class VerificationServiceImpl implements VerificationService {
             rateLimitUtil.reset(failKey);
             log.warn("Verification code invalidated by max failures - Type: {} | Target: {}",
                     type, MaskingUtil.maskTarget(target));
-            throw new CustomException(BaseResponseStatus.VERIFICATION_EXPIRED);
+            throw new CustomException(VerificationResponseStatus.VERIFY_CODE_EXPIRED);
         }
 
-        throw new CustomException(BaseResponseStatus.VERIFICATION_FAIL);
+        throw new CustomException(VerificationResponseStatus.VERIFY_CODE_MISMATCH);
     }
 
     private String buildFailKey(VerificationType type, String target) {

@@ -1,9 +1,9 @@
 package com.han.back.global.security.principal;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.fixture.UserFixture;
-import com.han.back.global.response.BaseResponseStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class CustomUserDetailsServiceTest {
         assertThatThrownBy(() ->
                 customUserDetailsService.loadUserByUsername(socialUser.getLoginId()))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage(BaseResponseStatus.SIGN_IN_FAIL.getMessage());
+                .hasMessage(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
     }
 
     @Test
@@ -60,7 +60,7 @@ class CustomUserDetailsServiceTest {
         assertThatThrownBy(() ->
                 customUserDetailsService.loadUserByUsername("nonexistent"))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage(BaseResponseStatus.SIGN_IN_FAIL.getMessage());
+                .hasMessage(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
     }
 
 }

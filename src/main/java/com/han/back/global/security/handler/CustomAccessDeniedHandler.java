@@ -1,6 +1,6 @@
 package com.han.back.global.security.handler;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +18,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) {
-        httpResponseUtil.writeResponse(response, BaseResponseStatus.NO_PERMISSION); // 403
+        httpResponseUtil.writeResponse(response, ResponseStatus.FORBIDDEN);
     }
 
 }

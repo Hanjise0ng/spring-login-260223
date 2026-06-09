@@ -3,7 +3,7 @@ package com.han.back.global.security.oauth2;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.redis.util.RedisUtil;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +74,7 @@ public class RedisOAuth2StateRepository implements AuthorizationRequestRepositor
             return objectMapper.writeValueAsString(OAuth2StateDto.from(request));
         } catch (Exception e) {
             log.error("OAuth2 state serialization failed", e);
-            throw new CustomException(BaseResponseStatus.SERIALIZATION_ERROR);
+            throw new CustomException(ResponseStatus.SERIALIZATION_ERROR);
         }
     }
 
@@ -84,7 +84,7 @@ public class RedisOAuth2StateRepository implements AuthorizationRequestRepositor
                     .toAuthorizationRequest();
         } catch (Exception e) {
             log.error("OAuth2 state deserialization failed", e);
-            throw new CustomException(BaseResponseStatus.SERIALIZATION_ERROR);
+            throw new CustomException(ResponseStatus.SERIALIZATION_ERROR);
         }
     }
 

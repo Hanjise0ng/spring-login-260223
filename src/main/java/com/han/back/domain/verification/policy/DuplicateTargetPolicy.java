@@ -1,11 +1,12 @@
 package com.han.back.domain.verification.policy;
 
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.domain.verification.service.UserExistencePort;
 import com.han.back.domain.verification.service.VerificationPolicy;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.model.NotificationChannel;
-import com.han.back.global.response.BaseResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,10 +28,10 @@ public class DuplicateTargetPolicy implements VerificationPolicy {
         switch (channel) {
             case EMAIL -> {
                 if (userExistencePort.existsByEmail(target)) {
-                    throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
+                    throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
                 }
             }
-            case SMS -> throw new CustomException(BaseResponseStatus.UNSUPPORTED_NOTIFICATION_CHANNEL);
+            case SMS -> throw new CustomException(VerificationResponseStatus.VERIFY_UNSUPPORTED_CHANNEL);
         }
     }
 

@@ -118,7 +118,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
             // 회원가입
             requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SU"));
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
 
             // DB 저장 확인
             assertThat(userRepository.existsByLoginId(LOGIN_ID)).isTrue();
@@ -158,7 +158,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
             String token2 = checkLoginId("newuser02");
             requestSignUp("newuser02", EMAIL, token2)
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("VNC"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_NOT_COMPLETED"));
         }
     }
 
@@ -173,7 +173,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             mockMvc.perform(get("/api/v1/auth/check-login-id").param("loginId", LOGIN_ID))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("DI"));
+                    .andExpect(jsonPath("$.code").value("ACCOUNT_DUPLICATE_LOGIN_ID"));
         }
 
         @Test
@@ -181,7 +181,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
         void emptyLoginId_returns400Vf() throws Exception {
             mockMvc.perform(get("/api/v1/auth/check-login-id").param("loginId", ""))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("VF"));
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAIL"));
         }
     }
 
@@ -200,7 +200,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "target", EMAIL, "type", "SIGN_UP", "channel", "EMAIL"
                             ))))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("DE"));
+                    .andExpect(jsonPath("$.code").value("ACCOUNT_DUPLICATE_EMAIL"));
         }
 
         @Test
@@ -214,7 +214,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "target", EMAIL, "type", "SIGN_UP", "channel", "EMAIL"
                             ))))
                     .andExpect(status().isTooManyRequests())
-                    .andExpect(jsonPath("$.code").value("CA"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_COOLDOWN"));
         }
 
         @Test
@@ -226,7 +226,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "target", EMAIL, "type", "SIGN_UP", "channel", "SMS"
                             ))))
                     .andExpect(status().isUnprocessableContent())
-                    .andExpect(jsonPath("$.code").value("UNC"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_UNSUPPORTED_CHANNEL"));
         }
     }
 
@@ -246,7 +246,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "target", EMAIL, "code", "000000", "type", "SIGN_UP"
                             ))))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("CF"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_CODE_MISMATCH"));
 
             assertThat(getStoredVerificationCode(EMAIL)).isEqualTo(correctCode);
         }
@@ -268,7 +268,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "email", EMAIL, "nickname", NICKNAME
                             ))))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("VF"));
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAIL"));
         }
 
         @Test
@@ -278,7 +278,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             requestSignUp(LOGIN_ID, EMAIL, "aW52YWxpZC50b2tlbg")
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("LICR"));
+                    .andExpect(jsonPath("$.code").value("AUTH_LOGIN_ID_CHECK_REQUIRED"));
         }
 
         @Test
@@ -289,7 +289,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             requestSignUp(LOGIN_ID, EMAIL, otherToken)
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("LICR"));
+                    .andExpect(jsonPath("$.code").value("AUTH_LOGIN_ID_CHECK_REQUIRED"));
         }
 
         @Test
@@ -299,7 +299,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("VNC"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_NOT_COMPLETED"));
 
             assertThat(userRepository.existsByLoginId(LOGIN_ID)).isFalse();
         }
@@ -313,7 +313,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("DI"));
+                    .andExpect(jsonPath("$.code").value("ACCOUNT_DUPLICATE_LOGIN_ID"));
         }
 
         @Test
@@ -325,7 +325,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
 
             requestSignUp(LOGIN_ID, EMAIL, loginIdToken)
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("DE"));
+                    .andExpect(jsonPath("$.code").value("ACCOUNT_DUPLICATE_EMAIL"));
         }
     }
 

@@ -1,6 +1,6 @@
 package com.han.back.global.security.handler;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,7 +37,7 @@ class CustomAccessDeniedHandlerTest {
         customAccessDeniedHandler.handle(request, response, exception);
 
         // then
-        verify(httpResponseUtil).writeResponse(response, BaseResponseStatus.NO_PERMISSION);
+        verify(httpResponseUtil).writeResponse(response, ResponseStatus.FORBIDDEN);
     }
 
 }

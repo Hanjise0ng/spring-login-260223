@@ -7,11 +7,11 @@ import lombok.Getter;
 @Getter
 public class OAuth2SignUpCompleteRequestDto {
 
-    @NotBlank(message = "Social sign-up token is required.")
+    @NotBlank(message = "소셜 가입 토큰이 필요합니다.")
     private final String tempToken;
 
-    @NotBlank(message = "Email is required.")
-    @Email(message = "Invalid email format.")
+    @NotBlank(message = "이메일이 필요합니다.")
+    @Email(message = "잘못된 이메일 형식입니다.")
     private final String email;
 
     public OAuth2SignUpCompleteRequestDto(String tempToken, String email) {

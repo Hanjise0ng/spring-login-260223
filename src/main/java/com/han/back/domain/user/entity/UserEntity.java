@@ -1,8 +1,8 @@
 package com.han.back.domain.user.entity;
 
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.global.entity.BaseTime;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.util.UuidUtil;
 import jakarta.persistence.*;
 import lombok.*;
@@ -69,7 +69,7 @@ public class UserEntity extends BaseTime {
 
     public void changePassword(String encodedPassword) {
         if (this.authProvider.isSocial()) {
-            throw new CustomException(BaseResponseStatus.SOCIAL_ONLY_ACCOUNT);
+            throw new CustomException(AccountResponseStatus.ACCOUNT_SOCIAL_ONLY);
         }
         this.password = encodedPassword;
     }

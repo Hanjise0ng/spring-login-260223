@@ -2,7 +2,7 @@ package com.han.back.global.security.filter;
 
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
 import com.han.back.global.exception.CustomAuthenticationException;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import com.han.back.global.util.SecurityPathConst;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -49,7 +49,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             );
         } catch (IOException e) {
             log.error("Login Request Parsing Error - ClientIP: {}", request.getRemoteAddr(), e);
-            throw new CustomAuthenticationException(BaseResponseStatus.INVALID_REQUEST_BODY);
+            throw new CustomAuthenticationException(ResponseStatus.MALFORMED_REQUEST_BODY);
         }
     }
 

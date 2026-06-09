@@ -1,8 +1,8 @@
 package com.han.back.global.infra.notification.template;
 
 import com.han.back.domain.device.entity.DeviceType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -110,7 +110,7 @@ public class MailTemplateUtil {
             return template;
         } catch (IOException e) {
             log.error("Mail template load failed: path={}", path, e);
-            throw new CustomException(BaseResponseStatus.MAIL_TEMPLATE_LOAD_FAIL);
+            throw new CustomException(VerificationResponseStatus.VERIFY_MAIL_TEMPLATE_FAIL);
         }
     }
 

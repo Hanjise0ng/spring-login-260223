@@ -4,9 +4,11 @@ import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.SocialAccountEntity;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.domain.auth.oauth2.repository.SocialAccountRepository;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.auth.service.SignInProcessor;
@@ -15,13 +17,13 @@ import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.event.UserSignedUpEvent;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.user.service.TagGenerator;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
@@ -61,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public LoginIdCheckResponseDto checkLoginId(String loginId) {
         if (userRepository.existsByLoginId(loginId)) {
-            throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
+            throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
 
         String token = loginIdTokenUtil.issue(loginId);
@@ -75,10 +77,10 @@ public class AuthServiceImpl implements AuthService {
         verificationService.validateConfirmed(dto.getEmail(), VerificationType.SIGN_UP);
 
         if (userRepository.existsByLoginId(dto.getLoginId())) {
-            throw new CustomException(BaseResponseStatus.DUPLICATE_ID);
+            throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
         if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new CustomException(BaseResponseStatus.DUPLICATE_EMAIL);
+            throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
         }
 
         String password = passwordEncoder.encode(dto.getPassword());
@@ -113,13 +115,13 @@ public class AuthServiceImpl implements AuthService {
         verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
 
         if (userRepository.existsByEmail(email)) {
-            throw new CustomException(BaseResponseStatus.EMAIL_CONFLICT);
+            throw new CustomException(SocialResponseStatus.SOCIAL_EMAIL_CONFLICT);
         }
 
         AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
 
         if (socialAccountRepository.existsByProviderAndProviderId(provider, claims.getProviderId())) {
-            throw new CustomException(BaseResponseStatus.SOCIAL_ACCOUNT_ALREADY_LINKED);
+            throw new CustomException(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
         }
 
         String password = passwordEncoder.encode(UUID.randomUUID().toString());
@@ -154,7 +156,7 @@ public class AuthServiceImpl implements AuthService {
         existingAccount.updateProviderEmail(userInfo.getEmail());
 
         UserEntity user = userRepository.findById(existingAccount.getUserId())
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.AUTHENTICATION_FAIL));
+                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
 
         CustomUserDetails userDetails = new CustomUserDetails(
                 user.getId(),
@@ -213,7 +215,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthToken reissue(String refreshToken) {
         if (!StringUtils.hasText(refreshToken)) {
             log.warn("Reissue Failed - Reason: Refresh Token is missing");
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         CustomUserDetails userDetails = tokenService.authenticateRefreshToken(refreshToken);
@@ -231,4 +233,5 @@ public class AuthServiceImpl implements AuthService {
 
         return newTokens;
     }
+
 }

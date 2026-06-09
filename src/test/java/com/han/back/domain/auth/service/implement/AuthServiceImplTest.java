@@ -2,20 +2,22 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.event.UserSignedUpEvent;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.user.repository.UserRepository;
 import com.han.back.domain.user.service.TagGenerator;
 import com.han.back.domain.verification.entity.VerificationType;
+import com.han.back.domain.verification.exception.VerificationResponseStatus;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.fixture.TokenFixture;
 import com.han.back.fixture.UserFixture;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
@@ -74,7 +76,7 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.checkLoginId(LOGIN_ID))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
 
             then(loginIdTokenUtil).should(never()).issue(anyString());
         }
@@ -102,13 +104,13 @@ class AuthServiceImplTest {
             SignUpRequestDto dto = mock(SignUpRequestDto.class);
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
-            willThrow(new CustomException(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED))
+            willThrow(new CustomException(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED))
                     .given(loginIdTokenUtil).validate(LOGIN_ID, LOGIN_ID_TOKEN);
 
             assertThatThrownBy(() -> authService.signUp(dto))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.LOGIN_ID_CHECK_REQUIRED);
+                    .isEqualTo(AuthResponseStatus.AUTH_LOGIN_ID_CHECK_REQUIRED);
 
             then(verificationService).should(never()).validateConfirmed(anyString(), any());
             then(userRepository).should(never()).existsByLoginId(anyString());
@@ -123,13 +125,13 @@ class AuthServiceImplTest {
             given(dto.getLoginId()).willReturn(LOGIN_ID);
             given(dto.getLoginIdToken()).willReturn(LOGIN_ID_TOKEN);
             given(dto.getEmail()).willReturn(EMAIL);
-            willThrow(new CustomException(BaseResponseStatus.VERIFICATION_NOT_COMPLETED))
+            willThrow(new CustomException(VerificationResponseStatus.VERIFY_NOT_COMPLETED))
                     .given(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
 
             assertThatThrownBy(() -> authService.signUp(dto))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.VERIFICATION_NOT_COMPLETED);
+                    .isEqualTo(VerificationResponseStatus.VERIFY_NOT_COMPLETED);
 
             then(userRepository).should(never()).existsByLoginId(anyString());
             then(userRepository).should(never()).save(any());
@@ -148,7 +150,7 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.signUp(dto))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.DUPLICATE_ID);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
 
             then(userRepository).should(never()).save(any());
             then(eventPublisher).should(never()).publishEvent(any());
@@ -167,7 +169,7 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.signUp(dto))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.DUPLICATE_EMAIL);
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
 
             then(userRepository).should(never()).save(any());
             then(eventPublisher).should(never()).publishEvent(any());
@@ -259,7 +261,7 @@ class AuthServiceImplTest {
             assertThatThrownBy(() -> authService.reissue(""))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
 
             then(tokenService).should(never()).authenticateRefreshToken(anyString());
         }
@@ -290,14 +292,14 @@ class AuthServiceImplTest {
         @DisplayName("RT가 Redis 값과 불일치: validateRefreshToken이 AUTHENTICATION_FAIL을 던진다")
         void mismatchedRt_throwsAuthenticationFail() {
             stubAuthenticateRt();
-            willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL))
+            willThrow(new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL))
                     .given(tokenService)
                     .validateRefreshToken(USER_PK, SESSION_ID, TokenFixture.FAKE_RT);
 
             assertThatThrownBy(() -> authService.reissue(TokenFixture.FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
 
             then(deviceService).should(never()).rotateDeviceSession(anyLong(), anyString());
             then(tokenService).should(never()).rotateTokens(any(), any(), any(), any());
@@ -308,12 +310,12 @@ class AuthServiceImplTest {
         void rotateDeviceSession_fails_propagatesException() {
             stubAuthenticateRt();
             given(deviceService.rotateDeviceSession(USER_PK, SESSION_ID))
-                    .willThrow(new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL));
+                    .willThrow(new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
 
             assertThatThrownBy(() -> authService.reissue(TokenFixture.FAKE_RT))
                     .isInstanceOf(CustomAuthenticationException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.AUTHENTICATION_FAIL);
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
 
             then(tokenService).should(never()).rotateTokens(any(), any(), any(), any());
         }

@@ -59,12 +59,12 @@ class ResponseStatusAbstractionTest {
         @Test
         @DisplayName("BaseResponseStatus는 ApiResponseStatus로 다형적으로 참조되며 자체 code 필드가 default를 오버라이드한다")
         void baseResponseStatusOverridesDefaultGetCode() {
-            ApiResponseStatus status = BaseResponseStatus.SUCCESS;
+            ApiResponseStatus status = ResponseStatus.SUCCESS;
 
             // BaseResponseStatus는 @Getter로 자동 생성된 getCode()가
-            // 인터페이스 default(name() 반환)를 오버라이드하여 약어 "SU"를 발행한다.
-            assertThat(status.getCode()).isEqualTo("SU");
-            assertThat(status.getMessage()).isEqualTo("Success.");
+            // 인터페이스 default(name() 반환)를 오버라이드하여 약어 "SUCCESS"를 발행한다.
+            assertThat(status.getCode()).isEqualTo("SUCCESS");
+            assertThat(status.getMessage()).isEqualTo("성공");
             assertThat(status.getHttpStatus()).isEqualTo(HttpStatus.OK);
             assertThat(status.getHttpStatusCode()).isEqualTo(200);
         }
@@ -92,7 +92,7 @@ class ResponseStatusAbstractionTest {
 
             assertThat(body.getCode()).isEqualTo("FAKE_TEAPOT");
             assertThat(body.getMessage()).isEqualTo("상세 디버그 메시지");
-            assertThat(body.getResult()).isNull();
+            assertThat(body.getResult()).isInstanceOf(Empty.class);
         }
 
         @Test

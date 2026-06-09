@@ -1,6 +1,6 @@
 package com.han.back.domain.user.entity;
 
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.global.exception.CustomException;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public enum AuthProvider {
         return Arrays.stream(values())
                 .filter(provider -> provider.getValue().equalsIgnoreCase(registrationId))
                 .findFirst()
-                .orElseThrow(() -> new CustomException(BaseResponseStatus.UNSUPPORTED_SOCIAL_PROVIDER));
+                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_UNSUPPORTED_PROVIDER));
     }
 
     public boolean isSocial() {

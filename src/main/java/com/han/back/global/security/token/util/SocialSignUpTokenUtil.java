@@ -1,8 +1,8 @@
 package com.han.back.global.security.token.util;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.security.token.SocialSignUpClaims;
 import io.jsonwebtoken.Claims;
@@ -37,7 +37,7 @@ public class SocialSignUpTokenUtil {
 
             String category = jwtUtil.getCategory(claims);
             if (!OAuth2Const.TOKEN_CATEGORY_SOCIAL_SIGN_UP.equals(category)) {
-                throw new CustomException(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+                throw new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
             }
 
             return SocialSignUpClaims.of(
@@ -49,7 +49,7 @@ public class SocialSignUpTokenUtil {
             throw e;
         } catch (Exception e) {
             log.warn("Social sign-up token validation failed: {}", e.getMessage());
-            throw new CustomException(BaseResponseStatus.SOCIAL_SIGN_UP_TOKEN_INVALID);
+            throw new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
         }
     }
 

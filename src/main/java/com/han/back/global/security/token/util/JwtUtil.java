@@ -1,8 +1,8 @@
 package com.han.back.global.security.token.util;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.global.exception.CustomAuthenticationException;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.security.token.AuthConst;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -70,15 +70,15 @@ public class JwtUtil {
         try {
             return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         } catch (ExpiredJwtException e) { // 토큰 만료
-            throw new CustomAuthenticationException(BaseResponseStatus.EXPIRED_JWT_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_EXPIRED_ACCESS_TOKEN);
         } catch (SecurityException | MalformedJwtException e) { // 서명 불일치 또는 토큰 구조 손상
             log.warn("Invalid JWT Signature - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(BaseResponseStatus.INVALID_JWT_SIGNATURE);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_INVALID_JWT_SIGNATURE);
         } catch (UnsupportedJwtException e) { // 지원하지 않는 JWT 알고리즘 또는 형식
             log.warn("Unsupported JWT Token - Error: {}", e.getMessage());
-            throw new CustomAuthenticationException(BaseResponseStatus.UNSUPPORTED_JWT_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_UNSUPPORTED_JWT);
         } catch (IllegalArgumentException e) { // 토큰 문자열이 null 또는 빈 값
-            throw new CustomAuthenticationException(BaseResponseStatus.EMPTY_JWT_TOKEN);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_EMPTY_JWT);
         }
     }
 
@@ -101,7 +101,7 @@ public class JwtUtil {
     public Long getId(Claims claims) {
         Number id = claims.get(AuthConst.TOKEN_USER_PK, Number.class);
         if (id == null) {
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
         return id.longValue();
     }
@@ -110,13 +110,13 @@ public class JwtUtil {
         String roleStr = claims.get(AuthConst.TOKEN_ROLE, String.class);
 
         if (!StringUtils.hasText(roleStr)) {
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         Role role = Role.fromAuthority(roleStr);
 
         if (role == null) {
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
         return role;
@@ -129,7 +129,7 @@ public class JwtUtil {
     public String getSessionId(Claims claims) {
         String sessionId = claims.get(AuthConst.TOKEN_SESSION_ID, String.class);
         if (!StringUtils.hasText(sessionId)) {
-            throw new CustomAuthenticationException(BaseResponseStatus.AUTHENTICATION_FAIL);
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
         return sessionId;
     }

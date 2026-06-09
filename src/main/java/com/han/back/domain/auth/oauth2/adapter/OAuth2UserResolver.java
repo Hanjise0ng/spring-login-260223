@@ -1,8 +1,8 @@
 package com.han.back.domain.auth.oauth2.adapter;
 
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.global.exception.CustomException;
-import com.han.back.global.response.BaseResponseStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -27,7 +27,7 @@ public class OAuth2UserResolver {
         OAuth2UserAdapter adapter = adapterMap.get(provider);
 
         if (adapter == null) {
-            throw new CustomException(BaseResponseStatus.UNSUPPORTED_SOCIAL_PROVIDER);
+            throw new CustomException(SocialResponseStatus.SOCIAL_UNSUPPORTED_PROVIDER);
         }
 
         return adapter.convert(attributes);

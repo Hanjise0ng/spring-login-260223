@@ -329,7 +329,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
         void getDevicesWithoutAt_returns401Auf() throws Exception {
             mockMvc.perform(get("/api/v1/devices"))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("AUF"));
+                    .andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_FAIL"));
         }
     }
 
@@ -354,7 +354,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", publicIdA)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SU"));
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
 
             assertThat(isBlacklisted(sessionA)).isTrue();
             assertThat(getRedisValue(
@@ -386,7 +386,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", currentDevicePublicId)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("SDL"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_SELF_LOGOUT_FORBIDDEN"));
         }
 
         @Test
@@ -398,7 +398,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/devices/{publicId}/logout", NON_EXISTENT_PUBLIC_ID)
                             .header("Authorization", "Bearer " + getAt(login)))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value("NFD"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_NOT_FOUND"));
         }
 
         @Test
@@ -441,7 +441,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(delete("/api/v1/devices/{publicId}", publicIdA)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("SU"));
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
 
             assertThat(deviceRepository.count()).isEqualTo(1L);
 
@@ -464,7 +464,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(delete("/api/v1/devices/{publicId}", publicIdA)
                             .header("Authorization", "Bearer " + atB))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("ACD"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_ACTIVE_DELETE_FORBIDDEN"));
         }
 
         @Test
@@ -476,7 +476,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(delete("/api/v1/devices/{publicId}", NON_EXISTENT_PUBLIC_ID)
                             .header("Authorization", "Bearer " + getAt(login)))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value("NFD"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_NOT_FOUND"));
         }
     }
 
@@ -576,7 +576,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/devices/{publicId}/trust", extraPublicId)
                             .header("Authorization", "Bearer " + extraAt))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("TDL"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_TRUSTED_LIMIT_EXCEEDED"));
         }
 
         @Test
@@ -612,7 +612,7 @@ class DeviceIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/devices/{publicId}/trust", NON_EXISTENT_PUBLIC_ID)
                             .header("Authorization", "Bearer " + getAt(login)))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.code").value("NFD"));
+                    .andExpect(jsonPath("$.code").value("DEVICE_NOT_FOUND"));
         }
     }
 

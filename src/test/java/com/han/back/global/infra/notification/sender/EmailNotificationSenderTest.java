@@ -5,7 +5,7 @@ import com.han.back.global.infra.notification.model.NotificationChannel;
 import com.han.back.global.infra.notification.model.NotificationPurpose;
 import com.han.back.global.infra.notification.model.NotificationRequest;
 import com.han.back.global.infra.notification.strategy.MailSendStrategy;
-import com.han.back.global.response.BaseResponseStatus;
+import com.han.back.global.response.ResponseStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -149,7 +149,7 @@ class EmailNotificationSenderTest {
             assertThatThrownBy(() -> senderWithAllStrategies.send(request))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
-                    .isEqualTo(BaseResponseStatus.INTERNAL_SERVER_ERROR);
+                    .isEqualTo(ResponseStatus.INTERNAL_SERVER_ERROR);
         }
 
         @Test

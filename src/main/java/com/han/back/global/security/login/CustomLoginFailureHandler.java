@@ -1,8 +1,9 @@
 package com.han.back.global.security.login;
 
+import com.han.back.domain.auth.exception.AuthResponseStatus;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.ApiResponseStatus;
-import com.han.back.global.response.BaseResponseStatus;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,16 +43,16 @@ public class CustomLoginFailureHandler implements AuthenticationFailureHandler {
         Throwable cause = (failed.getCause() != null) ? failed.getCause() : failed;
 
         if (cause instanceof CustomAuthenticationException e) return e.getStatus();
-        if (cause instanceof UsernameNotFoundException) return BaseResponseStatus.NOT_FOUND_USER;
-        if (cause instanceof BadCredentialsException) return BaseResponseStatus.INVALID_PASSWORD;
-        return BaseResponseStatus.AUTHENTICATION_FAIL;
+        if (cause instanceof UsernameNotFoundException) return AccountResponseStatus.ACCOUNT_USER_NOT_FOUND;
+        if (cause instanceof BadCredentialsException) return AuthResponseStatus.AUTH_INVALID_PASSWORD;
+        return AuthResponseStatus.AUTH_AUTHENTICATION_FAIL;
     }
 
     private ApiResponseStatus determineClientStatus(AuthenticationException failed) {
         Throwable cause = (failed.getCause() != null) ? failed.getCause() : failed;
         return (cause instanceof CustomAuthenticationException e)
                 ? e.getStatus()
-                : BaseResponseStatus.SIGN_IN_FAIL;
+                : AuthResponseStatus.AUTH_SIGN_IN_FAIL;
     }
 
 }
