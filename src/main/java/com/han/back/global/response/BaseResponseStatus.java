@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum BaseResponseStatus {
+public enum BaseResponseStatus implements ApiResponseStatus {
 
     // ================== 성공 (200 OK) ==================
     SUCCESS(HttpStatus.OK, "SU", "Success."),
@@ -100,9 +100,5 @@ public enum BaseResponseStatus {
     private final HttpStatus httpStatus;
     private final String code;
     private final String message;
-
-    public int getHttpStatusCode() {
-        return httpStatus.value();
-    }
 
 }
