@@ -226,7 +226,7 @@ class SignUpIntegrationTest extends IntegrationTestBase {
                                     "target", EMAIL, "type", "SIGN_UP", "channel", "SMS"
                             ))))
                     .andExpect(status().isUnprocessableContent())
-                    .andExpect(jsonPath("$.code").value("VERIFY_UNSUPPORTED_CHANNEL"));
+                    .andExpect(jsonPath("$.code").value("VERIFY_CHANNEL_UNSUPPORTED"));
         }
     }
 

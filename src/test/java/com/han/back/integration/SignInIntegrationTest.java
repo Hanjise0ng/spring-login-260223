@@ -196,7 +196,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
             mockMvc.perform(post("/api/v1/auth/reissue")
                             .header("Authorization", "Bearer " + at))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("AUTH_MISSING_REFRESH_TOKEN"));
+                    .andExpect(jsonPath("$.code").value("AUTH_REFRESH_TOKEN_MISSING"));
         }
     }
 
