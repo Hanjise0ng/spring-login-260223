@@ -47,6 +47,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'          // Redis
 
     // ===================================================================================
+    // 데이터베이스 마이그레이션 (스키마 버전 관리)
+    // ===================================================================================
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+
+    // ===================================================================================
     // Security & Auth (인증 및 보안)
     // ===================================================================================
     implementation 'org.springframework.boot:spring-boot-starter-security'      // Spring Security 핵심
