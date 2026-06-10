@@ -8,6 +8,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
+
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -54,6 +56,9 @@ public class UserEntity extends BaseTime {
     @Column(nullable = false, length = 20)
     private AuthProvider authProvider;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -80,6 +85,18 @@ public class UserEntity extends BaseTime {
 
     public boolean isSocialUser() {
         return this.authProvider.isSocial();
+    }
+
+    public void softDelete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 
 }
