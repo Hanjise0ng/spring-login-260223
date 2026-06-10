@@ -4,8 +4,11 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: validate
     show-sql: true
+
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed/dev
 
 trace:
   strict-mode: false
