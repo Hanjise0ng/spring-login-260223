@@ -3,7 +3,7 @@ package com.han.back.domain.verification.policy;
 import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.exception.VerificationResponseStatus;
-import com.han.back.domain.verification.service.UserExistencePort;
+import com.han.back.domain.verification.service.AccountExistencePort;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.infra.notification.model.NotificationChannel;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +23,7 @@ import static org.mockito.BDDMockito.*;
 @DisplayName("ExistingTargetPolicy")
 class ExistingTargetPolicyTest {
 
-    @Mock private UserExistencePort userExistencePort;
+    @Mock private AccountExistencePort accountExistencePort;
 
     @InjectMocks private ExistingTargetPolicy existingTargetPolicy;
 
@@ -49,18 +49,18 @@ class ExistingTargetPolicyTest {
         @Test
         @DisplayName("EMAIL 채널 + 존재하는 이메일 → 예외 없이 통과한다")
         void email_existing_passes() {
-            given(userExistencePort.existsByEmail(EMAIL)).willReturn(true);
+            given(accountExistencePort.existsLocalAccountByEmail(EMAIL)).willReturn(true);
 
             assertThatCode(() -> existingTargetPolicy.check(EMAIL, NotificationChannel.EMAIL))
                     .doesNotThrowAnyException();
 
-            then(userExistencePort).should(times(1)).existsByEmail(EMAIL);
+            then(accountExistencePort).should(times(1)).existsLocalAccountByEmail(EMAIL);
         }
 
         @Test
         @DisplayName("EMAIL 채널 + 존재하지 않는 이메일 → NOT_FOUND_USER 예외를 던진다")
         void email_nonExisting_throwsNotFoundUser() {
-            given(userExistencePort.existsByEmail(EMAIL)).willReturn(false);
+            given(accountExistencePort.existsLocalAccountByEmail(EMAIL)).willReturn(false);
 
             assertThatThrownBy(() -> existingTargetPolicy.check(EMAIL, NotificationChannel.EMAIL))
                     .isInstanceOf(CustomException.class)
