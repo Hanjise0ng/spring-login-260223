@@ -46,15 +46,15 @@ public class OpenApiFilterDocsConfig {
                         - Set-Cookie: refresh_token (HttpOnly)
                         - Set-Cookie: device_id (HttpOnly)
                         
-                        **실패 시:** 401 SF
+                        **실패 시:** 401 AUTH_SIGN_IN_FAIL
                         """)
                 .requestBody(new RequestBody()
                         .required(true)
                         .content(jsonContent(requestSchema)))
                 .responses(new ApiResponses()
                         .addApiResponse("200", successResponse("로그인 성공 — AT(헤더), RT(쿠키), device_id(쿠키)"))
-                        .addApiResponse("400", errorResponse("IRB", "요청 본문 형식 오류"))
-                        .addApiResponse("401", errorResponse("SF", "로그인 정보 불일치")));
+                        .addApiResponse("400", errorResponse("MALFORMED_REQUEST_BODY", "요청 본문 형식 오류"))
+                        .addApiResponse("401", errorResponse("AUTH_SIGN_IN_FAIL", "로그인 정보 불일치")));
 
         return new PathItem().post(operation);
     }
@@ -77,7 +77,7 @@ public class OpenApiFilterDocsConfig {
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .responses(new ApiResponses()
                         .addApiResponse("200", successResponse("로그아웃 성공"))
-                        .addApiResponse("401", errorResponse("AUF", "인증 실패")));
+                        .addApiResponse("401", errorResponse("AUTH_AUTHENTICATION_FAIL", "인증 실패")));
 
         return new PathItem().post(operation);
     }
@@ -89,8 +89,8 @@ public class OpenApiFilterDocsConfig {
 
     private ApiResponse successResponse(String description) {
         ObjectSchema schema = new ObjectSchema();
-        schema.addProperty("code", new StringSchema().example("SU"));
-        schema.addProperty("message", new StringSchema().example("Success."));
+        schema.addProperty("code", new StringSchema().example("SUCCESS"));
+        schema.addProperty("message", new StringSchema().example("성공"));
         schema.addProperty("result", new ObjectSchema().description("빈 객체 ({})"));
 
         return new ApiResponse()

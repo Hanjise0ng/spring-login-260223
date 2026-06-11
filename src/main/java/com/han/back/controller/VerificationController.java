@@ -31,12 +31,13 @@ public class VerificationController {
                     + "쿨다운 기간 내 재요청 시 429가 반환됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "발송 성공 — 만료 시간 포함"),
-            @ApiResponse(responseCode = "400", description = "VF: 유효성 검증 실패"),
-            @ApiResponse(responseCode = "422", description = "UNC: 지원하지 않는 알림 채널"),
-            @ApiResponse(responseCode = "429", description = "CA: 쿨다운 중 (잠시 후 재요청)"),
+            @ApiResponse(responseCode = "400", description = "VALIDATION_FAIL: 유효성 검증 실패"),
+            @ApiResponse(responseCode = "422", description = "VERIFY_CHANNEL_UNSUPPORTED: 지원하지 않는 알림 채널"),
+            @ApiResponse(responseCode = "429", description = "VERIFY_COOLDOWN: 쿨다운 중 (잠시 후 재요청)"),
             @ApiResponse(responseCode = "500", description = """
-                    - MF: 메일 발송 실패
-                    - SSF: SMS 발송 실패""")
+                    - VERIFY_MAIL_TEMPLATE_FAIL: 메일 템플릿 처리 실패
+                    - VERIFY_MAIL_SEND_FAIL: 메일 발송 실패
+                    - VERIFY_SMS_SEND_FAIL: SMS 발송 실패""")
     })
     @PostMapping("/send")
     public ResponseEntity<BaseResponse<VerificationSendResponseDto>> sendCode(
@@ -52,9 +53,9 @@ public class VerificationController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "인증 성공"),
             @ApiResponse(responseCode = "400", description = """
-                    - VF: 유효성 검증 실패
-                    - CF: 인증 코드 불일치
-                    - VE: 인증 코드 만료""")
+                    - VALIDATION_FAIL: 유효성 검증 실패
+                    - VERIFY_CODE_MISMATCH: 인증 코드 불일치
+                    - VERIFY_CODE_EXPIRED: 인증 코드 만료""")
     })
     @PostMapping("/confirm")
     public ResponseEntity<BaseResponse<Empty>> confirmCode(
