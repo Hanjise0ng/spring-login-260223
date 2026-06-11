@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 //   - 발급된 AT JWT claims 내용 검증
 //   - 로그인 실패 HTTP 응답 코드 검증
 //   - 블랙리스트된 AT로 인증 필요 API 호출 시 거부 검증
-//   - 토큰 재발급 (reissue) 플로우
+//   - 토큰 재발급 (reissue) 플로우 — 입력은 RT 단독, 출력은 AT+RT
 //
 // DeviceEntity 생성/갱신, 세션 무효화 세부 로직 → DeviceIntegrationTest 담당
 @DisplayName("로그인 통합 테스트")
@@ -34,6 +34,8 @@ class SignInIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    private static final String LOGIN_ID = UserFixture.DEFAULT_LOGIN_ID;
 
     private String extractSessionId(String at) {
         Claims claims = jwtUtil.parseClaims(at);
@@ -47,9 +49,9 @@ class SignInIntegrationTest extends IntegrationTestBase {
         @Test
         @DisplayName("올바른 자격증명으로 로그인하면 AT 헤더, RT 쿠키, device_id 쿠키에 값이 담겨 응답된다")
         void validCredentials_returnsTokensInHeaderAndCookie() throws Exception {
-            UserEntity user = signUp();
+            signUp();
 
-            ResultActions result = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+            ResultActions result = signIn(LOGIN_ID, UserFixture.RAW_PASSWORD);
 
             result.andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"));
@@ -64,7 +66,7 @@ class SignInIntegrationTest extends IntegrationTestBase {
         void issuedAt_containsCorrectClaims() throws Exception {
             UserEntity user = signUp();
 
-            String at = getAt(signIn(user.getLoginId(), UserFixture.RAW_PASSWORD));
+            String at = getAt(signIn(LOGIN_ID, UserFixture.RAW_PASSWORD));
             Claims claims = jwtUtil.parseClaims(at);
 
             assertThat(jwtUtil.getId(claims)).isEqualTo(user.getId());
@@ -79,18 +81,18 @@ class SignInIntegrationTest extends IntegrationTestBase {
     class FailedLogin {
 
         @Test
-        @DisplayName("잘못된 비밀번호로 로그인하면 401 SF가 반환된다")
-        void wrongPassword_returns401Sf() throws Exception {
-            UserEntity user = signUp();
+        @DisplayName("잘못된 비밀번호로 로그인하면 401 AUTH_SIGN_IN_FAIL이 반환된다")
+        void wrongPassword_returnsSignInFail() throws Exception {
+            signUp();
 
-            signIn(user.getLoginId(), "WrongPass999!")
+            signIn(LOGIN_ID, "WrongPass999!")
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("AUTH_SIGN_IN_FAIL"));
         }
 
         @Test
-        @DisplayName("존재하지 않는 loginId로 로그인하면 401 SF가 반환된다")
-        void nonExistentLoginId_returns401Sf() throws Exception {
+        @DisplayName("존재하지 않는 loginId로 로그인하면 401 AUTH_SIGN_IN_FAIL이 반환된다")
+        void nonExistentLoginId_returnsSignInFail() throws Exception {
             signIn("ghost_user", UserFixture.RAW_PASSWORD)
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("AUTH_SIGN_IN_FAIL"));
@@ -110,9 +112,8 @@ class SignInIntegrationTest extends IntegrationTestBase {
         void failedLogin_doesNotStoreRtInRedis() throws Exception {
             UserEntity user = signUp();
 
-            signIn(user.getLoginId(), "WrongPass999!");
+            signIn(LOGIN_ID, "WrongPass999!");
 
-            // Redis RT 여부만 — DeviceEntity 생성 여부는 DeviceIntegrationTest 담당
             assertThat(getRtKeys(user.getId())).isEmpty();
         }
     }
@@ -129,19 +130,19 @@ class SignInIntegrationTest extends IntegrationTestBase {
     class BlacklistedAtRejection {
 
         @Test
-        @DisplayName("재로그인 후 이전 AT로 인증 필요 API 호출 시 401 AUF가 반환된다")
-        void reloginThenUseBlacklistedAt_returns401Auf() throws Exception {
-            UserEntity user = signUp();
+        @DisplayName("재로그인 후 이전 AT로 인증 필요 API 호출 시 401 AUTH_AUTHENTICATION_FAIL이 반환된다")
+        void reloginThenUseBlacklistedAt_returnsAuthFail() throws Exception {
+            signUp();
 
-            ResultActions first = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+            ResultActions first = signIn(LOGIN_ID, UserFixture.RAW_PASSWORD);
             String firstAt  = getAt(first);
             String firstRt  = getCookieValue(first, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
 
             // 재로그인 → 이전 세션 블랙리스트 등록
-            reSignIn(user.getLoginId(), UserFixture.RAW_PASSWORD, firstAt, firstRt);
+            reSignIn(LOGIN_ID, UserFixture.RAW_PASSWORD, firstAt, firstRt);
 
             // /api/v1/devices는 USER 권한 필요 → JwtFilter가 AT 검증
-            // 블랙리스트에 등록된 세션 → AUF 반환
+            // 블랙리스트에 등록된 세션 → AUTH_AUTHENTICATION_FAIL 반환
             mockMvc.perform(get("/api/v1/devices")
                             .header("Authorization", "Bearer " + firstAt))
                     .andExpect(status().isUnauthorized())
@@ -157,17 +158,14 @@ class SignInIntegrationTest extends IntegrationTestBase {
         @DisplayName("유효한 RT로 재발급하면 새 AT·RT가 발급되고 세션이 롤링된다")
         void validRt_reissuesTokensAndRotatesSession() throws Exception {
             UserEntity user = signUp();
-            ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+            ResultActions login = signIn(LOGIN_ID, UserFixture.RAW_PASSWORD);
 
             String oldAt        = getAt(login);
             String oldSessionId = extractSessionId(oldAt);
             String rt           = getCookieValue(login, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
 
-            // reissue는 AT + RT 모두 필요
-            // AuthHttpUtil.extractRequiredTokenPair() 가 AT(Authorization 헤더)와 RT(쿠키) 동시 요구
-            // AT가 없으면 MAT, RT가 없으면 MRT 순서로 검증
+            // reissue 입력은 RT(쿠키) 단독 — AT는 보내지 않는다
             ResultActions reissue = mockMvc.perform(post("/api/v1/auth/reissue")
-                    .header("Authorization", "Bearer " + oldAt)
                     .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)));
 
             reissue.andExpect(status().isOk())
@@ -186,38 +184,32 @@ class SignInIntegrationTest extends IntegrationTestBase {
         }
 
         @Test
-        @DisplayName("RT 없이 재발급 요청하면 401 MRT가 반환된다")
-        void missingRt_returns401Mrt() throws Exception {
-            // AT는 있지만 RT는 없는 상황 — MAT 이전에 MRT가 반환되려면 AT는 포함해야 함
-            UserEntity user = signUp();
-            ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
-            String at = getAt(login);
+        @DisplayName("RT 없이 재발급 요청하면 401 AUTH_REFRESH_TOKEN_MISSING이 반환된다")
+        void missingRt_returnsRefreshTokenMissing() throws Exception {
+            // 재발급은 RT 단독 입력 — RT 쿠키가 없으면 MISSING
+            signUp();
 
-            mockMvc.perform(post("/api/v1/auth/reissue")
-                            .header("Authorization", "Bearer " + at))
+            mockMvc.perform(post("/api/v1/auth/reissue"))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("AUTH_REFRESH_TOKEN_MISSING"));
         }
     }
 
     @Test
-    @DisplayName("재발급 후 이전 RT로 다시 재발급 시도하면 401 AUF가 반환된다")
+    @DisplayName("재발급 후 이전 RT로 다시 재발급 시도하면 401 AUTH_AUTHENTICATION_FAIL이 반환된다")
     void usedRt_reissueAgain_returns401() throws Exception {
-        UserEntity user = signUp();
-        ResultActions login = signIn(user.getLoginId(), UserFixture.RAW_PASSWORD);
+        signUp();
+        ResultActions login = signIn(LOGIN_ID, UserFixture.RAW_PASSWORD);
 
-        String at = getAt(login);
         String rt = getCookieValue(login, AuthConst.COOKIE_REFRESH_TOKEN_NAME);
 
-        // 1차 재발급 성공
+        // 1차 재발급 성공 (RT 단독)
         mockMvc.perform(post("/api/v1/auth/reissue")
-                        .header("Authorization", "Bearer " + at)
                         .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
                 .andExpect(status().isOk());
 
-        // 동일 RT로 2차 재발급 시도 → 거부
+        // 동일 RT로 2차 재발급 시도 → 거부 (세션 롤링으로 이전 RT 무효)
         mockMvc.perform(post("/api/v1/auth/reissue")
-                        .header("Authorization", "Bearer " + at)
                         .cookie(new Cookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME, rt)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_AUTHENTICATION_FAIL"));

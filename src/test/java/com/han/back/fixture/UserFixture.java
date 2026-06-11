@@ -1,5 +1,6 @@
 package com.han.back.fixture;
 
+import com.han.back.domain.auth.credential.entity.CredentialEntity;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
@@ -9,11 +10,12 @@ public final class UserFixture {
 
     private UserFixture() {}
 
-    // 기본 로컬 사용자
+    public static final String DEFAULT_LOGIN_ID = "testuser";
+    public static final String DEFAULT_NICKNAME = "테스트유저";
+    public static final String RAW_PASSWORD = "Test1234!";
+
     public static UserEntity localUser() {
         return UserEntity.builder()
-                .loginId(DEFAULT_LOGIN_ID)
-                .password("$2a$10$encodedPasswordForTest")
                 .email("test@test.com")
                 .nickname(DEFAULT_NICKNAME)
                 .tag("A1B2")
@@ -22,12 +24,8 @@ public final class UserFixture {
                 .build();
     }
 
-
-    // admin 사용자
     public static UserEntity adminUser() {
         return UserEntity.builder()
-                .loginId("adminuser")
-                .password("$2a$10$dummyEncodedPassword.ForTest")
                 .email("admin@test.com")
                 .nickname("어드민유저")
                 .tag("C3D4")
@@ -36,12 +34,8 @@ public final class UserFixture {
                 .build();
     }
 
-
-    // 소셜 로그인 사용자
     public static UserEntity socialUser() {
         return UserEntity.builder()
-                .loginId("google_123456")
-                .password("{social}no-password")
                 .email("social@test.com")
                 .nickname("소셜유저")
                 .tag("E5F6")
@@ -50,21 +44,13 @@ public final class UserFixture {
                 .build();
     }
 
-    // 통합 테스트 전용
-    public static UserEntity localUser(PasswordEncoder encoder) {
-        return UserEntity.builder()
-                .loginId("testuser")
-                .password(encoder.encode("Test1234!"))
-                .email("test@test.com")
-                .nickname(DEFAULT_NICKNAME)
-                .tag("A1B2")
-                .role(Role.USER)
-                .authProvider(AuthProvider.LOCAL)
+    public static CredentialEntity localCredential(Long userId, String loginId, PasswordEncoder encoder) {
+        return CredentialEntity.builder()
+                .userId(userId)
+                .provider(AuthProvider.LOCAL)
+                .identifier(loginId)
+                .password(encoder.encode(RAW_PASSWORD))
                 .build();
     }
-
-    public static final String DEFAULT_LOGIN_ID = "testuser";
-    public static final String DEFAULT_NICKNAME = "테스트유저";
-    public static final String RAW_PASSWORD = "Test1234!";
 
 }

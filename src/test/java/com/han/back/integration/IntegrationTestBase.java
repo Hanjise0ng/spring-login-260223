@@ -1,5 +1,7 @@
 package com.han.back.integration;
 
+import com.han.back.domain.auth.credential.entity.CredentialEntity;
+import com.han.back.domain.auth.credential.repository.CredentialRepository;
 import com.han.back.domain.device.repository.DeviceRepository;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.Role;
@@ -43,6 +45,7 @@ public abstract class IntegrationTestBase {
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
     @Autowired protected UserRepository userRepository;
+    @Autowired protected CredentialRepository credentialRepository;
     @Autowired protected DeviceRepository deviceRepository;
     @Autowired protected PasswordEncoder passwordEncoder;
 
@@ -69,6 +72,7 @@ public abstract class IntegrationTestBase {
     @AfterEach
     void cleanUp() {
         deviceRepository.deleteAll();
+        credentialRepository.deleteAll();  // 자식(FK: user_id) 먼저 삭제
         userRepository.deleteAll();
         cleanUpRedisTestKeys();
     }
@@ -93,20 +97,40 @@ public abstract class IntegrationTestBase {
         }
     }
 
+    /**
+     기본 LOCAL 사용자 가입 — user 신원 + LOCAL credential을 함께 생성한다.
+     loginId는 UserFixture.DEFAULT_LOGIN_ID 상수를 사용하므로,
+     이 헬퍼로 가입한 사용자는 해당 상수로 로그인한다.
+     */
     protected UserEntity signUp() {
-        return userRepository.save(UserFixture.localUser(passwordEncoder));
+        UserEntity user = userRepository.save(UserFixture.localUser());
+        credentialRepository.save(
+                UserFixture.localCredential(user.getId(), UserFixture.DEFAULT_LOGIN_ID, passwordEncoder));
+        return user;
     }
 
     protected UserEntity signUpAs(String loginId, String email) {
-        return userRepository.save(UserEntity.builder()
-                .loginId(loginId)
-                .password(passwordEncoder.encode(UserFixture.RAW_PASSWORD))
-                .email(email)
+        UserEntity user = userRepository.save(UserEntity.builder()
                 .nickname(loginId)
-                .tag("0000")
+                .tag(deriveTag(loginId))
+                .email(email)
                 .role(Role.USER)
                 .authProvider(AuthProvider.LOCAL)
                 .build());
+
+        credentialRepository.save(CredentialEntity.builder()
+                .userId(user.getId())
+                .provider(AuthProvider.LOCAL)
+                .identifier(loginId)
+                .password(passwordEncoder.encode(UserFixture.RAW_PASSWORD))
+                .build());
+
+        return user;
+    }
+
+    private static String deriveTag(String loginId) {
+        int h = Math.abs(loginId.hashCode() % 10000);
+        return String.format("%04d", h);
     }
 
     /** 기본 로그인 요청 */

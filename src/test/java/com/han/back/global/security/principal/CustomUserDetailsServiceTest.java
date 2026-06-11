@@ -1,9 +1,11 @@
 package com.han.back.global.security.principal;
 
-import com.han.back.domain.auth.exception.AuthResponseStatus;
+import com.han.back.domain.auth.credential.entity.CredentialEntity;
+import com.han.back.domain.auth.credential.repository.CredentialRepository;
+import com.han.back.domain.user.entity.AuthProvider;
+import com.han.back.domain.user.entity.Role;
 import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.fixture.UserFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,44 +25,55 @@ import static org.mockito.BDDMockito.given;
 @DisplayName("CustomUserDetailsService")
 class CustomUserDetailsServiceTest {
 
+    @Mock private CredentialRepository credentialRepository;
     @Mock private UserRepository userRepository;
 
     @InjectMocks private CustomUserDetailsService customUserDetailsService;
 
-    @Test
-    @DisplayName("소셜 유저 loginId로 로드 시 UsernameNotFoundException (SF 메시지)")
-    void socialUser_throwsUsernameNotFoundException() {
-        UserEntity socialUser = UserFixture.socialUser();
-        given(userRepository.findByLoginId(socialUser.getLoginId()))
-                .willReturn(Optional.of(socialUser));
+    private static final String LOGIN_ID = "testuser";
+    private static final String ENCODED_PW = "$2a$10$encoded";
 
-        assertThatThrownBy(() ->
-                customUserDetailsService.loadUserByUsername(socialUser.getLoginId()))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
+    @Test
+    @DisplayName("LOCAL credential과 user가 존재하면 UserDetails를 반환한다")
+    void loadsUserDetailsWhenLocalCredentialExists() {
+        CredentialEntity credential = CredentialEntity.builder()
+                .userId(1L).provider(AuthProvider.LOCAL)
+                .identifier(LOGIN_ID).password(ENCODED_PW).build();
+        UserEntity user = UserEntity.builder()
+                .email("t@test.com").nickname("u").tag("A1B2")
+                .role(Role.USER).authProvider(AuthProvider.LOCAL).build();
+
+        given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                .willReturn(Optional.of(credential));
+        given(userRepository.findById(credential.getUserId())).willReturn(Optional.of(user));
+
+        UserDetails result = customUserDetailsService.loadUserByUsername(LOGIN_ID);
+
+        assertThat(result.getPassword()).isEqualTo(ENCODED_PW);
     }
 
     @Test
-    @DisplayName("로컬 유저 → CustomUserDetails 정상 반환")
-    void localUser_returnsCustomUserDetails() {
-        UserEntity localUser = UserFixture.localUser();
-        given(userRepository.findByLoginId(localUser.getLoginId()))
-                .willReturn(Optional.of(localUser));
+    @DisplayName("LOCAL credential이 없으면(소셜전용·미존재) UsernameNotFoundException")
+    void throwsWhenNoLocalCredential() {
+        given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, "nonexistent"))
+                .willReturn(Optional.empty());
 
-        UserDetails result = customUserDetailsService.loadUserByUsername(localUser.getLoginId());
-
-        assertThat(result).isInstanceOf(CustomUserDetails.class);
+        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername("nonexistent"))
+                .isInstanceOf(UsernameNotFoundException.class);
     }
 
     @Test
-    @DisplayName("미존재 loginId → SF와 동일한 메시지")
-    void notFound_sameMessageAsSocialGuard() {
-        given(userRepository.findByLoginId("nonexistent")).willReturn(Optional.empty());
+    @DisplayName("credential은 있으나 user가 없으면 UsernameNotFoundException")
+    void throwsWhenUserMissing() {
+        CredentialEntity credential = CredentialEntity.builder()
+                .userId(99L).provider(AuthProvider.LOCAL)
+                .identifier(LOGIN_ID).password(ENCODED_PW).build();
+        given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                .willReturn(Optional.of(credential));
+        given(userRepository.findById(99L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() ->
-                customUserDetailsService.loadUserByUsername("nonexistent"))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessage(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
+        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername(LOGIN_ID))
+                .isInstanceOf(UsernameNotFoundException.class);
     }
 
 }
