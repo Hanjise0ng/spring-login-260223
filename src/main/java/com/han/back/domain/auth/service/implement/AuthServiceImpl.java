@@ -1,5 +1,7 @@
 package com.han.back.domain.auth.service.implement;
 
+import com.han.back.domain.auth.credential.entity.CredentialEntity;
+import com.han.back.domain.auth.credential.repository.CredentialRepository;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
@@ -38,15 +40,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final CredentialRepository credentialRepository;
     private final SocialAccountRepository socialAccountRepository;
     private final UserFactory userFactory;
     private final TagGenerator tagGenerator;
@@ -62,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public LoginIdCheckResponseDto checkLoginId(String loginId) {
-        if (userRepository.existsByLoginId(loginId)) {
+        if (credentialRepository.existsByProviderAndIdentifier(AuthProvider.LOCAL, loginId)) {
             throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
 
@@ -76,17 +76,20 @@ public class AuthServiceImpl implements AuthService {
         loginIdTokenUtil.validate(dto.getLoginId(), dto.getLoginIdToken());
         verificationService.validateConfirmed(dto.getEmail(), VerificationType.SIGN_UP);
 
-        if (userRepository.existsByLoginId(dto.getLoginId())) {
+        if (credentialRepository.existsByProviderAndIdentifier(AuthProvider.LOCAL, dto.getLoginId())) {
             throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
-        if (userRepository.existsByEmail(dto.getEmail())) {
+        if (existsLocalEmail(dto.getEmail())) {
             throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_EMAIL);
         }
 
-        String password = passwordEncoder.encode(dto.getPassword());
         String tag = tagGenerator.generate(dto.getNickname());
-        UserEntity user = userFactory.createFromSignUpRequest(dto, password, tag);
+        UserEntity user = userFactory.createLocalUser(dto, tag);
         userRepository.save(user);
+
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+        CredentialEntity credential = userFactory.createLocalCredential(user.getId(), dto.getLoginId(), encodedPassword);
+        credentialRepository.save(credential);
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
 
@@ -114,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
         SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
         verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
 
-        if (userRepository.existsByEmail(email)) {
+        if (existsLocalEmail(email)) {
             throw new CustomException(SocialResponseStatus.SOCIAL_EMAIL_CONFLICT);
         }
 
@@ -124,9 +127,8 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
         }
 
-        String password = passwordEncoder.encode(UUID.randomUUID().toString());
         String tag = tagGenerator.generate(claims.getNickname());
-        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, password, provider, tag);
+        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, provider, tag);
         userRepository.save(user);
 
         SocialAccountEntity socialAccount = SocialAccountEntity.builder()
@@ -179,14 +181,12 @@ public class AuthServiceImpl implements AuthService {
                     userInfo.getNickname());
         }
 
-        Optional<UserEntity> existing = userRepository.findByEmail(userInfo.getEmail());
-        if (existing.isPresent()) {
-            return SocialSignInResult.EmailConflict.of(existing.get().getAuthProvider().getValue());
+        if (existsLocalEmail(userInfo.getEmail())) {
+            return SocialSignInResult.EmailConflict.of(AuthProvider.LOCAL.getValue());
         }
 
-        String password = passwordEncoder.encode(UUID.randomUUID().toString());
         String tag = tagGenerator.generate(userInfo.getNickname());
-        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), password, userInfo.getProvider(), tag);
+        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), userInfo.getProvider(), tag);
         userRepository.save(user);
 
         SocialAccountEntity socialAccount = SocialAccountEntity.builder()
@@ -232,6 +232,13 @@ public class AuthServiceImpl implements AuthService {
                 userId, newSessionId, userDetails.getRole().name());
 
         return newTokens;
+    }
+
+    private boolean existsLocalEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(UserEntity::getId)
+                .map(userId -> credentialRepository.findByUserIdAndProvider(userId, AuthProvider.LOCAL).isPresent())
+                .orElse(false);
     }
 
 }
