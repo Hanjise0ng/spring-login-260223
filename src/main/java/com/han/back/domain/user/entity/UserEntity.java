@@ -1,8 +1,6 @@
 package com.han.back.domain.user.entity;
 
-import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.global.entity.BaseTime;
-import com.han.back.global.exception.CustomException;
 import com.han.back.global.util.UuidUtil;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,12 +16,9 @@ import java.time.LocalDateTime;
 @Table(
         name = "users",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_users_login_id", columnNames = {"login_id"}),
-                @UniqueConstraint(name = "uk_users_email", columnNames = {"email"}),
                 @UniqueConstraint(name = "uk_users_nickname_tag", columnNames = {"nickname", "tag"})
         },
         indexes = {
-                @Index(name = "idx_users_login_id", columnList = "login_id"),
                 @Index(name = "idx_users_nickname_tag", columnList = "nickname, tag")
         }
 )
@@ -33,19 +28,13 @@ public class UserEntity extends BaseTime {
     @Column(name = "public_id", nullable = false, unique = true, updatable = false, length = 36)
     private String publicId = UuidUtil.generateString();
 
-    @Column(name = "login_id", unique = true, nullable = false, length = 30)
-    private String loginId;
-
-    @Column(nullable = false)
-    private String password;
-
     @Column(nullable = false, length = 50)
     private String nickname;
 
     @Column(nullable = false, length = 4)
     private String tag;
 
-    @Column(unique = true, nullable = false, length = 100)
+    @Column(nullable = false, length = 100)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -70,13 +59,6 @@ public class UserEntity extends BaseTime {
 
     public void changeRole(Role role) {
         this.role = role;
-    }
-
-    public void changePassword(String encodedPassword) {
-        if (this.authProvider.isSocial()) {
-            throw new CustomException(AccountResponseStatus.ACCOUNT_SOCIAL_ONLY);
-        }
-        this.password = encodedPassword;
     }
 
     public boolean isLocalUser() {
