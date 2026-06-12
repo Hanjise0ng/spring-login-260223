@@ -141,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
 
-        CustomUserDetails userDetails = new CustomUserDetails(
+        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
                 user.getId(),
                 user.getRole(),
                 user.getEmail(),
@@ -160,7 +160,7 @@ public class AuthServiceImpl implements AuthService {
         UserEntity user = userRepository.findById(existingAccount.getUserId())
                 .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
 
-        CustomUserDetails userDetails = new CustomUserDetails(
+        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
                 user.getId(),
                 user.getRole(),
                 user.getEmail(),
@@ -197,7 +197,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         socialAccountRepository.save(socialAccount);
 
-        CustomUserDetails userDetails = new CustomUserDetails(
+        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
                 user.getId(),
                 user.getRole(),
                 user.getEmail(),

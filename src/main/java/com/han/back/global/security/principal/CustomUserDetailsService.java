@@ -41,12 +41,13 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
         }
 
-        return new CustomUserDetails(
+        return CustomUserDetails.forLocalLogin(
                 user.getId(),
                 credential.getPassword(),
                 user.getRole(),
                 user.getEmail(),
-                user.getNickname()
+                user.getNickname(),
+                user.isDeleted()
         );
     }
 

@@ -64,7 +64,7 @@ public class TokenServiceImpl implements TokenService {
             throw new CustomAuthenticationException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
         }
 
-        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), sessionId);
+        return CustomUserDetails.fromToken(jwtUtil.getId(claims), jwtUtil.getRole(claims), sessionId);
     }
 
     @Override
@@ -76,7 +76,7 @@ public class TokenServiceImpl implements TokenService {
             throw new CustomAuthenticationException(AuthResponseStatus.AUTH_JWT_UNSUPPORTED);
         }
 
-        return new CustomUserDetails(jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims));
+        return CustomUserDetails.fromToken(jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims));
     }
 
     @Override
@@ -115,7 +115,7 @@ public class TokenServiceImpl implements TokenService {
                 .map(jwtUtil::getSessionId)
                 .orElseGet(() -> jwtUtil.getSessionId(rt));
 
-        return Optional.of(new CustomUserDetails(id, role, sessionId));
+        return Optional.of(CustomUserDetails.fromToken(id, role, sessionId));
     }
 
     private AuthToken createAndStoreTokens(Long id, Role role, String sessionId) {

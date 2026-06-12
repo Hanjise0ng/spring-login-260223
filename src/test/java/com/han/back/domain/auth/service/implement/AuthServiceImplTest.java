@@ -272,7 +272,7 @@ class AuthServiceImplTest {
     class Reissue {
 
         private void stubAuthenticateRt() {
-            CustomUserDetails userDetails = new CustomUserDetails(USER_PK, ROLE, SESSION_ID);
+            CustomUserDetails userDetails = CustomUserDetails.fromToken(USER_PK, ROLE, SESSION_ID);
             given(tokenService.authenticateRefreshToken(TokenFixture.FAKE_RT))
                     .willReturn(userDetails);
         }

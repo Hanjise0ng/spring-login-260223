@@ -16,35 +16,33 @@ public class CustomUserDetails implements UserDetails {
     private final String sessionId;
     private final String email;
     private final String nickname;
+    private final boolean deleted;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    // 로컬 로그인용
-    public CustomUserDetails(Long id, String password, Role role,
-                             String email, String nickname) {
-        this(id, password, role, null, email, nickname);
-    }
-
-    // OAuth2용
-    public CustomUserDetails(Long id, Role role,
-                             String email, String nickname) {
-        this(id, null, role, null, email, nickname);
-    }
-
-    // 토큰 재발급용
-    public CustomUserDetails(Long id, Role role, String sessionId) {
-        this(id, null, role, sessionId, null, null);
-    }
-
-    private CustomUserDetails(Long id, String password, Role role,
-                              String sessionId, String email, String nickname) {
+    private CustomUserDetails(Long id, String password, Role role, String sessionId, String email, String nickname, boolean deleted) {
         this.id = id;
         this.password = password;
         this.role = role;
         this.sessionId = sessionId;
         this.email = email;
         this.nickname = nickname;
-        this.authorities = Collections.singletonList(
-                new SimpleGrantedAuthority(role.getAuthority()));
+        this.deleted = deleted;
+        this.authorities = Collections.singletonList(new SimpleGrantedAuthority(role.getAuthority()));
+    }
+
+    // 로컬 로그인 — 비번 대조와 탈퇴 분기 필요
+    public static CustomUserDetails forLocalLogin(Long id, String password, Role role, String email, String nickname, boolean deleted) {
+        return new CustomUserDetails(id, password, role, null, email, nickname, deleted);
+    }
+
+    // 소셜 로그인 — 비번 없음, 탈퇴 분기 대상 아님
+    public static CustomUserDetails forSocialLogin(Long id, Role role, String email, String nickname) {
+        return new CustomUserDetails(id, null, role, null, email, nickname, false);
+    }
+
+    // JWT 토큰에서 복원한 인증 주체 — AT/RT 인증 토큰 기반 복원용 (id·role·sessionId만 보유)
+    public static CustomUserDetails fromToken(Long id, Role role, String sessionId) {
+        return new CustomUserDetails(id, null, role, sessionId, null, null, false);
     }
 
     public Long getId() {
@@ -65,6 +63,10 @@ public class CustomUserDetails implements UserDetails {
 
     public String getNickname() {
         return this.nickname;
+    }
+
+    public boolean isDeleted() {
+        return this.deleted;
     }
 
     @Override
