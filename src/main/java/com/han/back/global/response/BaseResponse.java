@@ -72,4 +72,8 @@ public class BaseResponse<T> {
         return new BaseResponse<>(status, customMessage, TraceContext.getTraceIdOrNull(), Empty.getInstance());
     }
 
+    public static <T> BaseResponse<T> body(ApiResponseStatus status, T result) {
+        return new BaseResponse<>(status, status.getMessage(), TraceContext.getTraceIdOrNull(), result);
+    }
+
 }

@@ -35,4 +35,16 @@ public class HttpResponseUtil {
         }
     }
 
+    public void writeResponse(HttpServletResponse response, ApiResponseStatus status, Object result) {
+        try {
+            response.setStatus(status.getHttpStatusCode());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+
+            objectMapper.writeValue(response.getWriter(), BaseResponse.body(status, result));
+        } catch (IOException e) {
+            throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }
