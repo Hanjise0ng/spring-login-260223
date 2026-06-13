@@ -20,7 +20,6 @@ public final class UserFixture {
                 .nickname(DEFAULT_NICKNAME)
                 .tag("A1B2")
                 .role(Role.USER)
-                .authProvider(AuthProvider.LOCAL)
                 .build();
     }
 
@@ -30,17 +29,6 @@ public final class UserFixture {
                 .nickname("어드민유저")
                 .tag("C3D4")
                 .role(Role.ADMIN)
-                .authProvider(AuthProvider.LOCAL)
-                .build();
-    }
-
-    public static UserEntity socialUser() {
-        return UserEntity.builder()
-                .email("social@test.com")
-                .nickname("소셜유저")
-                .tag("E5F6")
-                .role(Role.USER)
-                .authProvider(AuthProvider.GOOGLE)
                 .build();
     }
 
@@ -50,6 +38,14 @@ public final class UserFixture {
                 .provider(AuthProvider.LOCAL)
                 .identifier(loginId)
                 .password(encoder.encode(RAW_PASSWORD))
+                .build();
+    }
+
+    public static CredentialEntity socialCredential(Long userId, AuthProvider provider, String providerId) {
+        return CredentialEntity.builder()
+                .userId(userId)
+                .provider(provider)
+                .identifier(providerId)
                 .build();
     }
 

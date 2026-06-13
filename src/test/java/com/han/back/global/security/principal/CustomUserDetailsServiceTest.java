@@ -41,7 +41,7 @@ class CustomUserDetailsServiceTest {
                 .identifier(LOGIN_ID).password(ENCODED_PW).build();
         UserEntity user = UserEntity.builder()
                 .email("t@test.com").nickname("u").tag("A1B2")
-                .role(Role.USER).authProvider(AuthProvider.LOCAL).build();
+                .role(Role.USER).build();
 
         given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
                 .willReturn(Optional.of(credential));

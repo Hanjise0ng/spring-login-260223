@@ -116,7 +116,6 @@ public abstract class IntegrationTestBase {
                 .tag(deriveTag(loginId))
                 .email(email)
                 .role(Role.USER)
-                .authProvider(AuthProvider.LOCAL)
                 .build());
 
         credentialRepository.save(CredentialEntity.builder()
