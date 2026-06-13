@@ -39,6 +39,19 @@ public class RateLimitUtil {
         }
     }
 
+    public long getCount(String key) {
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            return value == null ? 0L : Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            log.error("RateLimit count parse failed - key: {} | error: {}", key, e.getMessage());
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
+        } catch (Exception e) {
+            log.error("RateLimit getCount failed - key: {} | error: {}", key, e.getMessage());
+            throw new CustomException(ResponseStatus.REDIS_ERROR);
+        }
+    }
+
     public long incrementHourly(String keyPrefix) {
         String key = keyPrefix + ":" + currentWindow(Duration.ofHours(1));
         return increment(key, Duration.ofHours(1));
