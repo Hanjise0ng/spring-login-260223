@@ -31,7 +31,7 @@ public final class AuthConst {
     // ── 만료 시간 (Duration — 단일 진실의 원천) ───────────────────
     // JWT, Redis, 쿠키 모두 이 Duration 에서 필요한 단위를 추출해서 사용
     public static final Duration ACCESS_TOKEN_TTL     = Duration.ofMinutes(30);
-    public static final Duration REFRESH_TOKEN_TTL    = Duration.ofDays(1);
+    public static final Duration REFRESH_TOKEN_TTL    = Duration.ofDays(14);
     public static final Duration LOGIN_ID_TOKEN_TTL   = Duration.ofMinutes(30);
 
     // ── 쿠키 설정 ─────────────────────────────────────────────────
