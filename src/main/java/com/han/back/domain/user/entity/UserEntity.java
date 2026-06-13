@@ -41,10 +41,6 @@ public class UserEntity extends BaseTime {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private AuthProvider authProvider;
-
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -59,14 +55,6 @@ public class UserEntity extends BaseTime {
 
     public void changeRole(Role role) {
         this.role = role;
-    }
-
-    public boolean isLocalUser() {
-        return this.authProvider == AuthProvider.LOCAL;
-    }
-
-    public boolean isSocialUser() {
-        return this.authProvider.isSocial();
     }
 
     public void softDelete(LocalDateTime deletedAt) {

@@ -36,11 +36,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                     return new UsernameNotFoundException(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
                 });
 
-        if (user.isSocialUser()) {
-            log.warn("Login failed - social-only account attempted local login");
-            throw new UsernameNotFoundException(AuthResponseStatus.AUTH_SIGN_IN_FAIL.getMessage());
-        }
-
         if (user.isDeleted()) {
             log.info("Login attempt on soft-deleted account - recovery guidance follows on password match");
         }
