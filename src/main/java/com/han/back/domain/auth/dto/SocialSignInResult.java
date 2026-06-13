@@ -14,7 +14,9 @@ public sealed interface SocialSignInResult {
             return new Authenticated(signInResult);
         }
 
-        public SignInResult getSignInResult() { return signInResult; }
+        public SignInResult getSignInResult() {
+            return signInResult;
+        }
     }
 
     final class EmailRequired implements SocialSignInResult {
@@ -46,20 +48,32 @@ public sealed interface SocialSignInResult {
         }
     }
 
-    final class EmailConflict implements SocialSignInResult {
+    final class LinkSuggested implements SocialSignInResult {
 
-        private final String existingProvider;
+        private final String provider;
+        private final String providerId;
+        private final String nickname;
 
-        private EmailConflict(String existingProvider) {
-            this.existingProvider = existingProvider;
+        private LinkSuggested(String provider, String providerId, String nickname) {
+            this.provider = provider;
+            this.providerId = providerId;
+            this.nickname = nickname;
         }
 
-        public static EmailConflict of(String existingProvider) {
-            return new EmailConflict(existingProvider);
+        public static LinkSuggested of(String provider, String providerId, String nickname) {
+            return new LinkSuggested(provider, providerId, nickname);
         }
 
-        public String getExistingProvider() {
-            return existingProvider;
+        public String getProvider() {
+            return provider;
+        }
+
+        public String getProviderId() {
+            return providerId;
+        }
+
+        public String getNickname() {
+            return nickname;
         }
     }
 
