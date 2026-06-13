@@ -105,9 +105,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public SocialSignInResult processSocialLogin(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
-        return socialAccountRepository
-                .findByProviderAndProviderId(userInfo.getProvider(), userInfo.getProviderId())
-                .map(account -> handleExistingSocialUser(account, userInfo, deviceInfo))
+        return credentialRepository
+                .findByProviderAndIdentifier(userInfo.getProvider(), userInfo.getProviderId())
+                .map(credential -> handleExistingSocialUser(credential, userInfo, deviceInfo))
                 .orElseGet(() -> handleNewSocialUser(userInfo, deviceInfo));
     }
 
@@ -154,10 +154,8 @@ public class AuthServiceImpl implements AuthService {
         return signInResult;
     }
 
-    private SocialSignInResult handleExistingSocialUser(SocialAccountEntity existingAccount, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
-        existingAccount.updateProviderEmail(userInfo.getEmail());
-
-        UserEntity user = userRepository.findById(existingAccount.getUserId())
+    private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        UserEntity user = userRepository.findById(existingCredential.getUserId())
                 .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
 
         CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
