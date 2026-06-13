@@ -9,9 +9,7 @@ import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
-import com.han.back.domain.auth.oauth2.entity.SocialAccountEntity;
 import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
-import com.han.back.domain.auth.oauth2.repository.SocialAccountRepository;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.auth.service.SignInProcessor;
 import com.han.back.domain.device.dto.DeviceInfo;
@@ -47,7 +45,6 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final CredentialRepository credentialRepository;
-    private final SocialAccountRepository socialAccountRepository;
     private final UserFactory userFactory;
     private final TagGenerator tagGenerator;
     private final PasswordEncoder passwordEncoder;
@@ -123,21 +120,16 @@ public class AuthServiceImpl implements AuthService {
 
         AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
 
-        if (socialAccountRepository.existsByProviderAndProviderId(provider, claims.getProviderId())) {
+        if (credentialRepository.existsByProviderAndIdentifier(provider, claims.getProviderId())) {
             throw new CustomException(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
         }
 
         String tag = tagGenerator.generate(claims.getNickname());
-        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, provider, tag);
+        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, tag);
         userRepository.save(user);
 
-        SocialAccountEntity socialAccount = SocialAccountEntity.builder()
-                .userId(user.getId())
-                .provider(provider)
-                .providerId(claims.getProviderId())
-                .providerEmail(email)
-                .build();
-        socialAccountRepository.save(socialAccount);
+        CredentialEntity credential = userFactory.createSocialCredential(user.getId(), provider, claims.getProviderId());
+        credentialRepository.save(credential);
 
         eventPublisher.publishEvent(UserSignedUpEvent.of(user));
 
@@ -184,16 +176,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String tag = tagGenerator.generate(userInfo.getNickname());
-        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), userInfo.getProvider(), tag);
+        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), tag);
         userRepository.save(user);
 
-        SocialAccountEntity socialAccount = SocialAccountEntity.builder()
-                .userId(user.getId())
-                .provider(userInfo.getProvider())
-                .providerId(userInfo.getProviderId())
-                .providerEmail(userInfo.getEmail())
-                .build();
-        socialAccountRepository.save(socialAccount);
+        CredentialEntity credential = userFactory.createSocialCredential(
+                user.getId(), userInfo.getProvider(), userInfo.getProviderId());
+        credentialRepository.save(credential);
 
         CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
                 user.getId(),

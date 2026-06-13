@@ -17,7 +17,6 @@ public class UserFactory {
                 .nickname(dto.getNickname())
                 .tag(tag)
                 .role(Role.USER)
-                .authProvider(AuthProvider.LOCAL)
                 .build();
     }
 
@@ -30,14 +29,21 @@ public class UserFactory {
                 .build();
     }
 
-    public UserEntity createSocialUser(String nickname, String email, AuthProvider provider, String tag) {
+    public UserEntity createSocialUser(String nickname, String email, String tag) {
         return UserEntity.builder()
                 .publicId(UuidUtil.generateString())
                 .nickname(nickname)
                 .email(email)
                 .tag(tag)
                 .role(Role.USER)
-                .authProvider(provider)
+                .build();
+    }
+
+    public CredentialEntity createSocialCredential(Long userId, AuthProvider provider, String providerId) {
+        return CredentialEntity.builder()
+                .userId(userId)
+                .provider(provider)
+                .identifier(providerId)
                 .build();
     }
 
