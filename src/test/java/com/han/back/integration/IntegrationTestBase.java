@@ -60,6 +60,7 @@ public abstract class IntegrationTestBase {
             AuthConst.TOKEN_REFRESH_REDIS_PREFIX,
             AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX,
             "verification:",
+            "login:fail:",
     };
 
     @BeforeEach
