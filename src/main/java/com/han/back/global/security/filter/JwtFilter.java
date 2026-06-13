@@ -4,6 +4,7 @@ import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.util.AuthHttpUtil;
+import com.han.back.global.util.ClientIpResolver;
 import com.han.back.global.util.SecurityPathConst;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -51,12 +52,12 @@ public class JwtFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authToken);
 
             log.debug("JWT Context Setup - UserPK: {} | SessionId: {} | ClientIP: {}",
-                    userDetails.getId(), userDetails.getSessionId(), request.getRemoteAddr());
+                    userDetails.getId(), userDetails.getSessionId(), ClientIpResolver.resolve(request));
 
         } catch (CustomAuthenticationException e) {
             if (isLogoutRequest(request)) { // 로그아웃 요청은 AT 만료·블랙리스트 시에도 통과, LogoutHandler에서 RT 기반 fallback으로 사용자 식별
                 log.debug("JWT auth failed on logout path - deferring to LogoutHandler | ClientIP: {}",
-                        request.getRemoteAddr());
+                        ClientIpResolver.resolve(request));
                 filterChain.doFilter(request, response);
                 return;
             }

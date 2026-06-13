@@ -3,6 +3,7 @@ package com.han.back.global.security.filter;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.ResponseStatus;
+import com.han.back.global.util.ClientIpResolver;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,15 +28,15 @@ public class JwtExceptionFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (CustomAuthenticationException e) { // JWT 검증 실패(만료·위조·블랙리스트 등)
             log.warn("JWT Authentication Exception - Code: {} | Message: {} | ClientIP: {}",
-                    e.getStatus().getCode(), e.getStatus().getMessage(), request.getRemoteAddr());
+                    e.getStatus().getCode(), e.getStatus().getMessage(), ClientIpResolver.resolve(request));
             httpResponseUtil.writeResponse(response, e.getStatus());
         } catch (CustomException e) { // 인프라 오류(Redis 등)
             log.error("Infrastructure error in JWT filter - Code: {} | ClientIP: {}",
-                    e.getStatus().getCode(), request.getRemoteAddr());
+                    e.getStatus().getCode(), ClientIpResolver.resolve(request));
             httpResponseUtil.writeResponse(response, e.getStatus());
         } catch (Exception e) { // 예상치 못한 런타임 오류 — 필터 체인 전체 범위
             log.error("JWT Filter Critical Error - Type: {} | Message: {} | ClientIP: {}",
-                    e.getClass().getSimpleName(), e.getMessage(), request.getRemoteAddr(), e);
+                    e.getClass().getSimpleName(), e.getMessage(), ClientIpResolver.resolve(request), e);
             httpResponseUtil.writeResponse(response, ResponseStatus.INTERNAL_SERVER_ERROR);
         }
     }

@@ -3,6 +3,7 @@ package com.han.back.global.security.filter;
 import com.han.back.domain.auth.dto.request.SignInRequestDto;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.ResponseStatus;
+import com.han.back.global.util.ClientIpResolver;
 import com.han.back.global.util.SecurityPathConst;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,14 +42,17 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         try {
             SignInRequestDto dto = objectMapper.readValue(request.getInputStream(), SignInRequestDto.class);
 
-            MDC.put("loginId", dto.getLoginId());
-            log.info("Login Attempt - LoginId: {} | ClientIP: {}", dto.getLoginId(), request.getRemoteAddr());
+            String loginId = dto.getLoginId();
+            String clientIp = ClientIpResolver.resolve(request);
+
+            MDC.put("loginId", loginId);
+            log.info("Login Attempt - LoginId: {} | ClientIP: {}", loginId, clientIp);
 
             return this.getAuthenticationManager().authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.getLoginId(), dto.getPassword())
+                    new UsernamePasswordAuthenticationToken(loginId, dto.getPassword())
             );
         } catch (IOException e) {
-            log.error("Login Request Parsing Error - ClientIP: {}", request.getRemoteAddr(), e);
+            log.error("Login Request Parsing Error - ClientIP: {}", ClientIpResolver.resolve(request), e);
             throw new CustomAuthenticationException(ResponseStatus.MALFORMED_REQUEST_BODY);
         }
     }
