@@ -4,6 +4,7 @@ import com.han.back.domain.user.entity.Role;
 import com.han.back.global.security.filter.JwtExceptionFilter;
 import com.han.back.global.security.filter.JwtFilter;
 import com.han.back.global.security.filter.LoginFilter;
+import com.han.back.global.security.filter.LoginRateLimitFilter;
 import com.han.back.global.security.handler.CustomAuthenticationEntryPoint;
 import com.han.back.global.security.login.CustomLoginFailureHandler;
 import com.han.back.global.security.login.CustomLoginSuccessHandler;
@@ -40,6 +41,7 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomLoginSuccessHandler customLoginSuccessHandler;
@@ -57,6 +59,7 @@ public class SecurityConfig {
             ObjectMapper objectMapper,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
+            LoginRateLimitFilter loginRateLimitFilter,
             CustomAuthenticationEntryPoint customAuthenticationEntryPoint,
             CustomLoginSuccessHandler customLoginSuccessHandler,
             CustomLoginFailureHandler customLoginFailureHandler,
@@ -72,6 +75,7 @@ public class SecurityConfig {
         this.objectMapper = objectMapper;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
         this.customAuthenticationEntryPoint = customAuthenticationEntryPoint;
         this.customLoginSuccessHandler = customLoginSuccessHandler;
         this.customLoginFailureHandler = customLoginFailureHandler;
@@ -137,7 +141,8 @@ public class SecurityConfig {
         http
                 .addFilterBefore(jwtFilter, LogoutFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtFilter.class)
-                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(loginRateLimitFilter, LoginFilter.class);
     }
 
     private void configureOAuth2Login(HttpSecurity http) {

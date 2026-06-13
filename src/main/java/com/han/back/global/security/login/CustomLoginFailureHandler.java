@@ -4,6 +4,7 @@ import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.response.ApiResponseStatus;
+import com.han.back.global.util.ClientIpResolver;
 import com.han.back.global.util.HttpResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,19 +23,21 @@ import org.springframework.stereotype.Component;
 public class CustomLoginFailureHandler implements AuthenticationFailureHandler {
 
     private final HttpResponseUtil httpResponseUtil;
+    private final LoginFailureRateLimiter rateLimiter;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request,
                                         HttpServletResponse response,
                                         AuthenticationException exception) {
-        ApiResponseStatus logStatus = determineLogStatus(exception);
-        ApiResponseStatus clientStatus = determineClientStatus(exception);
-
         String loginId = MDC.get("loginId");
         if (loginId == null) loginId = "UNIDENTIFIED";
 
+        rateLimiter.recordFailure(loginId, ClientIpResolver.resolve(request));
+
+        ApiResponseStatus logStatus = determineLogStatus(exception);
+        ApiResponseStatus clientStatus = determineClientStatus(exception);
         log.warn("Login Failed - LoginId: {} | LogCode: {} | Reason: {} | ClientIP: {}",
-                loginId, logStatus.getCode(), logStatus.getMessage(), request.getRemoteAddr());
+                loginId, logStatus.getCode(), logStatus.getMessage(), ClientIpResolver.resolve(request));
 
         httpResponseUtil.writeResponse(response, clientStatus);
     }

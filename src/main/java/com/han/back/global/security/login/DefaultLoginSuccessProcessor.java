@@ -21,6 +21,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,7 @@ public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
     private final DeviceInfoProvider deviceInfoProvider;
     private final TokenTransportResolver tokenTransportResolver;
     private final HttpResponseUtil httpResponseUtil;
+    private final LoginFailureRateLimiter rateLimiter;
 
     @Override
     public void process(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
@@ -52,6 +54,12 @@ public class DefaultLoginSuccessProcessor implements LoginSuccessProcessor {
         TokenTransport transport = tokenTransportResolver.resolve(request);
         transport.write(response, result.getTokens());
         transport.writeDeviceCookie(response, result.getDeviceFingerprint());
+
+        String loginId = MDC.get("loginId");
+        if (loginId != null) {
+            rateLimiter.clearOnSuccess(loginId);
+        }
+
         httpResponseUtil.writeResponse(response, ResponseStatus.SUCCESS);
     }
 

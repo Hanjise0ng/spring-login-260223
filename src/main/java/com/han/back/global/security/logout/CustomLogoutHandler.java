@@ -7,6 +7,7 @@ import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.util.AuthHttpUtil;
 import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
+import com.han.back.global.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         Optional<CustomUserDetails> userDetails = resolveUser(authentication, request);
 
         if (userDetails.isEmpty()) {
-            log.warn("Logout Failed - Unable to identify user | ClientIP: {}", request.getRemoteAddr());
+            log.warn("Logout Failed - Unable to identify user | ClientIP: {}", ClientIpResolver.resolve(request));
             LogoutContext.setResult(request, LogoutResult.UNAUTHENTICATED);
             return;
         }
@@ -45,12 +46,12 @@ public class CustomLogoutHandler implements LogoutHandler {
 
             LogoutContext.setResult(request, LogoutResult.SUCCESS);
             log.info("Logout Success - UserPK: {} | SessionId: {} | ClientIP: {}",
-                    user.getId(), user.getSessionId(), request.getRemoteAddr());
+                    user.getId(), user.getSessionId(), ClientIpResolver.resolve(request));
 
         } catch (CustomException e) { // Redis 장애 또는 DB 오류
             LogoutContext.setResult(request, LogoutResult.REDIS_ERROR);
             log.error("Logout Failed - UserPK: {} | Reason: {} | ClientIP: {}",
-                    user.getId(), e.getMessage(), request.getRemoteAddr(), e);
+                    user.getId(), e.getMessage(), ClientIpResolver.resolve(request), e);
         }
     }
 
@@ -62,7 +63,7 @@ public class CustomLogoutHandler implements LogoutHandler {
 
         // AT 만료 상태에서의 로그아웃
         log.debug("SecurityContext authentication unavailable - attempting RT fallback | ClientIP: {}",
-                request.getRemoteAddr());
+                ClientIpResolver.resolve(request));
 
         AuthToken tokens = AuthHttpUtil.extractTokenPairLeniently(request);
         return tokenService.extractUserFromTokens(tokens.getAccessToken(), tokens.getRefreshToken());
