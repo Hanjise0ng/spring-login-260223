@@ -1,5 +1,6 @@
 package com.han.back.global.trace;
 
+import com.han.back.global.util.ClientIpResolver;
 import com.han.back.global.util.UuidUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,7 +43,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                     request.getRequestURI(),
                     response.getStatus(),
                     duration,
-                    resolveClientIp(request));
+                    ClientIpResolver.resolve(request)
+            );
 
             MDC.clear();
         }
@@ -54,14 +56,6 @@ public class LoggingFilter extends OncePerRequestFilter {
             return headerValue;
         }
         return UuidUtil.generateString();
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
 }
