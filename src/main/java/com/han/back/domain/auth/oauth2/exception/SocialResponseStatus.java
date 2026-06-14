@@ -17,7 +17,6 @@ public enum SocialResponseStatus implements ApiResponseStatus {
 
     // 409
     SOCIAL_ALREADY_LINKED("SOCIAL_ALREADY_LINKED", HttpStatus.CONFLICT, "이미 연동된 소셜 계정입니다."),
-    SOCIAL_EMAIL_CONFLICT("SOCIAL_EMAIL_CONFLICT", HttpStatus.CONFLICT, "다른 계정에 이미 등록된 이메일입니다."),
 
     // 422
     SOCIAL_PROVIDER_UNSUPPORTED("SOCIAL_PROVIDER_UNSUPPORTED", HttpStatus.UNPROCESSABLE_CONTENT, "지원하지 않는 소셜 제공자입니다.");
