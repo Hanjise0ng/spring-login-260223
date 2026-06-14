@@ -55,12 +55,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 String tempToken = socialSignUpTokenUtil.issue(
                         info.getProvider(), info.getProviderId(), info.getNickname());
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
-                        Map.of("tempToken", tempToken, "needEmail", "true")));
+                        Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_EMAIL_REQUIRED,
+                                OAuth2Const.PARAM_TEMP_TOKEN, tempToken)));
             }
-            case SocialSignInResult.EmailConflict conflict -> {
-                response.sendRedirect(buildUrl(OAuth2Const.FRONT_LOGIN_ERROR_PATH,
-                        Map.of("error", OAuth2Const.ERROR_EMAIL_CONFLICT,
-                                "provider", conflict.getExistingProvider())));
+            case SocialSignInResult.LinkSuggested link -> {
+                String tempToken = socialSignUpTokenUtil.issue(
+                        link.getProvider(), link.getProviderId(), link.getNickname());
+                response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
+                        Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_LINK_SUGGESTED,
+                                OAuth2Const.PARAM_TEMP_TOKEN, tempToken)));
             }
         }
     }

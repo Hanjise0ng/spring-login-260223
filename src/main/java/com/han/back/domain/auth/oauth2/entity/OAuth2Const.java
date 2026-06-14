@@ -29,8 +29,11 @@ public final class OAuth2Const {
     public static final String FRONT_CALLBACK_PATH = "/callback";
     public static final String FRONT_LOGIN_ERROR_PATH = "/login";
 
-    // ── 프론트 에러 코드 (URL 파라미터용) ─────────────────────────
-    public static final String ERROR_EMAIL_CONFLICT = "EMAIL_CONFLICT";
+    // ── 프론트 코드 (URL 파라미터용) ──────────────────────────────
+    public static final String PARAM_STATUS = "status";
+    public static final String PARAM_TEMP_TOKEN = "tempToken";
+    public static final String STATUS_EMAIL_REQUIRED = "email_required";
+    public static final String STATUS_LINK_SUGGESTED = "link_suggested";
     public static final String ERROR_SOCIAL_LOGIN_FAILED = "SOCIAL_LOGIN_FAILED";
 
     // ── 태그 ──────────────────────────────────────────────────────
