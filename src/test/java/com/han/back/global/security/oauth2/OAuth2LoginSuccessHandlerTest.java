@@ -10,7 +10,9 @@ import com.han.back.fixture.DeviceFixture;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OAuth2LoginSuccessHandler")
@@ -35,6 +41,7 @@ class OAuth2LoginSuccessHandlerTest {
 
     @Mock private AuthService authService;
     @Mock private SocialSignUpTokenUtil socialSignUpTokenUtil;
+    @Mock private SignUpTokenCookieManager signUpTokenCookieManager;
     @Mock private DeviceInfoProvider deviceInfoProvider;
     @Mock private Authentication authentication;
     @Mock private OAuth2User oAuth2User;
@@ -61,7 +68,7 @@ class OAuth2LoginSuccessHandlerTest {
     }
 
     @Test
-    @DisplayName("Authenticated 시 RT·device 쿠키를 심고 /callback으로 파라미터 없이 리다이렉트한다")
+    @DisplayName("Authenticated 시 RT·device 쿠키를 심고 signup 토큰은 발급하지 않으며 /callback으로 깔끔히 리다이렉트한다")
     void authenticatedSetsCookiesAndRedirectsCleanly() throws Exception {
         SignInResult signInResult = SignInResult.of(
                 AuthToken.of("access-token", RT), DeviceFixture.DEFAULT_WEB_FINGERPRINT);
@@ -70,10 +77,16 @@ class OAuth2LoginSuccessHandlerTest {
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        String setCookies = String.join("\n", response.getHeaders(AuthConst.HEADER_SET_COOKIE));
-        assertThat(setCookies).contains(AuthConst.COOKIE_REFRESH_TOKEN_NAME + "=" + RT);
-        assertThat(setCookies).contains(AuthConst.COOKIE_DEVICE_ID_NAME + "=" + DeviceFixture.DEFAULT_WEB_FINGERPRINT);
-        assertThat(setCookies).contains("HttpOnly");
+        Cookie refreshCookie = response.getCookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME);
+        assertThat(refreshCookie).isNotNull();
+        assertThat(refreshCookie.getValue()).isEqualTo(RT);
+        assertThat(refreshCookie.isHttpOnly()).isTrue();
+
+        Cookie deviceCookie = response.getCookie(AuthConst.COOKIE_DEVICE_ID_NAME);
+        assertThat(deviceCookie).isNotNull();
+        assertThat(deviceCookie.getValue()).isEqualTo(DeviceFixture.DEFAULT_WEB_FINGERPRINT);
+
+        then(signUpTokenCookieManager).should(never()).write(eq(response), anyString());
 
         assertThat(response.getRedirectedUrl()).isEqualTo(FRONT + OAuth2Const.FRONT_CALLBACK_PATH);
         assertThat(response.getRedirectedUrl()).doesNotContain("access-token");
@@ -82,33 +95,31 @@ class OAuth2LoginSuccessHandlerTest {
     }
 
     @Test
-    @DisplayName("LinkSuggested 시 social_signup_token 쿠키를 심고 URL엔 토큰을 노출하지 않는다")
-    void linkSuggestedSetsCookieAndHidesToken() throws Exception {
+    @DisplayName("LinkSuggested 시 매니저에 signup 토큰 발급을 위임하고 URL엔 토큰을 노출하지 않는다")
+    void linkSuggestedDelegatesTokenAndHidesIt() throws Exception {
         given(authService.processSocialLogin(userInfo, deviceInfo))
                 .willReturn(SocialSignInResult.LinkSuggested.of("kakao", "kakao-1", "nick"));
         given(socialSignUpTokenUtil.issue("kakao", "kakao-1", "nick")).willReturn("temp-token-value");
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        String setCookies = String.join("\n", response.getHeaders(AuthConst.HEADER_SET_COOKIE));
-        assertThat(setCookies).contains(OAuth2Const.COOKIE_SOCIAL_SIGNUP_TOKEN_NAME + "=temp-token-value");
-        assertThat(setCookies).contains("Path=" + OAuth2Const.SOCIAL_SIGNUP_COOKIE_PATH);
+        then(signUpTokenCookieManager).should().write(eq(response), eq("temp-token-value"));
 
         assertThat(response.getRedirectedUrl()).contains(OAuth2Const.STATUS_LINK_SUGGESTED);
         assertThat(response.getRedirectedUrl()).doesNotContain("temp-token-value");
     }
 
     @Test
-    @DisplayName("EmailRequired 시 social_signup_token 쿠키를 심고 status=email_required로 리다이렉트한다")
-    void emailRequiredSetsCookie() throws Exception {
+    @DisplayName("EmailRequired 시 매니저에 signup 토큰 발급을 위임하고 status=email_required로 리다이렉트한다")
+    void emailRequiredDelegatesToken() throws Exception {
         given(authService.processSocialLogin(userInfo, deviceInfo))
                 .willReturn(SocialSignInResult.EmailRequired.of("kakao", "kakao-2", "nick2"));
         given(socialSignUpTokenUtil.issue("kakao", "kakao-2", "nick2")).willReturn("temp-2");
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        String setCookies = String.join("\n", response.getHeaders(AuthConst.HEADER_SET_COOKIE));
-        assertThat(setCookies).contains(OAuth2Const.COOKIE_SOCIAL_SIGNUP_TOKEN_NAME + "=temp-2");
+        then(signUpTokenCookieManager).should().write(eq(response), eq("temp-2"));
+
         assertThat(response.getRedirectedUrl()).contains(OAuth2Const.STATUS_EMAIL_REQUIRED);
         assertThat(response.getRedirectedUrl()).doesNotContain("temp-2");
     }

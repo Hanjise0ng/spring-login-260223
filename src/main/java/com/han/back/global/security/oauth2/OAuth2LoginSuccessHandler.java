@@ -8,6 +8,7 @@ import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.security.token.AuthConst;
+import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import com.han.back.global.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +32,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final AuthService authService;
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
+    private final SignUpTokenCookieManager signUpTokenCookieManager;
     private final DeviceInfoProvider deviceInfoProvider;
 
     @Value("${app.front-base-url}")
@@ -54,14 +56,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             case SocialSignInResult.EmailRequired info -> {
                 String tempToken = socialSignUpTokenUtil.issue(
                         info.getProvider(), info.getProviderId(), info.getNickname());
-                writeSignUpTokenCookie(response, tempToken);
+                signUpTokenCookieManager.write(response, tempToken);
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
                         Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_EMAIL_REQUIRED)));
             }
             case SocialSignInResult.LinkSuggested link -> {
                 String tempToken = socialSignUpTokenUtil.issue(
                         link.getProvider(), link.getProviderId(), link.getNickname());
-                writeSignUpTokenCookie(response, tempToken);
+                signUpTokenCookieManager.write(response, tempToken);
                 response.sendRedirect(buildUrl(OAuth2Const.FRONT_CALLBACK_PATH,
                         Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_LINK_SUGGESTED)));
             }
@@ -77,14 +79,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 AuthConst.COOKIE_DEVICE_ID_NAME,
                 signInResult.getDeviceFingerprint(),
                 AuthConst.DEVICE_COOKIE_TTL);
-    }
-
-    private void writeSignUpTokenCookie(HttpServletResponse response, String tempToken) {
-        CookieUtil.addSecureCookie(response,
-                OAuth2Const.COOKIE_SOCIAL_SIGNUP_TOKEN_NAME,
-                tempToken,
-                OAuth2Const.SOCIAL_SIGN_UP_TOKEN_TTL,
-                OAuth2Const.SOCIAL_SIGNUP_COOKIE_PATH);
     }
 
     private String buildUrl(String path, Map<String, String> params) {

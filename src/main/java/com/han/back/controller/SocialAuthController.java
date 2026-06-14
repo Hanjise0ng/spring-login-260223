@@ -10,9 +10,9 @@ import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
+import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
-import com.han.back.global.util.CookieUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -40,6 +40,7 @@ public class SocialAuthController {
     private final AuthService authService;
     private final DeviceInfoProvider deviceInfoProvider;
     private final TokenTransportResolver tokenTransportResolver;
+    private final SignUpTokenCookieManager signUpTokenCookieManager;
 
     @Operation(summary = "소셜 회원가입 완료",
             description = """
@@ -63,17 +64,16 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = CookieUtil.getCookieValue(httpRequest, OAuth2Const.COOKIE_SOCIAL_SIGNUP_TOKEN_NAME)
+        String tempToken = signUpTokenCookieManager.read(httpRequest)
                 .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID));
 
         DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
-
         SocialSignInResult result = authService.completeSocialSignUp(tempToken, request.getEmail(), deviceInfo);
 
         switch (result) {
             case SocialSignInResult.Authenticated auth -> {
                 writeTokens(httpRequest, httpResponse, auth.getSignInResult());
-                clearSignUpTokenCookie(httpResponse);
+                signUpTokenCookieManager.clear(httpResponse);
                 return BaseResponse.success();
             }
             case SocialSignInResult.LinkSuggested link -> {
@@ -88,13 +88,6 @@ public class SocialAuthController {
         TokenTransport transport = tokenTransportResolver.resolve(request);
         transport.write(response, signInResult.getTokens());
         transport.writeDeviceCookie(response, signInResult.getDeviceFingerprint());
-    }
-
-    private void clearSignUpTokenCookie(HttpServletResponse response) {
-        CookieUtil.addSecureCookie(response,
-                OAuth2Const.COOKIE_SOCIAL_SIGNUP_TOKEN_NAME, "",
-                java.time.Duration.ZERO,
-                OAuth2Const.SOCIAL_SIGNUP_COOKIE_PATH);
     }
 
 }
