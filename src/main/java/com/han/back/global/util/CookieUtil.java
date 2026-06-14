@@ -12,6 +12,8 @@ import java.util.Optional;
 
 public class CookieUtil {
 
+    private static final String DEFAULT_PATH = "/";
+
     public static Optional<String> getCookieValue(HttpServletRequest request, String cookieName) {
         Cookie cookie = WebUtils.getCookie(request, cookieName);
         return Optional.ofNullable(cookie).map(Cookie::getValue);
@@ -19,8 +21,13 @@ public class CookieUtil {
 
     public static void addSecureCookie(HttpServletResponse response,
                                        String name, String value, Duration maxAge) {
+        addSecureCookie(response, name, value, maxAge, DEFAULT_PATH);
+    }
+
+    public static void addSecureCookie(HttpServletResponse response,
+                                       String name, String value, Duration maxAge, String path) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
-                .path("/")
+                .path(path)
                 .maxAge(maxAge)
                 .httpOnly(true)
                 .secure(true)
