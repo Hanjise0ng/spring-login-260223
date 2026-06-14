@@ -14,7 +14,6 @@ public final class SecurityPathConst {
             "/api/v*/auth/sign-in",
             "/api/v*/auth/reissue",
             "/api/v*/auth/check-login-id",
-            "/api/v*/auth/oauth2/token",
             "/api/v*/auth/oauth2/complete",
             "/api/v*/verification/**",
             "/oauth2/authorization/**",
