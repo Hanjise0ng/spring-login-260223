@@ -24,7 +24,7 @@ public interface AuthService {
     SocialSignInResult processSocialLogin(OAuth2UserInfo userInfo, DeviceInfo deviceInfo);
 
     // 이메일을 제공하지 않는 소셜 가입 — 임시 토큰 + 이메일을 받아 회원가입 진행
-    SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo);
+    SocialSignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo);
 
     // 토큰 재발급
     AuthToken reissue(String refreshToken);

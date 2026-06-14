@@ -110,12 +110,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public SignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo) {
+    public SocialSignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo) {
         SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
         verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
 
         if (existsLocalEmail(email)) {
-            throw new CustomException(SocialResponseStatus.SOCIAL_EMAIL_CONFLICT);
+            return SocialSignInResult.LinkSuggested.of(
+                    claims.getProvider(), claims.getProviderId(), claims.getNickname());
         }
 
         AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
@@ -143,7 +144,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("OAuth2 Sign-up Complete - UserPK: {} | Provider: {}", user.getId(), provider);
 
-        return signInResult;
+        return SocialSignInResult.Authenticated.of(signInResult);
     }
 
     private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
@@ -172,7 +173,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (existsLocalEmail(userInfo.getEmail())) {
-            return SocialSignInResult.EmailConflict.of(AuthProvider.LOCAL.getValue());
+            return SocialSignInResult.LinkSuggested.of(
+                    userInfo.getProvider().getValue(),
+                    userInfo.getProviderId(),
+                    userInfo.getNickname());
         }
 
         String tag = tagGenerator.generate(userInfo.getNickname());
