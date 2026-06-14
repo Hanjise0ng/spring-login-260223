@@ -75,4 +75,36 @@ class SocialLoginCredentialTest extends IntegrationTestBase {
         assertThat(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID)).isEmpty();
     }
 
+    @Test
+    @DisplayName("소셜 이메일이 기존 LOCAL 계정과 충돌하면 LinkSuggested를 반환하고 가입하지 않는다")
+    void localEmailConflictReturnsLinkSuggested() {
+        UserEntity localUser = userRepository.save(
+                userFactory.createLocalUser(
+                        new com.han.back.domain.auth.dto.request.SignUpRequestDto(
+                                "localuser", "Local1234!", SOCIAL_EMAIL, "로컬유저", "loginIdToken"),
+                        "L001"));
+        credentialRepository.save(
+                userFactory.createLocalCredential(localUser.getId(), "localuser", passwordEncoder.encode("Local1234!")));
+        long userCountBefore = userRepository.count();
+
+        SocialSignInResult result = authService.processSocialLogin(userInfo(SOCIAL_EMAIL), deviceInfo());
+
+        assertThat(result).isInstanceOf(SocialSignInResult.LinkSuggested.class);
+        assertThat(userRepository.count()).isEqualTo(userCountBefore);
+        assertThat(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이메일이 소셜 계정에만 쓰이면 충돌이 아니므로 신규 가입한다")
+    void socialOnlyEmailIsNotConflict() {
+        UserEntity otherSocial = userRepository.save(userFactory.createSocialUser("다른소셜", SOCIAL_EMAIL, "X001"));
+        credentialRepository.save(
+                userFactory.createSocialCredential(otherSocial.getId(), AuthProvider.NAVER, "naver-111"));
+
+        SocialSignInResult result = authService.processSocialLogin(userInfo(SOCIAL_EMAIL), deviceInfo());
+
+        assertThat(result).isInstanceOf(SocialSignInResult.Authenticated.class);
+        assertThat(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID)).isPresent();
+    }
+
 }

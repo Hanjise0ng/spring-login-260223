@@ -71,7 +71,6 @@ class PublishedCodeContractTest {
             "SOCIAL_SIGNUP_TOKEN_INVALID",
             "SOCIAL_ACCOUNT_NOT_FOUND",
             "SOCIAL_ALREADY_LINKED",
-            "SOCIAL_EMAIL_CONFLICT",
             "SOCIAL_PROVIDER_UNSUPPORTED",
 
             "DEVICE_SELF_LOGOUT_FORBIDDEN",

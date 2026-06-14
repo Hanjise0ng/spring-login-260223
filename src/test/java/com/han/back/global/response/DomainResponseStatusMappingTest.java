@@ -100,7 +100,6 @@ class DomainResponseStatusMappingTest {
                 Map.entry("SOCIAL_SIGNUP_TOKEN_INVALID", BAD_REQUEST),
                 Map.entry("SOCIAL_ACCOUNT_NOT_FOUND", NOT_FOUND),
                 Map.entry("SOCIAL_ALREADY_LINKED", CONFLICT),
-                Map.entry("SOCIAL_EMAIL_CONFLICT", CONFLICT),
                 Map.entry("SOCIAL_PROVIDER_UNSUPPORTED", UNPROCESSABLE_CONTENT),
 
                 Map.entry("DEVICE_SELF_LOGOUT_FORBIDDEN", BAD_REQUEST),
