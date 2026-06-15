@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,13 +55,13 @@ public class DeviceServiceImpl implements DeviceService {
         );
 
         deviceRepository.save(device);
-        enforceMaxSessionPolicy(userId, sessionId);
+        List<String> evictedSessionIds = evictExcessSessions(userId, sessionId);
 
         log.info("Device Registered - UserPK: {} | DeviceId: {} | Type: {} | SessionId: {} | IP: {} | NewDevice: {}",
                 device.getUserId(), device.getId(), deviceInfo.getDeviceType().name(),
                 sessionId, deviceInfo.getLoginIp(), isNewDevice);
 
-        return DeviceRegistration.of(sessionId, isNewDevice);
+        return DeviceRegistration.of(sessionId, isNewDevice, evictedSessionIds);
     }
 
     @Override
@@ -165,36 +166,37 @@ public class DeviceServiceImpl implements DeviceService {
                 userId, devicePublicId, device.getDeviceType().name());
     }
 
-    private void enforceMaxSessionPolicy(Long userId, String currentSessionId) {
+    private List<String> evictExcessSessions(Long userId, String currentSessionId) {
         List<DeviceEntity> activeDevices =
                 deviceRepository.findActiveDevicesByUserIdOldestFirst(userId);
 
         if (activeDevices.size() <= deviceProperties.getMaxSessionsPerUser()) {
-            return;
+            return List.of();
         }
 
         int excessCount = activeDevices.size() - deviceProperties.getMaxSessionsPerUser();
 
-        // 안심 기기 제외하고 오래된 순으로 퇴출 대상 선정
         List<DeviceEntity> evictionTargets = activeDevices.stream()
                 .filter(d -> !d.getSessionId().equals(currentSessionId))
                 .filter(d -> !d.isTrusted())
                 .limit(excessCount)
                 .toList();
 
+        List<String> evictedSessionIds = new ArrayList<>();
         for (DeviceEntity target : evictionTargets) {
-            tokenService.invalidateSession(userId, target.getSessionId());
+            evictedSessionIds.add(target.getSessionId());
             target.deactivateSession();
 
             log.info("Max Session Policy - Evicted | UserPK: {} | DeviceId: {} | SessionId: {}",
                     userId, target.getId(), target.getSessionId());
         }
 
-        // 퇴출할 일반 기기가 부족한 경우 (안심 기기가 너무 많을 때) — 허용
         if (evictionTargets.size() < excessCount) {
             log.info("Max Session Policy - Excess sessions allowed due to trusted devices | UserPK: {} | ActiveSessions: {} | Max: {}",
                     userId, activeDevices.size(), deviceProperties.getMaxSessionsPerUser());
         }
+
+        return evictedSessionIds;
     }
 
     private DeviceEntity createNewDevice(Long userId, DeviceInfo deviceInfo) {
