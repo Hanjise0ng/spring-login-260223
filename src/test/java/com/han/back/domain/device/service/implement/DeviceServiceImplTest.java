@@ -53,16 +53,6 @@ class DeviceServiceImplTest {
         webDeviceInfo = DeviceFixture.webDeviceInfo();
     }
 
-    private void givenNoExistingDevice() {
-        given(deviceRepository.findByUserIdAndDeviceFingerprint(USER_ID, FINGERPRINT))
-                .willReturn(Optional.empty());
-    }
-
-    private void givenActiveDevicesUnderMax() {
-        given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
-                .willReturn(List.of());
-    }
-
     private DeviceEntity activeDeviceWith(String sessionId, LocalDateTime loginAt) {
         return DeviceFixture.builder(USER_ID)
                 .sessionId(sessionId)
@@ -80,7 +70,6 @@ class DeviceServiceImplTest {
                 .build();
     }
 
-
     @Nested
     @DisplayName("registerLoginDevice()")
     class RegisterLoginDevice {
@@ -97,6 +86,17 @@ class DeviceServiceImplTest {
         }
 
         @Test
+        @DisplayName("미등록 fingerprint → 반환값의 newDevice 플래그가 true 다")
+        void newFingerprint_marksNewDeviceTrue() {
+            givenNoExistingDevice();
+            givenActiveDevicesUnderMax();
+
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            assertThat(result.isNewDevice()).isTrue();
+        }
+
+        @Test
         @DisplayName("기존 fingerprint → 기존 Entity를 재사용하고 새 sessionId로 활성화한다")
         void existingFingerprint_activatesExistingDevice() {
             DeviceEntity existing = DeviceFixture.builder(USER_ID)
@@ -110,14 +110,29 @@ class DeviceServiceImplTest {
             DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
             then(deviceRepository).should().save(existing);
-            // 반환 sessionId 와 Entity 의 sessionId 가 동일 → 활성화 검증
             assertThat(existing.getSessionId()).isEqualTo(result.getSessionId());
             assertThat(existing.hasActiveSession()).isTrue();
         }
 
         @Test
-        @DisplayName("반환값은 Entity의 sessionId를 담는다")
-        void returns_sessionIdMatchingEntity_andInputFingerprint() {
+        @DisplayName("기존 fingerprint → 반환값의 newDevice 플래그가 false 다")
+        void existingFingerprint_marksNewDeviceFalse() {
+            DeviceEntity existing = DeviceFixture.builder(USER_ID)
+                    .fingerprint(FINGERPRINT)
+                    .sessionId(null)
+                    .build();
+            given(deviceRepository.findByUserIdAndDeviceFingerprint(USER_ID, FINGERPRINT))
+                    .willReturn(Optional.of(existing));
+            givenActiveDevicesUnderMax();
+
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            assertThat(result.isNewDevice()).isFalse();
+        }
+
+        @Test
+        @DisplayName("반환값은 비어있지 않은 sessionId를 담는다")
+        void returns_nonBlankSessionId() {
             givenNoExistingDevice();
             givenActiveDevicesUnderMax();
 
@@ -127,20 +142,8 @@ class DeviceServiceImplTest {
         }
 
         @Test
-        @DisplayName("활성 세션 수가 MAX 이하이면 퇴출이 발생하지 않는다")
-        void activeSessionsUnderMax_noEviction() {
-            givenNoExistingDevice();
-            given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
-                    .willReturn(List.of(DeviceFixture.activeWebDevice(USER_ID)));
-
-            deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
-
-            then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
-        }
-
-        @Test
-        @DisplayName("활성 세션이 MAX 초과 → 가장 오래된 일반 기기 세션만 퇴출한다")
-        void activeSessionsExceedMax_evictsOldestUntrustedOnly() {
+        @DisplayName("registerLoginDevice는 Redis 무효화(invalidateSession)를 직접 호출하지 않는다")
+        void registerLoginDevice_neverInvalidatesSessionDirectly() {
             DeviceEntity oldest = activeDeviceWith("oldest-session",
                     LocalDateTime.of(2024, 1, 1, 0, 0));
             DeviceEntity middle = activeDeviceWith("middle-session",
@@ -154,9 +157,42 @@ class DeviceServiceImplTest {
 
             deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
-            then(tokenService).should().invalidateSession(USER_ID, "oldest-session");
-            then(tokenService).should(never()).invalidateSession(USER_ID, "middle-session");
-            then(tokenService).should(never()).invalidateSession(USER_ID, "newest-session");
+            then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("활성 세션 수가 MAX 이하이면 퇴출 세션 목록이 비어 있다")
+        void activeSessionsUnderMax_returnsNoEvictedSessions() {
+            givenNoExistingDevice();
+            given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
+                    .willReturn(List.of(DeviceFixture.activeWebDevice(USER_ID)));
+
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            assertThat(result.getEvictedSessionIds()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("활성 세션이 MAX 초과 → 가장 오래된 일반 기기 세션만 퇴출 목록에 담고 DB 비활성화한다")
+        void activeSessionsExceedMax_evictsOldestUntrustedOnly() {
+            DeviceEntity oldest = activeDeviceWith("oldest-session",
+                    LocalDateTime.of(2024, 1, 1, 0, 0));
+            DeviceEntity middle = activeDeviceWith("middle-session",
+                    LocalDateTime.of(2024, 6, 1, 0, 0));
+            DeviceEntity newest = activeDeviceWith("newest-session",
+                    LocalDateTime.of(2024, 12, 1, 0, 0));
+
+            givenNoExistingDevice();
+            given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
+                    .willReturn(List.of(oldest, middle, newest));
+
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+
+            assertThat(result.getEvictedSessionIds())
+                    .containsExactly("oldest-session");
+            assertThat(oldest.hasActiveSession()).isFalse();
+            assertThat(middle.hasActiveSession()).isTrue();
+            assertThat(newest.hasActiveSession()).isTrue();
         }
 
         private void givenNoExistingDevice() {
@@ -167,14 +203,6 @@ class DeviceServiceImplTest {
         private void givenActiveDevicesUnderMax() {
             given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
                     .willReturn(List.of());
-        }
-
-        private DeviceEntity activeDeviceWith(String sessionId, LocalDateTime loginAt) {
-            return DeviceFixture.builder(USER_ID)
-                    .sessionId(sessionId)
-                    .fingerprint("fp-" + sessionId)
-                    .loginAt(loginAt)
-                    .build();
         }
     }
 
@@ -399,11 +427,11 @@ class DeviceServiceImplTest {
     }
 
     @Nested
-    @DisplayName("안심 기기 퇴출 정책")
+    @DisplayName("최대 세션 정책 — 안심 기기 퇴출 제외")
     class TrustedDeviceEviction {
 
         @Test
-        @DisplayName("안심 기기는 MAX 초과 시에도 퇴출되지 않는다")
+        @DisplayName("안심 기기는 MAX 초과 시에도 퇴출 목록에서 제외되고, 일반 기기가 퇴출된다")
         void trustedDevice_notEvictedOnMaxExceed() {
             DeviceEntity trustedOldest = trustedDeviceWith("trusted-session",
                     LocalDateTime.of(2024, 1, 1, 0, 0));
@@ -416,15 +444,17 @@ class DeviceServiceImplTest {
             given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
                     .willReturn(List.of(trustedOldest, normalMiddle, normalNewest));
 
-            deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
-            // 안심 기기는 퇴출 안 됨, 일반 기기(normalMiddle)가 퇴출됨
-            then(tokenService).should(never()).invalidateSession(USER_ID, "trusted-session");
-            then(tokenService).should().invalidateSession(USER_ID, "normal-session");
+            assertThat(result.getEvictedSessionIds())
+                    .containsExactly("normal-session")
+                    .doesNotContain("trusted-session");
+            assertThat(trustedOldest.hasActiveSession()).isTrue();
+            assertThat(normalMiddle.hasActiveSession()).isFalse();
         }
 
         @Test
-        @DisplayName("모두 안심 기기일 때 새 로그인 → 퇴출 없이 세션 수 초과 허용")
+        @DisplayName("모두 안심 기기일 때 새 로그인 → 퇴출 목록이 비고 세션 수 초과가 허용된다")
         void allTrusted_noEvictionAllowed() {
             DeviceEntity trusted1 = trustedDeviceWith("trusted-1",
                     LocalDateTime.of(2024, 1, 1, 0, 0));
@@ -437,13 +467,19 @@ class DeviceServiceImplTest {
             given(deviceRepository.findActiveDevicesByUserIdOldestFirst(USER_ID))
                     .willReturn(List.of(trusted1, trusted2, trusted3));
 
-            deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
+            DeviceRegistration result = deviceService.registerLoginDevice(USER_ID, webDeviceInfo);
 
-            then(tokenService).should(never()).invalidateSession(anyLong(), anyString());
+            assertThat(result.getEvictedSessionIds()).isEmpty();
+            assertThat(trusted1.hasActiveSession()).isTrue();
+            assertThat(trusted2.hasActiveSession()).isTrue();
+            assertThat(trusted3.hasActiveSession()).isTrue();
+        }
+
+        private void givenNoExistingDevice() {
+            given(deviceRepository.findByUserIdAndDeviceFingerprint(USER_ID, FINGERPRINT))
+                    .willReturn(Optional.empty());
         }
     }
-
-    // --- trustDevice 테스트 추가 ---
 
     @Nested
     @DisplayName("trustDevice()")
@@ -486,7 +522,7 @@ class DeviceServiceImplTest {
             given(deviceRepository.findByPublicIdAndUserId(DEVICE_PID, USER_ID))
                     .willReturn(Optional.of(device));
             given(deviceRepository.countTrustedDevicesByUserId(USER_ID))
-                    .willReturn(MAX_TRUSTED);  // 이미 한도 도달
+                    .willReturn(MAX_TRUSTED);
 
             assertThatThrownBy(() -> deviceService.trustDevice(USER_ID, DEVICE_PID))
                     .isInstanceOf(CustomException.class)
