@@ -12,7 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -23,13 +24,15 @@ public class SignInProcessor {
     private final TokenService tokenService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Transactional
     public SignInResult execute(CustomUserDetails userDetails, DeviceInfo deviceInfo,
                                 AuthToken previousTokens) {
         Long userId = userDetails.getId();
-        invalidatePreviousSessionIfPresent(userId, previousTokens);
 
         DeviceRegistration registration = deviceService.registerLoginDevice(userId, deviceInfo);
+
+        invalidateEvictedSessions(userId, registration.getEvictedSessionIds());
+        invalidatePreviousSessionIfPresent(userId, previousTokens);
+
         AuthToken tokens = tokenService.issueTokens(userId, userDetails.getRole(),
                 registration.getSessionId());
 
@@ -49,6 +52,12 @@ public class SignInProcessor {
         }
 
         return SignInResult.of(tokens, deviceInfo.getDeviceFingerprint());
+    }
+
+    private void invalidateEvictedSessions(Long userId, List<String> evictedSessionIds) {
+        for (String sessionId : evictedSessionIds) {
+            tokenService.invalidateSession(userId, sessionId);
+        }
     }
 
     private void invalidatePreviousSessionIfPresent(Long userId, AuthToken previousTokens) {
