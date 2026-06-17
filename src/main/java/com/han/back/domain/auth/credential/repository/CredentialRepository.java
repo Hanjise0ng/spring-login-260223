@@ -17,4 +17,6 @@ public interface CredentialRepository extends JpaRepository<CredentialEntity, Lo
 
     boolean existsByProviderAndIdentifier(AuthProvider provider, String identifier);
 
+    boolean existsByUserIdAndProvider(Long userId, AuthProvider provider);
+
 }
