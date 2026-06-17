@@ -26,6 +26,9 @@ public interface AuthService {
     // 이메일을 제공하지 않는 소셜 가입 — 임시 토큰 + 이메일을 받아 회원가입 진행
     SocialSignInResult completeSocialSignUp(String tempToken, String email, DeviceInfo deviceInfo);
 
+    // 소셜 별도 계정 가입
+    SocialSignInResult createSeparateSocialAccount(String tempToken, String email, DeviceInfo deviceInfo);
+
     // 토큰 재발급
     AuthToken reissue(String refreshToken);
 

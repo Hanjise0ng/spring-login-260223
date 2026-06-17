@@ -152,6 +152,21 @@ public class AuthServiceImpl implements AuthService {
         return newTokens;
     }
 
+    @Override
+    @Transactional
+    public SocialSignInResult createSeparateSocialAccount(String tempToken, String email, DeviceInfo deviceInfo) {
+        SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
+        verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
+
+        AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
+        SignInResult signInResult = createSocialAccountAndSignIn(
+                provider, claims.getProviderId(), claims.getNickname(), email, deviceInfo);
+
+        log.info("Separate Social Account Created - Provider: {}", provider);
+
+        return SocialSignInResult.Authenticated.of(signInResult);
+    }
+
     private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
         UserEntity user = userRepository.findById(existingCredential.getUserId())
                 .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
