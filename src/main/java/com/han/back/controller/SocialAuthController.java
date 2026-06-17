@@ -84,6 +84,39 @@ public class SocialAuthController {
         }
     }
 
+    @Operation(summary = "별도 계정으로 시작하기",
+            description = "이메일 충돌 상황에서 기존 계정과 합치지 않고 새 소셜 전용 계정을 생성합니다. "
+                    + "social_signup_token 쿠키와 이메일(요청 바디)이 필요합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "별도 계정 생성 및 로그인 완료"),
+            @ApiResponse(responseCode = "400", description = "VERIFY_NOT_COMPLETED: 이메일 인증 미완료"),
+            @ApiResponse(responseCode = "401", description = "SOCIAL_SIGNUP_TOKEN_INVALID: 임시 토큰 무효"),
+            @ApiResponse(responseCode = "409", description = "SOCIAL_ALREADY_LINKED: 이미 사용 중인 소셜")
+    })
+    @PostMapping("/separate")
+    public ResponseEntity<? extends BaseResponse<?>> createSeparateAccount(
+            @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+
+        String tempToken = signUpTokenCookieManager.read(httpRequest)
+                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID));
+
+        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
+        SocialSignInResult result = authService.createSeparateSocialAccount(tempToken, request.getEmail(), deviceInfo);
+
+        switch (result) {
+            case SocialSignInResult.Authenticated auth -> {
+                writeTokens(httpRequest, httpResponse, auth.getSignInResult());
+                signUpTokenCookieManager.clear(httpResponse);
+                return BaseResponse.success();
+            }
+            case SocialSignInResult.LinkSuggested ignored ->
+                    throw new IllegalStateException("createSeparateSocialAccount cannot return LinkSuggested");
+            case SocialSignInResult.EmailRequired ignored ->
+                    throw new IllegalStateException("createSeparateSocialAccount cannot return EmailRequired");
+        }
+    }
+
     private void writeTokens(HttpServletRequest request, HttpServletResponse response, SignInResult signInResult) {
         TokenTransport transport = tokenTransportResolver.resolve(request);
         transport.write(response, signInResult.getTokens());
