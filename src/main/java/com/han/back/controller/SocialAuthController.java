@@ -1,18 +1,11 @@
 package com.han.back.controller;
 
-import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
-import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
-import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.device.DeviceInfoProvider;
-import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
-import com.han.back.global.security.token.SignUpTokenCookieManager;
-import com.han.back.global.security.token.transport.TokenTransport;
-import com.han.back.global.security.token.transport.TokenTransportResolver;
+import com.han.back.global.security.oauth2.SocialAuthExchange;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -28,8 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/auth/oauth2")
@@ -38,9 +29,7 @@ import java.util.Map;
 public class SocialAuthController {
 
     private final AuthService authService;
-    private final DeviceInfoProvider deviceInfoProvider;
-    private final TokenTransportResolver tokenTransportResolver;
-    private final SignUpTokenCookieManager signUpTokenCookieManager;
+    private final SocialAuthExchange socialAuthExchange;
 
     @Operation(summary = "소셜 회원가입 완료",
             description = """
@@ -64,24 +53,11 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = signUpTokenCookieManager.read(httpRequest)
-                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID));
+        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
+        DeviceInfo deviceInfo = socialAuthExchange.extractDeviceInfo(httpRequest);
 
-        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
         SocialSignInResult result = authService.completeSocialSignUp(tempToken, request.getEmail(), deviceInfo);
-
-        switch (result) {
-            case SocialSignInResult.Authenticated auth -> {
-                writeTokens(httpRequest, httpResponse, auth.getSignInResult());
-                signUpTokenCookieManager.clear(httpResponse);
-                return BaseResponse.success();
-            }
-            case SocialSignInResult.LinkSuggested link -> {
-                return BaseResponse.success(Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_LINK_SUGGESTED));
-            }
-            case SocialSignInResult.EmailRequired emailRequired ->
-                    throw new IllegalStateException("completeSocialSignUp cannot return EmailRequired");
-        }
+        return socialAuthExchange.writeResult(result, httpRequest, httpResponse);
     }
 
     @Operation(summary = "별도 계정으로 시작하기",
@@ -98,29 +74,11 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = signUpTokenCookieManager.read(httpRequest)
-                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID));
+        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
+        DeviceInfo deviceInfo = socialAuthExchange.extractDeviceInfo(httpRequest);
 
-        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
         SocialSignInResult result = authService.createSeparateSocialAccount(tempToken, request.getEmail(), deviceInfo);
-
-        switch (result) {
-            case SocialSignInResult.Authenticated auth -> {
-                writeTokens(httpRequest, httpResponse, auth.getSignInResult());
-                signUpTokenCookieManager.clear(httpResponse);
-                return BaseResponse.success();
-            }
-            case SocialSignInResult.LinkSuggested ignored ->
-                    throw new IllegalStateException("createSeparateSocialAccount cannot return LinkSuggested");
-            case SocialSignInResult.EmailRequired ignored ->
-                    throw new IllegalStateException("createSeparateSocialAccount cannot return EmailRequired");
-        }
-    }
-
-    private void writeTokens(HttpServletRequest request, HttpServletResponse response, SignInResult signInResult) {
-        TokenTransport transport = tokenTransportResolver.resolve(request);
-        transport.write(response, signInResult.getTokens());
-        transport.writeDeviceCookie(response, signInResult.getDeviceFingerprint());
+        return socialAuthExchange.writeResult(result, httpRequest, httpResponse);
     }
 
 }
