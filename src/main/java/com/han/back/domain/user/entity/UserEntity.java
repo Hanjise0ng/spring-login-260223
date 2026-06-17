@@ -53,6 +53,10 @@ public class UserEntity extends BaseTime {
         this.tag = tag;
     }
 
+    public void changeEmail(String email) {
+        this.email = email;
+    }
+
     public void changeRole(Role role) {
         this.role = role;
     }
