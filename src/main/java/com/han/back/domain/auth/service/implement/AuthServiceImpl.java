@@ -120,82 +120,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
         AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
+        SignInResult signInResult = createSocialAccountAndSignIn(
+                provider, claims.getProviderId(), claims.getNickname(), email, deviceInfo);
 
-        if (credentialRepository.existsByProviderAndIdentifier(provider, claims.getProviderId())) {
-            throw new CustomException(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
-        }
-
-        String tag = tagGenerator.generate(claims.getNickname());
-        UserEntity user = userFactory.createSocialUser(claims.getNickname(), email, tag);
-        userRepository.save(user);
-
-        CredentialEntity credential = userFactory.createSocialCredential(user.getId(), provider, claims.getProviderId());
-        credentialRepository.save(credential);
-
-        eventPublisher.publishEvent(UserSignedUpEvent.of(user));
-
-        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
-                user.getId(),
-                user.getRole(),
-                user.getEmail(),
-                user.getNickname()
-        );
-        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-
-        log.info("OAuth2 Sign-up Complete - UserPK: {} | Provider: {}", user.getId(), provider);
-
-        return SocialSignInResult.Authenticated.of(signInResult);
-    }
-
-    private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
-        UserEntity user = userRepository.findById(existingCredential.getUserId())
-                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
-
-        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
-                user.getId(),
-                user.getRole(),
-                user.getEmail(),
-                user.getNickname()
-        );
-        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-
-        log.info("OAuth2 Re-login - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
-
-        return SocialSignInResult.Authenticated.of(signInResult);
-    }
-
-    private SocialSignInResult handleNewSocialUser(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
-        if (userInfo.getEmail() == null) {
-            return SocialSignInResult.EmailRequired.of(
-                    userInfo.getProvider().getValue(),
-                    userInfo.getProviderId(),
-                    userInfo.getNickname());
-        }
-
-        if (existsLocalEmail(userInfo.getEmail())) {
-            return SocialSignInResult.LinkSuggested.of(
-                    userInfo.getProvider().getValue(),
-                    userInfo.getProviderId(),
-                    userInfo.getNickname());
-        }
-
-        String tag = tagGenerator.generate(userInfo.getNickname());
-        UserEntity user = userFactory.createSocialUser(userInfo.getNickname(), userInfo.getEmail(), tag);
-        userRepository.save(user);
-
-        CredentialEntity credential = userFactory.createSocialCredential(
-                user.getId(), userInfo.getProvider(), userInfo.getProviderId());
-        credentialRepository.save(credential);
-
-        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
-                user.getId(),
-                user.getRole(),
-                user.getEmail(),
-                user.getNickname()
-        );
-        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
-
-        log.info("OAuth2 Sign-up - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
+        log.info("OAuth2 Sign-up Complete - Provider: {}", provider);
 
         return SocialSignInResult.Authenticated.of(signInResult);
     }
@@ -222,6 +150,59 @@ public class AuthServiceImpl implements AuthService {
                 userId, newSessionId, userDetails.getRole().name());
 
         return newTokens;
+    }
+
+    private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        UserEntity user = userRepository.findById(existingCredential.getUserId())
+                .orElseThrow(() -> new CustomException(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL));
+
+        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
+                user.getId(), user.getRole(), user.getEmail(), user.getNickname());
+        SignInResult signInResult = signInProcessor.execute(userDetails, deviceInfo, null);
+
+        log.info("OAuth2 Re-login - UserPK: {} | Provider: {}", user.getId(), userInfo.getProvider());
+
+        return SocialSignInResult.Authenticated.of(signInResult);
+    }
+
+    private SocialSignInResult handleNewSocialUser(OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
+        if (userInfo.getEmail() == null) {
+            return SocialSignInResult.EmailRequired.of(
+                    userInfo.getProvider().getValue(), userInfo.getProviderId(), userInfo.getNickname());
+        }
+
+        if (existsLocalEmail(userInfo.getEmail())) {
+            return SocialSignInResult.LinkSuggested.of(
+                    userInfo.getProvider().getValue(), userInfo.getProviderId(), userInfo.getNickname());
+        }
+
+        SignInResult signInResult = createSocialAccountAndSignIn(
+                userInfo.getProvider(), userInfo.getProviderId(), userInfo.getNickname(),
+                userInfo.getEmail(), deviceInfo);
+
+        log.info("OAuth2 Sign-up - Provider: {}", userInfo.getProvider());
+
+        return SocialSignInResult.Authenticated.of(signInResult);
+    }
+
+    private SignInResult createSocialAccountAndSignIn(AuthProvider provider, String providerId, String nickname, String email, DeviceInfo deviceInfo) {
+        if (credentialRepository.existsByProviderAndIdentifier(provider, providerId)) {
+            throw new CustomException(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
+        }
+
+        String tag = tagGenerator.generate(nickname);
+        UserEntity user = userFactory.createSocialUser(nickname, email, tag);
+        userRepository.save(user);
+
+        CredentialEntity credential = userFactory.createSocialCredential(user.getId(), provider, providerId);
+        credentialRepository.save(credential);
+
+        eventPublisher.publishEvent(UserSignedUpEvent.of(user));
+
+        CustomUserDetails userDetails = CustomUserDetails.forSocialLogin(
+                user.getId(), user.getRole(), user.getEmail(), user.getNickname());
+
+        return signInProcessor.execute(userDetails, deviceInfo, null);
     }
 
     private boolean existsLocalEmail(String email) {
