@@ -8,9 +8,8 @@ import com.han.back.domain.auth.credential.repository.CredentialRepository;
 import com.han.back.domain.auth.credential.service.implement.CredentialLinkServiceImpl;
 import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.user.entity.AuthProvider;
-import com.han.back.domain.user.entity.UserEntity;
+import com.han.back.domain.user.exception.AccountResponseStatus;
 import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.domain.verification.entity.VerificationType;
 import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.token.util.LoginIdTokenUtil;
@@ -48,6 +47,72 @@ class CredentialLinkServiceImplTest {
     @InjectMocks private CredentialLinkServiceImpl service;
 
     private static final Long USER_ID = 1L;
+
+    @Nested
+    @DisplayName("linkSocialCredential() — 소셜 연동 추가")
+    class LinkSocialCredential {
+
+        @Test
+        @DisplayName("기존 로컬 계정에 새 소셜을 연동한다")
+        void localAccount_linksSocial() {
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(true);
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.KAKAO)).willReturn(false);
+            given(credentialRepository.existsByProviderAndIdentifier(AuthProvider.KAKAO, "kakao-1")).willReturn(false);
+            given(userFactory.createSocialCredential(USER_ID, AuthProvider.KAKAO, "kakao-1"))
+                    .willReturn(CredentialEntity.builder().userId(USER_ID).build());
+
+            service.linkSocialCredential(USER_ID, AuthProvider.KAKAO, "kakao-1");
+
+            verify(credentialRepository).save(any(CredentialEntity.class));
+        }
+
+        @Test
+        @DisplayName("소셜 단독 계정은 연동할 수 없다")
+        void socialOnly_cannotLink() {
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(false);
+
+            assertThatThrownBy(() -> service.linkSocialCredential(USER_ID, AuthProvider.KAKAO, "kakao-1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(CredentialResponseStatus.CREDENTIAL_SOCIAL_ONLY_ACCOUNT);
+
+            verify(credentialRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("이미 같은 제공자가 연동돼 있으면 PROVIDER_ALREADY_LINKED")
+        void alreadyLinked_throws() {
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(true);
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.KAKAO)).willReturn(true);
+
+            assertThatThrownBy(() -> service.linkSocialCredential(USER_ID, AuthProvider.KAKAO, "kakao-1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(CredentialResponseStatus.CREDENTIAL_PROVIDER_ALREADY_LINKED);
+        }
+
+        @Test
+        @DisplayName("소셜 계정이 다른 계정에서 사용 중이면 SOCIAL_ALREADY_USED")
+        void socialUsedElsewhere_throws() {
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(true);
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.KAKAO)).willReturn(false);
+            given(credentialRepository.existsByProviderAndIdentifier(AuthProvider.KAKAO, "kakao-1")).willReturn(true);
+
+            assertThatThrownBy(() -> service.linkSocialCredential(USER_ID, AuthProvider.KAKAO, "kakao-1"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(CredentialResponseStatus.CREDENTIAL_SOCIAL_ALREADY_USED);
+        }
+
+        @Test
+        @DisplayName("LOCAL 제공자로 연동 시도하면 PROVIDER_NOT_SOCIAL")
+        void localProvider_throws() {
+            assertThatThrownBy(() -> service.linkSocialCredential(USER_ID, AuthProvider.LOCAL, "x"))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(CredentialResponseStatus.CREDENTIAL_PROVIDER_NOT_SOCIAL);
+        }
+    }
 
     @Nested
     @DisplayName("unlinkSocialCredential() — 소셜 연동 해제")
@@ -129,30 +194,25 @@ class CredentialLinkServiceImplTest {
     class Promote {
 
         private LocalCredentialCreateRequestDto request() {
-            return new LocalCredentialCreateRequestDto("newlogin", "Test1234!", "u@test.com", "id-token");
+            return new LocalCredentialCreateRequestDto("newlogin", "Test1234!", "id-token");
         }
 
         @Test
-        @DisplayName("같은 userId에 LOCAL credential을 추가하고 이메일을 갱신한다")
+        @DisplayName("같은 userId에 LOCAL credential을 추가한다 (이메일은 건드리지 않음)")
         void promotesKeepingSameUserId() {
-            UserEntity user = UserEntity.builder().nickname("nick").email("old@test.com").tag("0001").build();
             given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(false);
             given(credentialRepository.existsByProviderAndIdentifier(AuthProvider.LOCAL, "newlogin")).willReturn(false);
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(passwordEncoder.encode("Test1234!")).willReturn("encoded");
-            given(userFactory.createLocalCredential(eq(USER_ID), eq("newlogin"), eq("encoded")))
+            given(userFactory.createLocalCredential(eq(USER_ID), eq("newlogin"), any()))
                     .willReturn(CredentialEntity.builder().userId(USER_ID).build());
 
             service.promoteToLocalAccount(USER_ID, request());
 
             verify(loginIdTokenUtil).validate("newlogin", "id-token");
-            verify(verificationService).validateConfirmed("u@test.com", VerificationType.SIGN_UP);
             verify(credentialRepository).save(any(CredentialEntity.class));
-            assertThat(user.getEmail()).isEqualTo("u@test.com");
         }
 
         @Test
-        @DisplayName("이미 LOCAL이 있으면LOCAL_ALREADY_EXISTS")
+        @DisplayName("이미 LOCAL이 있으면 LOCAL_ALREADY_EXISTS")
         void alreadyLocal_throws() {
             given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(true);
 
@@ -162,6 +222,18 @@ class CredentialLinkServiceImplTest {
                     .isEqualTo(CredentialResponseStatus.CREDENTIAL_LOCAL_ALREADY_EXISTS);
 
             verify(credentialRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("아이디가 중복이면 ACCOUNT_DUPLICATE_LOGIN_ID")
+        void duplicateLoginId_throws() {
+            given(credentialRepository.existsByUserIdAndProvider(USER_ID, AuthProvider.LOCAL)).willReturn(false);
+            given(credentialRepository.existsByProviderAndIdentifier(AuthProvider.LOCAL, "newlogin")).willReturn(true);
+
+            assertThatThrownBy(() -> service.promoteToLocalAccount(USER_ID, request()))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
     }
 
