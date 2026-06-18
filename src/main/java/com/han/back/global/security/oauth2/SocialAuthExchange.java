@@ -58,4 +58,8 @@ public class SocialAuthExchange {
         transport.writeDeviceCookie(response, signInResult.getDeviceFingerprint());
     }
 
+    public void clearSignUpToken(HttpServletResponse response) {
+        signUpTokenCookieManager.clear(response);
+    }
+
 }

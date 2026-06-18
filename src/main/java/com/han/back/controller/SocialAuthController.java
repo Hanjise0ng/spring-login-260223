@@ -2,9 +2,11 @@ package com.han.back.controller;
 
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
+import com.han.back.domain.auth.dto.request.SocialLinkRequestDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.response.BaseResponse;
+import com.han.back.global.response.Empty;
 import com.han.back.global.security.oauth2.SocialAuthExchange;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -79,6 +81,34 @@ public class SocialAuthController {
 
         SocialSignInResult result = authService.createSeparateSocialAccount(tempToken, request.getEmail(), deviceInfo);
         return socialAuthExchange.writeResult(result, httpRequest, httpResponse);
+    }
+
+    @Operation(summary = "소셜 연동 (기존 LOCAL 계정에 추가)",
+            description = """
+                    이메일 충돌 상황에서 기존 LOCAL 계정에 소셜 계정을 연동합니다.
+                    social_signup_token 쿠키와 LOCAL 계정 자격증명(아이디/비밀번호)이 필요합니다.
+                    
+                    연동만 수행하며 로그인 토큰을 발급하지 않습니다. 연동 완료 후 사용자가 다시 소셜 로그인하면 정상 로그인됩니다.""")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "연동 완료 (토큰 미발급)"),
+            @ApiResponse(responseCode = "401", description = """
+                    - AUTH_SIGN_IN_FAIL: 아이디 또는 비밀번호 불일치
+                    - SOCIAL_SIGNUP_TOKEN_INVALID: 임시 가입 토큰 무효"""),
+            @ApiResponse(responseCode = "409", description = """
+                    - CREDENTIAL_PROVIDER_ALREADY_LINKED: 이미 동일 제공자 연동됨
+                    - CREDENTIAL_SOCIAL_ALREADY_USED: 다른 계정에서 사용 중인 소셜
+                    - CREDENTIAL_SOCIAL_ONLY_ACCOUNT: 소셜 전용 계정""")
+    })
+    @PostMapping("/link")
+    public ResponseEntity<BaseResponse<Empty>> linkSocial(
+            @RequestBody @Valid SocialLinkRequestDto request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+
+        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
+        authService.linkSocialToLocalAccount(tempToken, request.getLoginId(), request.getPassword());
+
+        socialAuthExchange.clearSignUpToken(httpResponse);
+        return BaseResponse.success();
     }
 
 }
