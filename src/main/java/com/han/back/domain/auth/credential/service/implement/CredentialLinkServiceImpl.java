@@ -31,6 +31,25 @@ public class CredentialLinkServiceImpl implements CredentialLinkService {
 
     @Override
     @Transactional
+    public void linkSocialCredential(Long userId, AuthProvider provider, String providerId) {
+        requireSocialProvider(provider);
+        requireLocalAccount(userId);
+
+        if (credentialRepository.existsByUserIdAndProvider(userId, provider)) {
+            throw new CustomException(CredentialResponseStatus.CREDENTIAL_PROVIDER_ALREADY_LINKED);
+        }
+        if (credentialRepository.existsByProviderAndIdentifier(provider, providerId)) {
+            throw new CustomException(CredentialResponseStatus.CREDENTIAL_SOCIAL_ALREADY_USED);
+        }
+
+        CredentialEntity credential = userFactory.createSocialCredential(userId, provider, providerId);
+        credentialRepository.save(credential);
+
+        log.info("Social Linked - UserPK: {} | Provider: {}", userId, provider);
+    }
+
+    @Override
+    @Transactional
     public void unlinkSocialCredential(Long userId, AuthProvider provider) {
         requireSocialProvider(provider);
         requireLocalAccount(userId);

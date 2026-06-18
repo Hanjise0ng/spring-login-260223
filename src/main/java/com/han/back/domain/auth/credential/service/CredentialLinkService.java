@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface CredentialLinkService {
 
+    void linkSocialCredential(Long userId, AuthProvider provider, String providerId);
+
     void unlinkSocialCredential(Long userId, AuthProvider provider);
 
     List<LinkedCredentialResponseDto> getLinkedSocials(Long userId);
