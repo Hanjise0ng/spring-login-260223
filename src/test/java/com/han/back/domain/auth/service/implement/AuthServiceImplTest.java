@@ -2,10 +2,17 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.credential.entity.CredentialEntity;
 import com.han.back.domain.auth.credential.repository.CredentialRepository;
+import com.han.back.domain.auth.credential.service.CredentialLinkService;
+import com.han.back.domain.auth.dto.SignInResult;
+import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.auth.factory.UserFactory;
+import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
+import com.han.back.domain.auth.service.SignInProcessor;
+import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.device.service.DeviceService;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.domain.user.entity.Role;
@@ -24,7 +31,9 @@ import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.AuthToken;
+import com.han.back.global.security.token.SocialSignUpClaims;
 import com.han.back.global.security.token.util.LoginIdTokenUtil;
+import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthServiceImpl")
@@ -57,6 +67,9 @@ class AuthServiceImplTest {
     @Mock private VerificationService verificationService;
     @Mock private LoginIdTokenUtil loginIdTokenUtil;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private SignInProcessor signInProcessor;
+    @Mock private SocialSignUpTokenUtil socialSignUpTokenUtil;
+    @Mock private CredentialLinkService credentialLinkService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -70,6 +83,10 @@ class AuthServiceImplTest {
     private static final String NEW_SESSION_ID = "new-session-xyz-456";
     private static final String ENCODED_PW = "$2a$10$encodedPasswordForTest";
     private static final Long EXISTING_USER_ID = 99L;
+    private static final String TEMP_TOKEN = "valid.social.signup.token";
+    private static final String PROVIDER_ID = "kakao-1234567890";
+    private static final String NICKNAME = "소셜닉네임";
+    private static final String RAW_PASSWORD = UserFixture.RAW_PASSWORD;
 
     @Nested
     @DisplayName("checkLoginId()")
@@ -264,6 +281,366 @@ class AuthServiceImplTest {
             inOrder.verify(userFactory).createLocalCredential(USER_PK, LOGIN_ID, ENCODED_PW);
             inOrder.verify(credentialRepository).save(any(CredentialEntity.class));
             inOrder.verify(eventPublisher).publishEvent(any(UserSignedUpEvent.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("completeSignIn()")
+    class CompleteSignIn {
+
+        @Test
+        @DisplayName("signInProcessor.execute에 위임하고 그 결과를 그대로 반환한다")
+        void delegatesToSignInProcessor() {
+            CustomUserDetails userDetails = mock(CustomUserDetails.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            AuthToken previousTokens = mock(AuthToken.class);
+            SignInResult expected = mock(SignInResult.class);
+            given(signInProcessor.execute(userDetails, deviceInfo, previousTokens)).willReturn(expected);
+
+            SignInResult result = authService.completeSignIn(userDetails, deviceInfo, previousTokens);
+
+            assertThat(result).isSameAs(expected);
+            then(signInProcessor).should().execute(userDetails, deviceInfo, previousTokens);
+        }
+    }
+
+    @Nested
+    @DisplayName("processSocialLogin()")
+    class ProcessSocialLogin {
+
+        @Test
+        @DisplayName("기존 소셜 credential이 있으면 재로그인하여 Authenticated를 반환한다")
+        void existingCredential_relogin() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+
+            CredentialEntity existing = mock(CredentialEntity.class);
+            given(existing.getUserId()).willReturn(USER_PK);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.of(existing));
+
+            UserEntity user = mock(UserEntity.class);
+            given(user.getId()).willReturn(USER_PK);
+            given(user.getRole()).willReturn(ROLE);
+            given(user.getEmail()).willReturn(EMAIL);
+            given(user.getNickname()).willReturn(NICKNAME);
+            given(userRepository.findById(USER_PK)).willReturn(Optional.of(user));
+            given(signInProcessor.execute(any(CustomUserDetails.class), eq(deviceInfo), isNull()))
+                    .willReturn(mock(SignInResult.class));
+
+            SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.Authenticated.class);
+            then(signInProcessor).should().execute(any(CustomUserDetails.class), eq(deviceInfo), isNull());
+        }
+
+        @Test
+        @DisplayName("기존 credential의 user를 찾을 수 없으면 AUTHENTICATION_FAIL")
+        void existingCredentialButUserMissing_throws() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+
+            CredentialEntity existing = mock(CredentialEntity.class);
+            given(existing.getUserId()).willReturn(USER_PK);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.of(existing));
+            given(userRepository.findById(USER_PK)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.processSocialLogin(userInfo, deviceInfo))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(AuthResponseStatus.AUTH_AUTHENTICATION_FAIL);
+        }
+
+        @Test
+        @DisplayName("신규 + provider가 이메일 미제공: EmailRequired를 반환한다")
+        void newUserNoEmail_returnsEmailRequired() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+            given(userInfo.getNickname()).willReturn(NICKNAME);
+            given(userInfo.getEmail()).willReturn(null);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.empty());
+
+            SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.EmailRequired.class);
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("신규 + 이메일이 기존 LOCAL과 충돌: LinkSuggested를 반환한다")
+        void newUserEmailConflict_returnsLinkSuggested() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+            given(userInfo.getNickname()).willReturn(NICKNAME);
+            given(userInfo.getEmail()).willReturn(EMAIL);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.empty());
+
+            UserEntity existingUser = mock(UserEntity.class);
+            given(existingUser.getId()).willReturn(EXISTING_USER_ID);
+            given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(existingUser));
+            given(credentialRepository.findByUserIdAndProvider(EXISTING_USER_ID, AuthProvider.LOCAL))
+                    .willReturn(Optional.of(mock(CredentialEntity.class)));
+
+            SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.LinkSuggested.class);
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("신규 + 이메일 충돌 없음: 소셜 계정을 생성하고 Authenticated를 반환한다")
+        void newUserNoConflict_createsAccount() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+            given(userInfo.getNickname()).willReturn(NICKNAME);
+            given(userInfo.getEmail()).willReturn(EMAIL);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.empty());
+            given(userRepository.findByEmail(EMAIL)).willReturn(Optional.empty());
+            given(tagGenerator.generate(NICKNAME)).willReturn("A1B2");
+
+            UserEntity newUser = mock(UserEntity.class);
+            given(newUser.getId()).willReturn(USER_PK);
+            given(newUser.getRole()).willReturn(ROLE);
+            given(newUser.getEmail()).willReturn(EMAIL);
+            given(newUser.getNickname()).willReturn(NICKNAME);
+            given(userFactory.createSocialUser(NICKNAME, EMAIL, "A1B2")).willReturn(newUser);
+            given(userFactory.createSocialCredential(USER_PK, AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(mock(CredentialEntity.class));
+            given(signInProcessor.execute(any(CustomUserDetails.class), eq(deviceInfo), isNull()))
+                    .willReturn(mock(SignInResult.class));
+
+            SocialSignInResult result = authService.processSocialLogin(userInfo, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.Authenticated.class);
+            then(userRepository).should().save(newUser);
+            then(eventPublisher).should().publishEvent(any(UserSignedUpEvent.class));
+        }
+
+        @Test
+        @DisplayName("신규 + 동일 소셜 자격이 이미 사용 중: SOCIAL_ALREADY_LINKED")
+        void newUserButSocialAlreadyUsed_throws() {
+            OAuth2UserInfo userInfo = mock(OAuth2UserInfo.class);
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn(PROVIDER_ID);
+            given(userInfo.getNickname()).willReturn(NICKNAME);
+            given(userInfo.getEmail()).willReturn(EMAIL);
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(Optional.empty());
+            given(userRepository.findByEmail(EMAIL)).willReturn(Optional.empty());
+            // createSocialAccountAndSignIn 내부 existsByProviderAndIdentifier 검사에서 충돌
+            given(credentialRepository.existsByProviderAndIdentifier(AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(true);
+
+            assertThatThrownBy(() -> authService.processSocialLogin(userInfo, deviceInfo))
+                    .isInstanceOf(CustomException.class)
+                    .extracting("status")
+                    .isEqualTo(SocialResponseStatus.SOCIAL_ALREADY_LINKED);
+        }
+    }
+
+    @Nested
+    @DisplayName("completeSocialSignUp()")
+    class CompleteSocialSignUp {
+
+        @Test
+        @DisplayName("이메일 인증 미완료: VERIFY 예외를 던지고 가입하지 않는다")
+        void emailNotVerified_throws() {
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            willThrow(new CustomException(VerificationResponseStatus.VERIFY_NOT_COMPLETED))
+                    .given(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
+
+            assertThatThrownBy(() -> authService.completeSocialSignUp(TEMP_TOKEN, EMAIL, deviceInfo))
+                    .isInstanceOf(CustomException.class);
+
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("입력 이메일이 기존 LOCAL과 충돌: LinkSuggested를 반환한다")
+        void emailConflict_returnsLinkSuggested() {
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+
+            UserEntity existingUser = mock(UserEntity.class);
+            given(existingUser.getId()).willReturn(EXISTING_USER_ID);
+            given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(existingUser));
+            given(credentialRepository.findByUserIdAndProvider(EXISTING_USER_ID, AuthProvider.LOCAL))
+                    .willReturn(Optional.of(mock(CredentialEntity.class)));
+
+            SocialSignInResult result = authService.completeSocialSignUp(TEMP_TOKEN, EMAIL, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.LinkSuggested.class);
+            then(userRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("정상: 소셜 계정을 생성하고 Authenticated를 반환한다")
+        void validSignUp_createsAccount() {
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            given(userRepository.findByEmail(EMAIL)).willReturn(Optional.empty());
+            given(tagGenerator.generate(NICKNAME)).willReturn("A1B2");
+
+            UserEntity newUser = mock(UserEntity.class);
+            given(newUser.getId()).willReturn(USER_PK);
+            given(newUser.getRole()).willReturn(ROLE);
+            given(newUser.getEmail()).willReturn(EMAIL);
+            given(newUser.getNickname()).willReturn(NICKNAME);
+            given(userFactory.createSocialUser(NICKNAME, EMAIL, "A1B2")).willReturn(newUser);
+            given(userFactory.createSocialCredential(USER_PK, AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(mock(CredentialEntity.class));
+            given(signInProcessor.execute(any(CustomUserDetails.class), eq(deviceInfo), isNull()))
+                    .willReturn(mock(SignInResult.class));
+
+            SocialSignInResult result = authService.completeSocialSignUp(TEMP_TOKEN, EMAIL, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.Authenticated.class);
+            then(userRepository).should().save(newUser);
+            then(eventPublisher).should().publishEvent(any(UserSignedUpEvent.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("createSeparateSocialAccount()")
+    class CreateSeparateSocialAccount {
+
+        @Test
+        @DisplayName("이메일 충돌을 검사하지 않고 새 소셜 계정을 생성한다 (LinkSuggested 없이 Authenticated)")
+        void ignoresConflict_createsAccount() {
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            given(tagGenerator.generate(NICKNAME)).willReturn("A1B2");
+
+            UserEntity newUser = mock(UserEntity.class);
+            given(newUser.getId()).willReturn(USER_PK);
+            given(newUser.getRole()).willReturn(ROLE);
+            given(newUser.getEmail()).willReturn(EMAIL);
+            given(newUser.getNickname()).willReturn(NICKNAME);
+            given(userFactory.createSocialUser(NICKNAME, EMAIL, "A1B2")).willReturn(newUser);
+            given(userFactory.createSocialCredential(USER_PK, AuthProvider.KAKAO, PROVIDER_ID))
+                    .willReturn(mock(CredentialEntity.class));
+            given(signInProcessor.execute(any(CustomUserDetails.class), eq(deviceInfo), isNull()))
+                    .willReturn(mock(SignInResult.class));
+
+            SocialSignInResult result = authService.createSeparateSocialAccount(TEMP_TOKEN, EMAIL, deviceInfo);
+
+            assertThat(result).isInstanceOf(SocialSignInResult.Authenticated.class);
+            // 충돌 검사(existsLocalEmail → findByEmail)를 하지 않음을 검증
+            then(userRepository).should(never()).findByEmail(any());
+            then(userRepository).should().save(newUser);
+        }
+
+        @Test
+        @DisplayName("이메일 인증 미완료: 가입하지 않는다")
+        void emailNotVerified_throws() {
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            willThrow(new CustomException(VerificationResponseStatus.VERIFY_NOT_COMPLETED))
+                    .given(verificationService).validateConfirmed(EMAIL, VerificationType.SIGN_UP);
+
+            assertThatThrownBy(() -> authService.createSeparateSocialAccount(TEMP_TOKEN, EMAIL, deviceInfo))
+                    .isInstanceOf(CustomException.class);
+
+            then(userRepository).should(never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("linkSocialToLocalAccount()")
+    class LinkSocialToLocalAccount {
+
+        private CredentialEntity localCredentialWithPw() {
+            CredentialEntity credential = mock(CredentialEntity.class);
+            lenient().when(credential.getUserId()).thenReturn(USER_PK);
+            lenient().when(credential.getPassword()).thenReturn(ENCODED_PW);
+            return credential;
+        }
+
+        @Test
+        @DisplayName("본인 확인 성공: 해당 userId에 소셜 연동을 위임한다")
+        void validCredential_delegatesToLink() {
+            CredentialEntity localCredential = localCredentialWithPw();
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                    .willReturn(Optional.of(localCredential));
+            given(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PW)).willReturn(true);
+
+            authService.linkSocialToLocalAccount(TEMP_TOKEN, LOGIN_ID, RAW_PASSWORD);
+
+            then(credentialLinkService).should()
+                    .linkSocialCredential(USER_PK, AuthProvider.KAKAO, PROVIDER_ID);
+        }
+
+        @Test
+        @DisplayName("아이디가 존재하지 않으면 SIGN_IN_FAIL, 연동하지 않는다")
+        void unknownLoginId_throwsAndDoesNotLink() {
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.linkSocialToLocalAccount(TEMP_TOKEN, LOGIN_ID, RAW_PASSWORD))
+                    .isInstanceOf(CustomAuthenticationException.class)
+                    .extracting("status")
+                    .isEqualTo(AuthResponseStatus.AUTH_SIGN_IN_FAIL);
+
+            then(credentialLinkService).should(never()).linkSocialCredential(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("비밀번호가 일치하지 않으면 SIGN_IN_FAIL, 연동하지 않는다")
+        void wrongPassword_throwsAndDoesNotLink() {
+            CredentialEntity localCredential = localCredentialWithPw();
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("KAKAO", PROVIDER_ID, NICKNAME));
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                    .willReturn(Optional.of(localCredential));
+            given(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PW)).willReturn(false);
+
+            assertThatThrownBy(() -> authService.linkSocialToLocalAccount(TEMP_TOKEN, LOGIN_ID, RAW_PASSWORD))
+                    .isInstanceOf(CustomAuthenticationException.class)
+                    .extracting("status")
+                    .isEqualTo(AuthResponseStatus.AUTH_SIGN_IN_FAIL);
+
+            then(credentialLinkService).should(never()).linkSocialCredential(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("토큰의 provider/providerId를 그대로 연동 인자로 전달한다")
+        void passesProviderInfoFromToken() {
+            CredentialEntity localCredential = localCredentialWithPw();
+            given(socialSignUpTokenUtil.validate(TEMP_TOKEN))
+                    .willReturn(SocialSignUpClaims.of("GOOGLE", "google-999", NICKNAME));
+            given(credentialRepository.findByProviderAndIdentifier(AuthProvider.LOCAL, LOGIN_ID))
+                    .willReturn(Optional.of(localCredential));
+            given(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PW)).willReturn(true);
+
+            authService.linkSocialToLocalAccount(TEMP_TOKEN, LOGIN_ID, RAW_PASSWORD);
+
+            then(credentialLinkService).should()
+                    .linkSocialCredential(USER_PK, AuthProvider.GOOGLE, "google-999");
         }
     }
 
