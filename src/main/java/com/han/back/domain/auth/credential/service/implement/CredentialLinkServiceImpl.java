@@ -8,11 +8,7 @@ import com.han.back.domain.auth.credential.repository.CredentialRepository;
 import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.auth.factory.UserFactory;
 import com.han.back.domain.user.entity.AuthProvider;
-import com.han.back.domain.user.entity.UserEntity;
 import com.han.back.domain.user.exception.AccountResponseStatus;
-import com.han.back.domain.user.repository.UserRepository;
-import com.han.back.domain.verification.entity.VerificationType;
-import com.han.back.domain.verification.service.VerificationService;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.token.util.LoginIdTokenUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +25,8 @@ import java.util.List;
 public class CredentialLinkServiceImpl implements CredentialLinkService {
 
     private final CredentialRepository credentialRepository;
-    private final UserRepository userRepository;
     private final UserFactory userFactory;
     private final PasswordEncoder passwordEncoder;
-    private final VerificationService verificationService;
     private final LoginIdTokenUtil loginIdTokenUtil;
 
     @Override
@@ -66,21 +60,15 @@ public class CredentialLinkServiceImpl implements CredentialLinkService {
         }
 
         loginIdTokenUtil.validate(request.getLoginId(), request.getLoginIdToken());
-        verificationService.validateConfirmed(request.getEmail(), VerificationType.SIGN_UP);
 
         if (credentialRepository.existsByProviderAndIdentifier(AuthProvider.LOCAL, request.getLoginId())) {
             throw new CustomException(AccountResponseStatus.ACCOUNT_DUPLICATE_LOGIN_ID);
         }
 
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(AccountResponseStatus.ACCOUNT_USER_NOT_FOUND));
-
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         CredentialEntity localCredential =
                 userFactory.createLocalCredential(userId, request.getLoginId(), encodedPassword);
         credentialRepository.save(localCredential);
-
-        user.changeEmail(request.getEmail());
 
         log.info("Account Promoted to Local - UserPK: {} | LoginId: {}", userId, request.getLoginId());
     }

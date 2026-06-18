@@ -1,7 +1,6 @@
 package com.han.back.domain.auth.credential.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
@@ -20,11 +19,6 @@ public class LocalCredentialCreateRequestDto {
     @NotBlank(message = "비밀번호가 필요합니다.")
     @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9!@#$%^&*]{8,13}$")
     private final String password;
-
-    @Schema(description = "이메일 (인증 완료 필수)", example = "user@example.com")
-    @NotBlank(message = "메일이 필요합니다.")
-    @Email(message = "잘못된 이메일 형식입니다.")
-    private final String email;
 
     @Schema(description = "로그인 ID 중복 확인 시 발급받은 토큰")
     @NotBlank(message = "로그인 ID 확인 토큰이 필요합니다.")
