@@ -2,6 +2,7 @@ package com.han.back.domain.auth.service.implement;
 
 import com.han.back.domain.auth.credential.entity.CredentialEntity;
 import com.han.back.domain.auth.credential.repository.CredentialRepository;
+import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
@@ -43,16 +44,17 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private final TokenService tokenService;
+    private final DeviceService deviceService;
+    private final VerificationService verificationService;
+    private final CredentialLinkService credentialLinkService;
     private final UserRepository userRepository;
     private final CredentialRepository credentialRepository;
     private final UserFactory userFactory;
-    private final TagGenerator tagGenerator;
-    private final PasswordEncoder passwordEncoder;
-    private final VerificationService verificationService;
     private final LoginIdTokenUtil loginIdTokenUtil;
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
-    private final TokenService tokenService;
-    private final DeviceService deviceService;
+    private final TagGenerator tagGenerator;
+    private final PasswordEncoder passwordEncoder;
     private final SignInProcessor signInProcessor;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -130,6 +132,34 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public SocialSignInResult createSeparateSocialAccount(String tempToken, String email, DeviceInfo deviceInfo) {
+        SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
+        verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
+
+        AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
+        SignInResult signInResult = createSocialAccountAndSignIn(
+                provider, claims.getProviderId(), claims.getNickname(), email, deviceInfo);
+
+        log.info("Separate Social Account Created - Provider: {}", provider);
+
+        return SocialSignInResult.Authenticated.of(signInResult);
+    }
+
+    @Override
+    @Transactional
+    public void linkSocialToLocalAccount(String tempToken, String loginId, String password) {
+        SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
+
+        Long userId = authenticateLocalCredential(loginId, password);
+
+        AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
+        credentialLinkService.linkSocialCredential(userId, provider, claims.getProviderId());
+
+        log.info("Social Linked to Local Account - UserPK: {} | Provider: {}", userId, provider);
+    }
+
+    @Override
+    @Transactional
     public AuthToken reissue(String refreshToken) {
         if (!StringUtils.hasText(refreshToken)) {
             log.warn("Reissue Failed - Reason: Refresh Token is missing");
@@ -150,21 +180,6 @@ public class AuthServiceImpl implements AuthService {
                 userId, newSessionId, userDetails.getRole().name());
 
         return newTokens;
-    }
-
-    @Override
-    @Transactional
-    public SocialSignInResult createSeparateSocialAccount(String tempToken, String email, DeviceInfo deviceInfo) {
-        SocialSignUpClaims claims = socialSignUpTokenUtil.validate(tempToken);
-        verificationService.validateConfirmed(email, VerificationType.SIGN_UP);
-
-        AuthProvider provider = AuthProvider.fromRegistrationId(claims.getProvider());
-        SignInResult signInResult = createSocialAccountAndSignIn(
-                provider, claims.getProviderId(), claims.getNickname(), email, deviceInfo);
-
-        log.info("Separate Social Account Created - Provider: {}", provider);
-
-        return SocialSignInResult.Authenticated.of(signInResult);
     }
 
     private SocialSignInResult handleExistingSocialUser(CredentialEntity existingCredential, OAuth2UserInfo userInfo, DeviceInfo deviceInfo) {
@@ -225,6 +240,18 @@ public class AuthServiceImpl implements AuthService {
                 .map(UserEntity::getId)
                 .map(userId -> credentialRepository.findByUserIdAndProvider(userId, AuthProvider.LOCAL).isPresent())
                 .orElse(false);
+    }
+
+    private Long authenticateLocalCredential(String loginId, String password) {
+        CredentialEntity localCredential = credentialRepository
+                .findByProviderAndIdentifier(AuthProvider.LOCAL, loginId)
+                .orElseThrow(() -> new CustomAuthenticationException(AuthResponseStatus.AUTH_SIGN_IN_FAIL));
+
+        if (!passwordEncoder.matches(password, localCredential.getPassword())) {
+            throw new CustomAuthenticationException(AuthResponseStatus.AUTH_SIGN_IN_FAIL);
+        }
+
+        return localCredential.getUserId();
     }
 
 }

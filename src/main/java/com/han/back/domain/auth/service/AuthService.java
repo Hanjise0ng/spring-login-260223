@@ -29,6 +29,9 @@ public interface AuthService {
     // 소셜 별도 계정 가입
     SocialSignInResult createSeparateSocialAccount(String tempToken, String email, DeviceInfo deviceInfo);
 
+    // 본인확인 후 소셜 연동
+    void linkSocialToLocalAccount(String tempToken, String loginId, String password);
+
     // 토큰 재발급
     AuthToken reissue(String refreshToken);
 
