@@ -1,4 +1,4 @@
-package com.han.back.global.security.token;
+package com.han.back.global.security.oauth2;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.global.util.CookieUtil;

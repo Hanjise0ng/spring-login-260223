@@ -8,7 +8,6 @@ import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
-import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
 import jakarta.servlet.http.HttpServletRequest;

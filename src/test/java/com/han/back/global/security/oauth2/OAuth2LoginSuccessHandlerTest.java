@@ -10,7 +10,6 @@ import com.han.back.fixture.DeviceFixture;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.security.token.AuthConst;
 import com.han.back.global.security.token.AuthToken;
-import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;

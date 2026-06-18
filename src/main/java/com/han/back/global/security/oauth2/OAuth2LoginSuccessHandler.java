@@ -8,7 +8,6 @@ import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.security.token.AuthConst;
-import com.han.back.global.security.token.SignUpTokenCookieManager;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import com.han.back.global.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;

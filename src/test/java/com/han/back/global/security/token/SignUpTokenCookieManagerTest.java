@@ -1,6 +1,7 @@
 package com.han.back.global.security.token;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.global.security.oauth2.SignUpTokenCookieManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
