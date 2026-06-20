@@ -1,38 +1,36 @@
 package com.han.back.global.security.oauth2;
 
+import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.fixture.DeviceFixture;
+import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.global.device.DeviceInfoProvider;
-import com.han.back.global.security.token.AuthConst;
-import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
-import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OAuth2LoginSuccessHandler")
@@ -42,85 +40,144 @@ class OAuth2LoginSuccessHandlerTest {
     @Mock private SocialSignUpTokenUtil socialSignUpTokenUtil;
     @Mock private SignUpTokenCookieManager signUpTokenCookieManager;
     @Mock private DeviceInfoProvider deviceInfoProvider;
-    @Mock private Authentication authentication;
+    @Mock private SocialLinkContext socialLinkContext;
+    @Mock private CredentialLinkService credentialLinkService;
+
+    @Mock private HttpServletRequest request;
+    @Mock private HttpServletResponse response;
+    @Mock private OAuth2AuthenticationToken authentication;
     @Mock private OAuth2User oAuth2User;
     @Mock private OAuth2UserInfo userInfo;
 
-    @InjectMocks private OAuth2LoginSuccessHandler handler;
+    private OAuth2LoginSuccessHandler successHandler;
 
-    private MockHttpServletRequest request;
-    private MockHttpServletResponse response;
-    private DeviceInfo deviceInfo;
-
-    private static final String FRONT = "http://localhost:3000";
-    private static final String RT = "refresh-token-value";
+    private static final String FRONT_BASE_URL = "http://localhost:3000";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(handler, "frontBaseUrl", FRONT);
-        request = new MockHttpServletRequest();
-        response = new MockHttpServletResponse();
-        deviceInfo = DeviceFixture.webDeviceInfo();
+        successHandler = new OAuth2LoginSuccessHandler(
+                authService, socialSignUpTokenUtil, signUpTokenCookieManager,
+                deviceInfoProvider, socialLinkContext, credentialLinkService);
+        ReflectionTestUtils.setField(successHandler, "frontBaseUrl", FRONT_BASE_URL);
+
         given(authentication.getPrincipal()).willReturn(oAuth2User);
         given(oAuth2User.getAttributes()).willReturn(Map.of(OAuth2Const.ATTR_USER_INFO, userInfo));
-        given(deviceInfoProvider.get(request)).willReturn(deviceInfo);
     }
 
-    @Test
-    @DisplayName("Authenticated 시 RT·device 쿠키를 심고 signup 토큰은 발급하지 않으며 /callback으로 깔끔히 리다이렉트한다")
-    void authenticatedSetsCookiesAndRedirectsCleanly() throws Exception {
-        SignInResult signInResult = SignInResult.of(
-                AuthToken.of("access-token", RT), DeviceFixture.DEFAULT_WEB_FINGERPRINT);
-        given(authService.processSocialLogin(userInfo, deviceInfo))
-                .willReturn(SocialSignInResult.Authenticated.of(signInResult));
+    @Nested
+    @DisplayName("연동 흐름 (registrationId가 -link)")
+    class LinkFlow {
 
-        handler.onAuthenticationSuccess(request, response, authentication);
+        @Test
+        @DisplayName("컨텍스트에서 userId를 복원해 연동하고 성공 페이지로 리다이렉트한다")
+        void linksAndRedirectsSuccess() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
+            given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
+            given(socialLinkContext.consume("state-1")).willReturn(Optional.of(4L));
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn("kakao-123");
 
-        Cookie refreshCookie = response.getCookie(AuthConst.COOKIE_REFRESH_TOKEN_NAME);
-        assertThat(refreshCookie).isNotNull();
-        assertThat(refreshCookie.getValue()).isEqualTo(RT);
-        assertThat(refreshCookie.isHttpOnly()).isTrue();
+            successHandler.onAuthenticationSuccess(request, response, authentication);
 
-        Cookie deviceCookie = response.getCookie(AuthConst.COOKIE_DEVICE_ID_NAME);
-        assertThat(deviceCookie).isNotNull();
-        assertThat(deviceCookie.getValue()).isEqualTo(DeviceFixture.DEFAULT_WEB_FINGERPRINT);
+            verify(credentialLinkService).linkSocialCredential(4L, AuthProvider.KAKAO, "kakao-123");
+            verify(response).sendRedirect(contains(OAuth2Const.STATUS_LINK_SUCCESS));
+        }
 
-        then(signUpTokenCookieManager).should(never()).write(eq(response), anyString());
+        @Test
+        @DisplayName("연동 컨텍스트가 없으면 연동하지 않고 에러 페이지로 리다이렉트한다")
+        void noContextRedirectsError() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
+            given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
+            given(socialLinkContext.consume("state-1")).willReturn(Optional.empty());
 
-        assertThat(response.getRedirectedUrl()).isEqualTo(FRONT + OAuth2Const.FRONT_CALLBACK_PATH);
-        assertThat(response.getRedirectedUrl()).doesNotContain("access-token");
-        assertThat(response.getRedirectedUrl()).doesNotContain(RT);
-        assertThat(response.getRedirectedUrl()).doesNotContain("code");
+            successHandler.onAuthenticationSuccess(request, response, authentication);
+
+            verify(credentialLinkService, never()).linkSocialCredential(any(), any(), any());
+            verify(response).sendRedirect(contains(OAuth2Const.PARAM_ERROR + "="));
+        }
+
+        @Test
+        @DisplayName("연동 실패(이미 연동 등) 시 에러 코드를 담아 리다이렉트한다")
+        void linkFailureRedirectsError() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
+            given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
+            given(socialLinkContext.consume("state-1")).willReturn(Optional.of(4L));
+            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
+            given(userInfo.getProviderId()).willReturn("kakao-123");
+            willThrow(new com.han.back.global.exception.CustomException(
+                    com.han.back.domain.auth.oauth2.exception.SocialResponseStatus.SOCIAL_ALREADY_LINKED))
+                    .given(credentialLinkService).linkSocialCredential(4L, AuthProvider.KAKAO, "kakao-123");
+
+            successHandler.onAuthenticationSuccess(request, response, authentication);
+
+            verify(response).sendRedirect(contains(OAuth2Const.PARAM_ERROR + "="));
+        }
     }
 
-    @Test
-    @DisplayName("LinkSuggested 시 매니저에 signup 토큰 발급을 위임하고 URL엔 토큰을 노출하지 않는다")
-    void linkSuggestedDelegatesTokenAndHidesIt() throws Exception {
-        given(authService.processSocialLogin(userInfo, deviceInfo))
-                .willReturn(SocialSignInResult.LinkSuggested.of("kakao", "kakao-1", "nick"));
-        given(socialSignUpTokenUtil.issue("kakao", "kakao-1", "nick")).willReturn("temp-token-value");
+    @Nested
+    @DisplayName("로그인 흐름 (registrationId가 -link 아님)")
+    class LoginFlow {
 
-        handler.onAuthenticationSuccess(request, response, authentication);
+        @Test
+        @DisplayName("Authenticated면 토큰 쿠키를 발급하고 콜백으로 리다이렉트한다")
+        void authenticatedWritesCookies() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao");
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(deviceInfoProvider.get(request)).willReturn(deviceInfo);
 
-        then(signUpTokenCookieManager).should().write(eq(response), eq("temp-token-value"));
+            SocialSignInResult.Authenticated result = mock(SocialSignInResult.Authenticated.class);
+            SignInResult signInResult = mock(SignInResult.class, RETURNS_DEEP_STUBS);
+            given(result.getSignInResult()).willReturn(signInResult);
+            given(signInResult.getTokens().getRefreshToken()).willReturn("refresh-token");
+            given(signInResult.getDeviceFingerprint()).willReturn("fingerprint");
+            given(authService.processSocialLogin(userInfo, deviceInfo)).willReturn(result);
 
-        assertThat(response.getRedirectedUrl()).contains(OAuth2Const.STATUS_LINK_SUGGESTED);
-        assertThat(response.getRedirectedUrl()).doesNotContain("temp-token-value");
-    }
+            successHandler.onAuthenticationSuccess(request, response, authentication);
 
-    @Test
-    @DisplayName("EmailRequired 시 매니저에 signup 토큰 발급을 위임하고 status=email_required로 리다이렉트한다")
-    void emailRequiredDelegatesToken() throws Exception {
-        given(authService.processSocialLogin(userInfo, deviceInfo))
-                .willReturn(SocialSignInResult.EmailRequired.of("kakao", "kakao-2", "nick2"));
-        given(socialSignUpTokenUtil.issue("kakao", "kakao-2", "nick2")).willReturn("temp-2");
+            verify(authService).processSocialLogin(userInfo, deviceInfo);
+            verify(credentialLinkService, never()).linkSocialCredential(any(), any(), any());
+            verify(response).sendRedirect(contains(OAuth2Const.FRONT_CALLBACK_PATH));
+        }
 
-        handler.onAuthenticationSuccess(request, response, authentication);
+        @Test
+        @DisplayName("EmailRequired면 가입 토큰 쿠키를 발급하고 email_required로 리다이렉트한다")
+        void emailRequiredIssuesSignUpToken() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao");
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(deviceInfoProvider.get(request)).willReturn(deviceInfo);
 
-        then(signUpTokenCookieManager).should().write(eq(response), eq("temp-2"));
+            SocialSignInResult.EmailRequired result = mock(SocialSignInResult.EmailRequired.class);
+            given(result.getProvider()).willReturn("KAKAO");
+            given(result.getProviderId()).willReturn("kakao-123");
+            given(result.getNickname()).willReturn("닉네임");
+            given(authService.processSocialLogin(userInfo, deviceInfo)).willReturn(result);
+            given(socialSignUpTokenUtil.issue("KAKAO", "kakao-123", "닉네임")).willReturn("signup-token");
 
-        assertThat(response.getRedirectedUrl()).contains(OAuth2Const.STATUS_EMAIL_REQUIRED);
-        assertThat(response.getRedirectedUrl()).doesNotContain("temp-2");
+            successHandler.onAuthenticationSuccess(request, response, authentication);
+
+            verify(signUpTokenCookieManager).write(response, "signup-token");
+            verify(response).sendRedirect(contains(OAuth2Const.STATUS_EMAIL_REQUIRED));
+        }
+
+        @Test
+        @DisplayName("LinkSuggested면 가입 토큰 쿠키를 발급하고 link_suggested로 리다이렉트한다")
+        void linkSuggestedIssuesSignUpToken() throws Exception {
+            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao");
+            DeviceInfo deviceInfo = mock(DeviceInfo.class);
+            given(deviceInfoProvider.get(request)).willReturn(deviceInfo);
+
+            SocialSignInResult.LinkSuggested result = mock(SocialSignInResult.LinkSuggested.class);
+            given(result.getProvider()).willReturn("KAKAO");
+            given(result.getProviderId()).willReturn("kakao-123");
+            given(result.getNickname()).willReturn("닉네임");
+            given(authService.processSocialLogin(userInfo, deviceInfo)).willReturn(result);
+            given(socialSignUpTokenUtil.issue("KAKAO", "kakao-123", "닉네임")).willReturn("signup-token");
+
+            successHandler.onAuthenticationSuccess(request, response, authentication);
+
+            verify(signUpTokenCookieManager).write(response, "signup-token");
+            verify(response).sendRedirect(contains(OAuth2Const.STATUS_LINK_SUGGESTED));
+        }
     }
 
 }
