@@ -23,12 +23,14 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.issuer}")
-    private String issuer;
-
+    private final String issuer;
     private final SecretKey secretKey;
 
-    public JwtUtil(@Value("${jwt.secret}") String secret) {
+    public JwtUtil(
+            @Value("${jwt.issuer}") String issuer,
+            @Value("${jwt.secret}") String secret
+    ) {
+        this.issuer = issuer;
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 

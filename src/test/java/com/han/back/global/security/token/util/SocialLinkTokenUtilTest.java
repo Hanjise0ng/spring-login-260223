@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,15 +14,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SocialLinkTokenUtilTest {
 
     private static final String TEST_SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2UtbWluaW11bS0yNTYtYml0cw==";
-    private static final String TEST_ISSUER = "test_issuer";
+    private static final String TEST_ISSUER = "test-issuer";
 
     private JwtUtil jwtUtil;
     private SocialLinkTokenUtil socialLinkTokenUtil;
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(TEST_SECRET);
-        ReflectionTestUtils.setField(jwtUtil, "issuer", TEST_ISSUER);
+        jwtUtil = new JwtUtil(TEST_ISSUER, TEST_SECRET);
         socialLinkTokenUtil = new SocialLinkTokenUtil(jwtUtil);
     }
 
@@ -76,8 +74,7 @@ class SocialLinkTokenUtilTest {
         @Test
         @DisplayName("다른 secret으로 서명된 토큰이면 SOCIAL_LINK_TOKEN_INVALID")
         void differentSecret_throws() {
-            JwtUtil otherJwtUtil = new JwtUtil("b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy1wdXJwb3NlLW1pbmltdW0tMjU2LWJpdHM=");
-            ReflectionTestUtils.setField(otherJwtUtil, "issuer", TEST_ISSUER);
+            JwtUtil otherJwtUtil = new JwtUtil(TEST_ISSUER, "b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy1wdXJwb3NlLW1pbmltdW0tMjU2LWJpdHM=");
             SocialLinkTokenUtil otherUtil = new SocialLinkTokenUtil(otherJwtUtil);
             String foreignToken = otherUtil.issue(42L);
 

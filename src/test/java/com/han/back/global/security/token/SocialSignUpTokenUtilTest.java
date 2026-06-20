@@ -5,12 +5,10 @@ import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.token.util.JwtUtil;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
-import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 
@@ -20,18 +18,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("SocialSignUpTokenUtil")
 class SocialSignUpTokenUtilTest {
 
-    private static final String TEST_SECRET =
-            "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2UtbWluaW11bS0yNTYtYml0cw==";
+    private static final String TEST_SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2UtbWluaW11bS0yNTYtYml0cw==";
     private static final String TEST_ISSUER = "test-issuer";
 
     private JwtUtil jwtUtil;
-    private SocialSignUpTokenUtil SocialSignUpTokenUtil;
+    private SocialSignUpTokenUtil socialSignUpTokenUtil;
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(TEST_SECRET);
-        ReflectionTestUtils.setField(jwtUtil, "issuer", TEST_ISSUER);
-        SocialSignUpTokenUtil = new SocialSignUpTokenUtil(jwtUtil);
+        jwtUtil = new JwtUtil(TEST_ISSUER, TEST_SECRET);
+        socialSignUpTokenUtil = new SocialSignUpTokenUtil(jwtUtil);
     }
 
     @Nested
@@ -41,8 +37,8 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("issue → validate 라운드트립: claims 값이 일치한다")
         void roundTrip_claimsMatch() {
-            String token = SocialSignUpTokenUtil.issue("KAKAO", "123456", "카카오유저");
-            SocialSignUpClaims claims = SocialSignUpTokenUtil.validate(token);
+            String token = socialSignUpTokenUtil.issue("KAKAO", "123456", "카카오유저");
+            SocialSignUpClaims claims = socialSignUpTokenUtil.validate(token);
 
             assertThat(claims.getProvider()).isEqualTo("KAKAO");
             assertThat(claims.getProviderId()).isEqualTo("123456");
@@ -52,8 +48,8 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("닉네임에 특수문자(콜론, 해시) 포함 시 정상 파싱")
         void specialCharsInNickname_parsedCorrectly() {
-            String token = SocialSignUpTokenUtil.issue("KAKAO", "123", "유저:닉네임#특수");
-            SocialSignUpClaims claims = SocialSignUpTokenUtil.validate(token);
+            String token = socialSignUpTokenUtil.issue("KAKAO", "123", "유저:닉네임#특수");
+            SocialSignUpClaims claims = socialSignUpTokenUtil.validate(token);
 
             assertThat(claims.getNickname()).isEqualTo("유저:닉네임#특수");
         }
@@ -61,11 +57,11 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("서로 다른 Provider로 발급한 토큰이 각각 정확한 claims를 반환한다")
         void differentProviders_eachReturnCorrectClaims() {
-            String kakaoToken = SocialSignUpTokenUtil.issue("KAKAO", "111", "카카오");
-            String googleToken = SocialSignUpTokenUtil.issue("GOOGLE", "222", "구글");
+            String kakaoToken = socialSignUpTokenUtil.issue("KAKAO", "111", "카카오");
+            String googleToken = socialSignUpTokenUtil.issue("GOOGLE", "222", "구글");
 
-            SocialSignUpClaims kakaoClaims = SocialSignUpTokenUtil.validate(kakaoToken);
-            SocialSignUpClaims googleClaims = SocialSignUpTokenUtil.validate(googleToken);
+            SocialSignUpClaims kakaoClaims = socialSignUpTokenUtil.validate(kakaoToken);
+            SocialSignUpClaims googleClaims = socialSignUpTokenUtil.validate(googleToken);
 
             assertThat(kakaoClaims.getProvider()).isEqualTo("KAKAO");
             assertThat(googleClaims.getProvider()).isEqualTo("GOOGLE");
@@ -79,10 +75,9 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("다른 category 토큰 → STI 예외")
         void wrongCategory_throwsSTI() {
-            String wrongToken = jwtUtil.createTempToken(
-                    "wrong_category", 60_000L, Map.of());
+            String wrongToken = jwtUtil.createTempToken("wrong_category", 60_000L, Map.of());
 
-            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(wrongToken))
+            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(wrongToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
@@ -100,7 +95,7 @@ class SocialSignUpTokenUtilTest {
                             "nickname", "유저"
                     ));
 
-            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(expiredToken))
+            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(expiredToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
@@ -109,9 +104,7 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("다른 secret으로 서명된 토큰 → STI 예외")
         void tamperedToken_throwsSTI() {
-            JwtUtil otherJwtUtil = new JwtUtil(
-                    "b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy1taW5pbXVtLTI1Ni1iaXRzISE=");
-            ReflectionTestUtils.setField(otherJwtUtil, "issuer", TEST_ISSUER);
+            JwtUtil otherJwtUtil = new JwtUtil(TEST_ISSUER, "b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy1taW5pbXVtLTI1Ni1iaXRzISE=");
 
             String tamperedToken = otherJwtUtil.createTempToken(
                     OAuth2Const.TOKEN_CATEGORY_SOCIAL_SIGN_UP,
@@ -122,7 +115,7 @@ class SocialSignUpTokenUtilTest {
                             "nickname", "유저"
                     ));
 
-            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(tamperedToken))
+            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(tamperedToken))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
@@ -131,7 +124,7 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("완전히 잘못된 문자열 → STI 예외")
         void malformedString_throwsSTI() {
-            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate("not.a.valid.jwt"))
+            assertThatThrownBy(() -> socialSignUpTokenUtil.validate("not.a.valid.jwt"))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
@@ -140,44 +133,10 @@ class SocialSignUpTokenUtilTest {
         @Test
         @DisplayName("null 토큰 → STI 예외")
         void nullToken_throwsSTI() {
-            assertThatThrownBy(() -> SocialSignUpTokenUtil.validate(null))
+            assertThatThrownBy(() -> socialSignUpTokenUtil.validate(null))
                     .isInstanceOf(CustomException.class)
                     .extracting("status")
                     .isEqualTo(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID);
-        }
-    }
-
-    @Nested
-    @DisplayName("createTempToken() 통합 검증")
-    class CreateTempToken {
-
-        @Test
-        @DisplayName("생성된 토큰의 category claim이 지정한 값과 일치한다")
-        void category_matchesSpecifiedValue() {
-            String token = jwtUtil.createTempToken("test_category", 60_000L, Map.of());
-            Claims claims = jwtUtil.parseClaims(token);
-
-            assertThat(jwtUtil.getCategory(claims)).isEqualTo("test_category");
-        }
-
-        @Test
-        @DisplayName("extraClaims의 모든 키-값이 토큰에 포함된다")
-        void extraClaims_allIncludedInToken() {
-            Map<String, Object> extra = Map.of("key1", "value1", "key2", "value2");
-            String token = jwtUtil.createTempToken("test", 60_000L, extra);
-            Claims claims = jwtUtil.parseClaims(token);
-
-            assertThat(claims.get("key1", String.class)).isEqualTo("value1");
-            assertThat(claims.get("key2", String.class)).isEqualTo("value2");
-        }
-
-        @Test
-        @DisplayName("issuer가 설정된 값과 일치한다")
-        void issuer_matchesConfigured() {
-            String token = jwtUtil.createTempToken("test", 60_000L, Map.of());
-            Claims claims = jwtUtil.parseClaims(token);
-
-            assertThat(claims.getIssuer()).isEqualTo(TEST_ISSUER);
         }
     }
 

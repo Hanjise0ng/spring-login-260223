@@ -9,9 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Base64;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,9 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("JwtUtil")
 class JwtUtilTest {
 
-    private static final String TEST_SECRET =
-            "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2UtbWluaW11bS0yNTYtYml0cw==";
-
+    private static final String TEST_SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2UtbWluaW11bS0yNTYtYml0cw==";
     private static final String TEST_ISSUER = "test-issuer";
     private static final Long USER_PK = 1L;
     private static final String SESSION_ID = "test-session-id";
@@ -33,8 +31,7 @@ class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(TEST_SECRET);
-        ReflectionTestUtils.setField(jwtUtil, "issuer", TEST_ISSUER);
+        jwtUtil = new JwtUtil(TEST_ISSUER, TEST_SECRET);
     }
 
     private String createAccessToken() {
@@ -51,9 +48,7 @@ class JwtUtilTest {
 
     private JwtUtil createJwtUtilWithDifferentSecret() {
         String otherSecret = "b3RoZXItc2VjcmV0LWtleS1mb3ItdGVzdGluZy1taW5pbXVtLTI1Ni1iaXRzISE=";
-        JwtUtil other = new JwtUtil(otherSecret);
-        ReflectionTestUtils.setField(other, "issuer", TEST_ISSUER);
-        return other;
+        return new JwtUtil(TEST_ISSUER, otherSecret);
     }
 
     private String buildUnsignedJwt(String headerJson, String payloadJson) {
@@ -255,6 +250,59 @@ class JwtUtilTest {
             long remaining = jwtUtil.getRemainingExpiration(claims);
 
             assertThat(remaining).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("createTempToken()")
+    class CreateTempToken {
+
+        @Test
+        @DisplayName("생성된 토큰의 category claim이 지정한 값과 일치한다")
+        void category_matchesSpecifiedValue() {
+            String token = jwtUtil.createTempToken("test_category", 60_000L, Map.of());
+            Claims claims = jwtUtil.parseClaims(token);
+
+            assertThat(jwtUtil.getCategory(claims)).isEqualTo("test_category");
+        }
+
+        @Test
+        @DisplayName("issuer가 설정된 값과 일치한다")
+        void issuer_matchesConfigured() {
+            String token = jwtUtil.createTempToken("test", 60_000L, Map.of());
+            Claims claims = jwtUtil.parseClaims(token);
+
+            assertThat(claims.getIssuer()).isEqualTo(TEST_ISSUER);
+        }
+
+        @Test
+        @DisplayName("extraClaims가 빈 Map이어도 정상적으로 토큰이 발급된다")
+        void emptyExtraClaims_stillIssuesValidToken() {
+            String token = jwtUtil.createTempToken("test", 60_000L, Map.of());
+            Claims claims = jwtUtil.parseClaims(token);
+
+            assertThat(jwtUtil.getCategory(claims)).isEqualTo("test");
+        }
+
+        @Test
+        @DisplayName("extraClaims에 키가 1개일 때 해당 키-값이 토큰에 포함된다")
+        void singleExtraClaim_isIncludedInToken() {
+            Map<String, Object> extra = Map.of("email", "test@example.com");
+            String token = jwtUtil.createTempToken("test", 60_000L, extra);
+            Claims claims = jwtUtil.parseClaims(token);
+
+            assertThat(claims.get("email", String.class)).isEqualTo("test@example.com");
+        }
+
+        @Test
+        @DisplayName("extraClaims에 키가 여러 개일 때 모든 키-값이 토큰에 포함된다")
+        void multipleExtraClaims_allIncludedInToken() {
+            Map<String, Object> extra = Map.of("key1", "value1", "key2", "value2");
+            String token = jwtUtil.createTempToken("test", 60_000L, extra);
+            Claims claims = jwtUtil.parseClaims(token);
+
+            assertThat(claims.get("key1", String.class)).isEqualTo("value1");
+            assertThat(claims.get("key2", String.class)).isEqualTo("value2");
         }
     }
 
