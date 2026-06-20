@@ -20,9 +20,17 @@ public enum AuthProvider {
 
     public static AuthProvider fromRegistrationId(String registrationId) {
         return Arrays.stream(values())
-                .filter(provider -> provider.getValue().equalsIgnoreCase(registrationId))
+                .filter(provider -> provider.getValue().equalsIgnoreCase(normalizeRegistrationId(registrationId)))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_PROVIDER_UNSUPPORTED));
+    }
+
+    private static String normalizeRegistrationId(String registrationId) {
+        if (registrationId == null || registrationId.isBlank()) {
+            throw new CustomException(SocialResponseStatus.SOCIAL_PROVIDER_UNSUPPORTED);
+        }
+
+        return registrationId.split("-", 2)[0];
     }
 
     public boolean isSocial() {
