@@ -11,6 +11,7 @@ public enum SocialResponseStatus implements ApiResponseStatus {
 
     // 400
     SOCIAL_SIGNUP_TOKEN_INVALID("SOCIAL_SIGNUP_TOKEN_INVALID", HttpStatus.BAD_REQUEST, "소셜 가입 토큰이 유효하지 않거나 만료되었습니다."),
+    SOCIAL_LINK_TOKEN_INVALID("SOCIAL_LINK_TOKEN_INVALID", HttpStatus.BAD_REQUEST, "소셜 연동 토큰이 유효하지 않거나 만료되었습니다."),
 
     // 404
     SOCIAL_ACCOUNT_NOT_FOUND("SOCIAL_ACCOUNT_NOT_FOUND", HttpStatus.NOT_FOUND, "소셜 계정을 찾을 수 없습니다."),
