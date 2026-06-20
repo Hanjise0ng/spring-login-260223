@@ -2,11 +2,13 @@ package com.han.back.controller;
 
 import com.han.back.domain.auth.credential.dto.request.LocalCredentialCreateRequestDto;
 import com.han.back.domain.auth.credential.dto.response.LinkedCredentialResponseDto;
+import com.han.back.domain.auth.credential.dto.response.SocialLinkStartResponseDto;
 import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.principal.CustomUserDetails;
+import com.han.back.global.security.token.util.SocialLinkTokenUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,6 +31,7 @@ import java.util.List;
 public class CredentialLinkController {
 
     private final CredentialLinkService credentialLinkService;
+    private final SocialLinkTokenUtil socialLinkTokenUtil;
 
     @Operation(summary = "연동된 소셜 목록 조회",
             description = "현재 로그인한 계정에 연동된 소셜 제공자 목록을 반환합니다. 로컬 계정(본체)은 제외됩니다.")
@@ -83,6 +86,24 @@ public class CredentialLinkController {
 
         credentialLinkService.promoteToLocalAccount(userDetails.getId(), request);
         return BaseResponse.success();
+    }
+
+    @Operation(summary = "소셜 추가 연동 시작",
+            description = """
+                    로그인된 사용자가 새 소셜 계정을 연동하기 위한 시작점입니다.
+                    응답의 link_token을 연동 전용 OAuth 시작 요청에 실어 보냅니다:
+                    GET /oauth2/authorization/{provider}-link?link_token={link_token}""")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "link_token 발급"),
+            @ApiResponse(responseCode = "401", description = "AUTH_AUTHENTICATION_FAIL: 인증 실패")
+    })
+    @PostMapping("/socials/link/start")
+    public ResponseEntity<BaseResponse<SocialLinkStartResponseDto>> startSocialLink(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        String linkToken = socialLinkTokenUtil.issue(userDetails.getId());
+        return BaseResponse.success(SocialLinkStartResponseDto.of(linkToken));
     }
 
 }
