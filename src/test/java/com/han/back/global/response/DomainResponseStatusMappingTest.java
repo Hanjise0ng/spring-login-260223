@@ -98,6 +98,7 @@ class DomainResponseStatusMappingTest {
                 Map.entry("VERIFY_SMS_SEND_FAIL", INTERNAL_SERVER_ERROR),
 
                 Map.entry("SOCIAL_SIGNUP_TOKEN_INVALID", BAD_REQUEST),
+                Map.entry("SOCIAL_LINK_TOKEN_INVALID",BAD_REQUEST),
                 Map.entry("SOCIAL_ACCOUNT_NOT_FOUND", NOT_FOUND),
                 Map.entry("SOCIAL_ALREADY_LINKED", CONFLICT),
                 Map.entry("SOCIAL_PROVIDER_UNSUPPORTED", UNPROCESSABLE_CONTENT),

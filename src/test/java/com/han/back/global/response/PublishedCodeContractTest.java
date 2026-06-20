@@ -69,6 +69,7 @@ class PublishedCodeContractTest {
             "VERIFY_SMS_SEND_FAIL",
 
             "SOCIAL_SIGNUP_TOKEN_INVALID",
+            "SOCIAL_LINK_TOKEN_INVALID",
             "SOCIAL_ACCOUNT_NOT_FOUND",
             "SOCIAL_ALREADY_LINKED",
             "SOCIAL_PROVIDER_UNSUPPORTED",
