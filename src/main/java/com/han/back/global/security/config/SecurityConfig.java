@@ -10,10 +10,7 @@ import com.han.back.global.security.login.CustomLoginFailureHandler;
 import com.han.back.global.security.login.CustomLoginSuccessHandler;
 import com.han.back.global.security.logout.CustomLogoutHandler;
 import com.han.back.global.security.logout.CustomLogoutSuccessHandler;
-import com.han.back.global.security.oauth2.CustomOAuth2UserService;
-import com.han.back.global.security.oauth2.OAuth2LoginFailureHandler;
-import com.han.back.global.security.oauth2.OAuth2LoginSuccessHandler;
-import com.han.back.global.security.oauth2.RedisOAuth2StateRepository;
+import com.han.back.global.security.oauth2.*;
 import com.han.back.global.util.SecurityPathConst;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -48,6 +45,8 @@ public class SecurityConfig {
     private final CustomLoginFailureHandler customLoginFailureHandler;
     private final CustomLogoutHandler customLogoutHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
+
+    private final LinkAwareAuthorizationRequestResolver linkAwareAuthorizationRequestResolver;
     private final RedisOAuth2StateRepository redisOAuth2StateRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
@@ -65,6 +64,7 @@ public class SecurityConfig {
             CustomLoginFailureHandler customLoginFailureHandler,
             CustomLogoutHandler customLogoutHandler,
             CustomLogoutSuccessHandler customLogoutSuccessHandler,
+            LinkAwareAuthorizationRequestResolver linkAwareAuthorizationRequestResolver,
             RedisOAuth2StateRepository redisOAuth2StateRepository,
             CustomOAuth2UserService customOAuth2UserService,
             OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
@@ -81,6 +81,7 @@ public class SecurityConfig {
         this.customLoginFailureHandler = customLoginFailureHandler;
         this.customLogoutHandler = customLogoutHandler;
         this.customLogoutSuccessHandler = customLogoutSuccessHandler;
+        this.linkAwareAuthorizationRequestResolver = linkAwareAuthorizationRequestResolver;
         this.redisOAuth2StateRepository = redisOAuth2StateRepository;
         this.customOAuth2UserService = customOAuth2UserService;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
@@ -148,6 +149,7 @@ public class SecurityConfig {
     private void configureOAuth2Login(HttpSecurity http) {
         http.oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(endpoint -> endpoint
+                        .authorizationRequestResolver(linkAwareAuthorizationRequestResolver)
                         .authorizationRequestRepository(redisOAuth2StateRepository))
                 .userInfoEndpoint(endpoint -> endpoint
                         .userService(customOAuth2UserService))
