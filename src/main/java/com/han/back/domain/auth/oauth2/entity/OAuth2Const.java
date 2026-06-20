@@ -23,7 +23,7 @@ public final class OAuth2Const {
     public static final String CLAIM_LINK_USER_ID = "linkUserId";                 // 연동 토큰 userId claim 키
 
     // ===== 소셜 연동 컨텍스트 (state → userId, Redis) =====
-    public static final String SOCIAL_LINK_CONTEXT_PREFIX = "social_link_ctx:";  // 연동 컨텍스트 Redis 키 prefix
+    public static final String SOCIAL_LINK_CONTEXT_PREFIX = "oauth2:link:";      // 연동 컨텍스트 Redis 키 prefix
     public static final String REGISTRATION_LINK_SUFFIX = "-link";               // 연동 전용 client 등록 접미사
     public static final String PARAM_STATE = "state";                            // OAuth state 파라미터명
 
