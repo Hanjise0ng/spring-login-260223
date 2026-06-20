@@ -23,7 +23,7 @@ public class RedisOAuth2StateRepository implements AuthorizationRequestRepositor
 
     @Override
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
-        String state = request.getParameter("state");
+        String state = request.getParameter(OAuth2Const.PARAM_STATE);
         if (state == null) {
             return null;
         }
@@ -38,7 +38,7 @@ public class RedisOAuth2StateRepository implements AuthorizationRequestRepositor
                                          HttpServletRequest request,
                                          HttpServletResponse response) {
         if (authorizationRequest == null) {
-            String state = request.getParameter("state");
+            String state = request.getParameter(OAuth2Const.PARAM_STATE);
             if (state != null) {
                 redisUtil.deleteData(buildKey(state));
             }
@@ -55,7 +55,7 @@ public class RedisOAuth2StateRepository implements AuthorizationRequestRepositor
     public OAuth2AuthorizationRequest removeAuthorizationRequest(
             HttpServletRequest request, HttpServletResponse response) {
 
-        String state = request.getParameter("state");
+        String state = request.getParameter(OAuth2Const.PARAM_STATE);
         if (state == null) {
             return null;
         }
