@@ -5,6 +5,7 @@ import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.user.entity.AuthProvider;
@@ -40,7 +41,7 @@ class OAuth2LoginSuccessHandlerTest {
     @Mock private SocialSignUpTokenUtil socialSignUpTokenUtil;
     @Mock private SignUpTokenCookieManager signUpTokenCookieManager;
     @Mock private DeviceInfoProvider deviceInfoProvider;
-    @Mock private SocialLinkContext socialLinkContext;
+    @Mock private SocialLinkStateCache socialLinkStateCache;
     @Mock private CredentialLinkService credentialLinkService;
 
     @Mock private HttpServletRequest request;
@@ -57,7 +58,7 @@ class OAuth2LoginSuccessHandlerTest {
     void setUp() {
         successHandler = new OAuth2LoginSuccessHandler(
                 authService, socialSignUpTokenUtil, signUpTokenCookieManager,
-                deviceInfoProvider, socialLinkContext, credentialLinkService);
+                deviceInfoProvider, socialLinkStateCache, credentialLinkService);
         ReflectionTestUtils.setField(successHandler, "frontBaseUrl", FRONT_BASE_URL);
 
         given(authentication.getPrincipal()).willReturn(oAuth2User);
@@ -73,7 +74,7 @@ class OAuth2LoginSuccessHandlerTest {
         void linksAndRedirectsSuccess() throws Exception {
             given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
             given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkContext.consume("state-1")).willReturn(Optional.of(4L));
+            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.of(4L));
             given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
             given(userInfo.getProviderId()).willReturn("kakao-123");
 
@@ -88,7 +89,7 @@ class OAuth2LoginSuccessHandlerTest {
         void noContextRedirectsError() throws Exception {
             given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
             given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkContext.consume("state-1")).willReturn(Optional.empty());
+            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.empty());
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
@@ -101,7 +102,7 @@ class OAuth2LoginSuccessHandlerTest {
         void linkFailureRedirectsError() throws Exception {
             given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
             given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkContext.consume("state-1")).willReturn(Optional.of(4L));
+            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.of(4L));
             given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
             given(userInfo.getProviderId()).willReturn("kakao-123");
             willThrow(new com.han.back.global.exception.CustomException(

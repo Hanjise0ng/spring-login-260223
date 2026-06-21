@@ -1,6 +1,7 @@
 package com.han.back.global.security.oauth2;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
 import com.han.back.global.security.token.util.SocialLinkTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -17,14 +18,14 @@ public class LinkAwareAuthorizationRequestResolver implements OAuth2Authorizatio
 
     private final DefaultOAuth2AuthorizationRequestResolver delegate;
     private final SocialLinkTokenUtil socialLinkTokenUtil;
-    private final SocialLinkContext socialLinkContext;
+    private final SocialLinkStateCache socialLinkStateCache;
 
     public LinkAwareAuthorizationRequestResolver(ClientRegistrationRepository repository,
                                                  SocialLinkTokenUtil socialLinkTokenUtil,
-                                                 SocialLinkContext socialLinkContext) {
+                                                 SocialLinkStateCache socialLinkStateCache) {
         this.delegate = new DefaultOAuth2AuthorizationRequestResolver(repository, AUTHORIZATION_BASE_URI);
         this.socialLinkTokenUtil = socialLinkTokenUtil;
-        this.socialLinkContext = socialLinkContext;
+        this.socialLinkStateCache = socialLinkStateCache;
     }
 
     @Override
@@ -48,7 +49,7 @@ public class LinkAwareAuthorizationRequestResolver implements OAuth2Authorizatio
         }
 
         Long userId = socialLinkTokenUtil.validate(linkToken);
-        socialLinkContext.save(authRequest.getState(), userId);
+        socialLinkStateCache.save(authRequest.getState(), userId);
 
         return authRequest;
     }

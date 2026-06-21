@@ -6,6 +6,7 @@ import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
 import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
+import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
 import com.han.back.domain.user.entity.AuthProvider;
@@ -38,7 +39,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
     private final SignUpTokenCookieManager signUpTokenCookieManager;
     private final DeviceInfoProvider deviceInfoProvider;
-    private final SocialLinkContext socialLinkContext;
+    private final SocialLinkStateCache socialLinkStateCache;
     private final CredentialLinkService credentialLinkService;
 
     @Value("${app.front-base-url}")
@@ -67,7 +68,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private void handleSocialLink(HttpServletRequest request, HttpServletResponse response, OAuth2UserInfo userInfo)
             throws IOException {
         try {
-            Long userId = socialLinkContext.consume(request.getParameter(OAuth2Const.PARAM_STATE))
+            Long userId = socialLinkStateCache.consume(request.getParameter(OAuth2Const.PARAM_STATE))
                     .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_LINK_TOKEN_INVALID));
 
             AuthProvider provider = userInfo.getProvider();

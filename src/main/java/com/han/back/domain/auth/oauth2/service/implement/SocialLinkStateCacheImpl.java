@@ -1,22 +1,25 @@
-package com.han.back.global.security.oauth2;
+package com.han.back.domain.auth.oauth2.service.implement;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
 import com.han.back.global.infra.redis.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-@Service
+@Component
 @RequiredArgsConstructor
-public class SocialLinkContext {
+public class SocialLinkStateCacheImpl implements SocialLinkStateCache {
 
     private final RedisUtil redisUtil;
 
+    @Override
     public void save(String state, Long userId) {
         redisUtil.setDataExpire(buildKey(state), String.valueOf(userId), OAuth2Const.SOCIAL_LINK_TOKEN_TTL);
     }
 
+    @Override
     public Optional<Long> consume(String state) {
         if (state == null) {
             return Optional.empty();

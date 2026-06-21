@@ -1,6 +1,7 @@
 package com.han.back.global.security.oauth2;
 
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
+import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
 import com.han.back.global.exception.CustomException;
 import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
 import com.han.back.global.security.token.util.SocialLinkTokenUtil;
@@ -27,13 +28,13 @@ import static org.mockito.Mockito.verify;
 class LinkAwareAuthorizationRequestResolverTest {
 
     private SocialLinkTokenUtil socialLinkTokenUtil;
-    private SocialLinkContext socialLinkContext;
+    private SocialLinkStateCache socialLinkStateCache;
     private LinkAwareAuthorizationRequestResolver resolver;
 
     @BeforeEach
     void setUp() {
         socialLinkTokenUtil = mock(SocialLinkTokenUtil.class);
-        socialLinkContext = mock(SocialLinkContext.class);
+        socialLinkStateCache = mock(SocialLinkStateCache.class);
 
         ClientRegistration kakaoLink = ClientRegistration.withRegistrationId("kakao-link")
                 .clientId("test-client-id")
@@ -48,7 +49,7 @@ class LinkAwareAuthorizationRequestResolverTest {
                 .build();
 
         ClientRegistrationRepository repository = new InMemoryClientRegistrationRepository(kakaoLink);
-        resolver = new LinkAwareAuthorizationRequestResolver(repository, socialLinkTokenUtil, socialLinkContext);
+        resolver = new LinkAwareAuthorizationRequestResolver(repository, socialLinkTokenUtil, socialLinkStateCache);
     }
 
     private MockHttpServletRequest authorizationRequest(String registrationId) {
@@ -70,7 +71,7 @@ class LinkAwareAuthorizationRequestResolverTest {
         OAuth2AuthorizationRequest result = resolver.resolve(request);
 
         assertThat(result).isNotNull();
-        verify(socialLinkContext).save(eq(result.getState()), eq(7L));
+        verify(socialLinkStateCache).save(eq(result.getState()), eq(7L));
     }
 
     @Test
@@ -81,7 +82,7 @@ class LinkAwareAuthorizationRequestResolverTest {
         OAuth2AuthorizationRequest result = resolver.resolve(request);
 
         assertThat(result).isNotNull();
-        verify(socialLinkContext, never()).save(any(), any());
+        verify(socialLinkStateCache, never()).save(any(), any());
     }
 
     @Test
@@ -95,7 +96,7 @@ class LinkAwareAuthorizationRequestResolverTest {
         OAuth2AuthorizationRequest result = resolver.resolve(request);
 
         assertThat(result).isNull();
-        verify(socialLinkContext, never()).save(any(), any());
+        verify(socialLinkStateCache, never()).save(any(), any());
     }
 
     @Test
@@ -109,6 +110,7 @@ class LinkAwareAuthorizationRequestResolverTest {
         assertThatThrownBy(() -> resolver.resolve(request))
                 .isInstanceOf(CustomException.class);
 
-        verify(socialLinkContext, never()).save(any(), any());
+        verify(socialLinkStateCache, never()).save(any(), any());
     }
+
 }
