@@ -3,10 +3,6 @@ package com.han.back.global.security.oauth2;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
-import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
-import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.global.device.DeviceInfoProvider;
-import com.han.back.global.exception.CustomException;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.security.token.transport.TokenTransport;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
@@ -20,22 +16,12 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class SocialAuthExchange {
+public class SocialSignUpResponseWriter {
 
-    private final DeviceInfoProvider deviceInfoProvider;
     private final TokenTransportResolver tokenTransportResolver;
     private final SignUpTokenCookieManager signUpTokenCookieManager;
 
-    public String extractSignUpToken(HttpServletRequest request) {
-        return signUpTokenCookieManager.read(request)
-                .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_SIGNUP_TOKEN_INVALID));
-    }
-
-    public DeviceInfo extractDeviceInfo(HttpServletRequest request) {
-        return deviceInfoProvider.get(request);
-    }
-
-    public ResponseEntity<? extends BaseResponse<?>> writeResult(
+    public ResponseEntity<? extends BaseResponse<?>> write(
             SocialSignInResult result, HttpServletRequest request, HttpServletResponse response) {
 
         return switch (result) {
@@ -51,14 +37,14 @@ public class SocialAuthExchange {
         };
     }
 
+    public void clearSignUpToken(HttpServletResponse response) {
+        signUpTokenCookieManager.clear(response);
+    }
+
     private void writeTokens(HttpServletRequest request, HttpServletResponse response, SignInResult signInResult) {
         TokenTransport transport = tokenTransportResolver.resolve(request);
         transport.write(response, signInResult.getTokens());
         transport.writeDeviceCookie(response, signInResult.getDeviceFingerprint());
-    }
-
-    public void clearSignUpToken(HttpServletResponse response) {
-        signUpTokenCookieManager.clear(response);
     }
 
 }

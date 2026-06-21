@@ -5,9 +5,11 @@ import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
 import com.han.back.domain.auth.dto.request.SocialLinkRequestDto;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
+import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.security.oauth2.SocialAuthExchange;
+import com.han.back.global.security.oauth2.SignUpTokenCookieManager;
+import com.han.back.global.security.oauth2.SocialSignUpResponseWriter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -31,7 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class SocialAuthController {
 
     private final AuthService authService;
-    private final SocialAuthExchange socialAuthExchange;
+    private final DeviceInfoProvider deviceInfoProvider;
+    private final SignUpTokenCookieManager signUpTokenCookieManager;
+    private final SocialSignUpResponseWriter socialSignUpResponseWriter;
 
     @Operation(summary = "소셜 회원가입 완료",
             description = """
@@ -55,11 +59,11 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
-        DeviceInfo deviceInfo = socialAuthExchange.extractDeviceInfo(httpRequest);
+        String tempToken = signUpTokenCookieManager.read(httpRequest).orElse(null);
+        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
 
         SocialSignInResult result = authService.completeSocialSignUp(tempToken, request.getEmail(), deviceInfo);
-        return socialAuthExchange.writeResult(result, httpRequest, httpResponse);
+        return socialSignUpResponseWriter.write(result, httpRequest, httpResponse);
     }
 
     @Operation(summary = "별도 계정으로 시작하기",
@@ -76,11 +80,11 @@ public class SocialAuthController {
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
-        DeviceInfo deviceInfo = socialAuthExchange.extractDeviceInfo(httpRequest);
+        String tempToken = signUpTokenCookieManager.read(httpRequest).orElse(null);
+        DeviceInfo deviceInfo = deviceInfoProvider.get(httpRequest);
 
         SocialSignInResult result = authService.createSeparateSocialAccount(tempToken, request.getEmail(), deviceInfo);
-        return socialAuthExchange.writeResult(result, httpRequest, httpResponse);
+        return socialSignUpResponseWriter.write(result, httpRequest, httpResponse);
     }
 
     @Operation(summary = "소셜 연동 (기존 LOCAL 계정에 추가)",
@@ -104,10 +108,10 @@ public class SocialAuthController {
             @RequestBody @Valid SocialLinkRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        String tempToken = socialAuthExchange.extractSignUpToken(httpRequest);
+        String tempToken = signUpTokenCookieManager.read(httpRequest).orElse(null);
         authService.linkSocialToLocalAccount(tempToken, request.getLoginId(), request.getPassword());
 
-        socialAuthExchange.clearSignUpToken(httpResponse);
+        socialSignUpResponseWriter.clearSignUpToken(httpResponse);
         return BaseResponse.success();
     }
 
