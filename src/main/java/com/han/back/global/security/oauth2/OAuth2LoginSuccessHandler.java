@@ -1,15 +1,12 @@
 package com.han.back.global.security.oauth2;
 
-import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
-import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
-import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
+import com.han.back.domain.auth.oauth2.service.SocialLinkService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.global.device.DeviceInfoProvider;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.token.AuthConst;
@@ -39,8 +36,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final SocialSignUpTokenUtil socialSignUpTokenUtil;
     private final SignUpTokenCookieManager signUpTokenCookieManager;
     private final DeviceInfoProvider deviceInfoProvider;
-    private final SocialLinkStateCache socialLinkStateCache;
-    private final CredentialLinkService credentialLinkService;
+    private final SocialLinkService socialLinkService;
 
     @Value("${app.front-base-url}")
     private String frontBaseUrl;
@@ -68,14 +64,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private void handleSocialLink(HttpServletRequest request, HttpServletResponse response, OAuth2UserInfo userInfo)
             throws IOException {
         try {
-            Long userId = socialLinkStateCache.consume(request.getParameter(OAuth2Const.PARAM_STATE))
-                    .orElseThrow(() -> new CustomException(SocialResponseStatus.SOCIAL_LINK_TOKEN_INVALID));
-
-            AuthProvider provider = userInfo.getProvider();
-            credentialLinkService.linkSocialCredential(userId, provider, userInfo.getProviderId());
-
-            log.info("Social Linked - UserPK: {} | Provider: {}", userId, provider);
-
+            socialLinkService.link(request.getParameter(OAuth2Const.PARAM_STATE), userInfo);
             redirectToLinkResult(response, Map.of(OAuth2Const.PARAM_STATUS, OAuth2Const.STATUS_LINK_SUCCESS));
 
         } catch (CustomException e) {

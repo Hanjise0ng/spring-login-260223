@@ -1,15 +1,15 @@
 package com.han.back.global.security.oauth2;
 
-import com.han.back.domain.auth.credential.service.CredentialLinkService;
 import com.han.back.domain.auth.dto.SignInResult;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.oauth2.adapter.OAuth2UserInfo;
 import com.han.back.domain.auth.oauth2.entity.OAuth2Const;
-import com.han.back.domain.auth.oauth2.service.SocialLinkStateCache;
+import com.han.back.domain.auth.oauth2.exception.SocialResponseStatus;
+import com.han.back.domain.auth.oauth2.service.SocialLinkService;
 import com.han.back.domain.auth.service.AuthService;
 import com.han.back.domain.device.dto.DeviceInfo;
-import com.han.back.domain.user.entity.AuthProvider;
 import com.han.back.global.device.DeviceInfoProvider;
+import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.token.util.SocialSignUpTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,7 +25,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
@@ -41,8 +40,7 @@ class OAuth2LoginSuccessHandlerTest {
     @Mock private SocialSignUpTokenUtil socialSignUpTokenUtil;
     @Mock private SignUpTokenCookieManager signUpTokenCookieManager;
     @Mock private DeviceInfoProvider deviceInfoProvider;
-    @Mock private SocialLinkStateCache socialLinkStateCache;
-    @Mock private CredentialLinkService credentialLinkService;
+    @Mock private SocialLinkService socialLinkService;
 
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
@@ -58,7 +56,7 @@ class OAuth2LoginSuccessHandlerTest {
     void setUp() {
         successHandler = new OAuth2LoginSuccessHandler(
                 authService, socialSignUpTokenUtil, signUpTokenCookieManager,
-                deviceInfoProvider, socialLinkStateCache, credentialLinkService);
+                deviceInfoProvider, socialLinkService);
         ReflectionTestUtils.setField(successHandler, "frontBaseUrl", FRONT_BASE_URL);
 
         given(authentication.getPrincipal()).willReturn(oAuth2User);
@@ -70,44 +68,24 @@ class OAuth2LoginSuccessHandlerTest {
     class LinkFlow {
 
         @Test
-        @DisplayName("컨텍스트에서 userId를 복원해 연동하고 성공 페이지로 리다이렉트한다")
-        void linksAndRedirectsSuccess() throws Exception {
+        @DisplayName("SocialLinkService에 연동을 위임하고 성공 페이지로 리다이렉트한다")
+        void delegatesAndRedirectsSuccess() throws Exception {
             given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
             given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.of(4L));
-            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
-            given(userInfo.getProviderId()).willReturn("kakao-123");
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
-            verify(credentialLinkService).linkSocialCredential(4L, AuthProvider.KAKAO, "kakao-123");
+            verify(socialLinkService).link("state-1", userInfo);
             verify(response).sendRedirect(contains(OAuth2Const.STATUS_LINK_SUCCESS));
         }
 
         @Test
-        @DisplayName("연동 컨텍스트가 없으면 연동하지 않고 에러 페이지로 리다이렉트한다")
-        void noContextRedirectsError() throws Exception {
-            given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
-            given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.empty());
-
-            successHandler.onAuthenticationSuccess(request, response, authentication);
-
-            verify(credentialLinkService, never()).linkSocialCredential(any(), any(), any());
-            verify(response).sendRedirect(contains(OAuth2Const.PARAM_ERROR + "="));
-        }
-
-        @Test
-        @DisplayName("연동 실패(이미 연동 등) 시 에러 코드를 담아 리다이렉트한다")
+        @DisplayName("연동 실패 시 에러 코드를 담아 리다이렉트한다")
         void linkFailureRedirectsError() throws Exception {
             given(authentication.getAuthorizedClientRegistrationId()).willReturn("kakao-link");
             given(request.getParameter(OAuth2Const.PARAM_STATE)).willReturn("state-1");
-            given(socialLinkStateCache.consume("state-1")).willReturn(Optional.of(4L));
-            given(userInfo.getProvider()).willReturn(AuthProvider.KAKAO);
-            given(userInfo.getProviderId()).willReturn("kakao-123");
-            willThrow(new com.han.back.global.exception.CustomException(
-                    com.han.back.domain.auth.oauth2.exception.SocialResponseStatus.SOCIAL_ALREADY_LINKED))
-                    .given(credentialLinkService).linkSocialCredential(4L, AuthProvider.KAKAO, "kakao-123");
+            willThrow(new CustomException(SocialResponseStatus.SOCIAL_LINK_TOKEN_INVALID))
+                    .given(socialLinkService).link("state-1", userInfo);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
@@ -136,7 +114,7 @@ class OAuth2LoginSuccessHandlerTest {
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
             verify(authService).processSocialLogin(userInfo, deviceInfo);
-            verify(credentialLinkService, never()).linkSocialCredential(any(), any(), any());
+            verify(socialLinkService, never()).link(any(), any());
             verify(response).sendRedirect(contains(OAuth2Const.FRONT_CALLBACK_PATH));
         }
 
