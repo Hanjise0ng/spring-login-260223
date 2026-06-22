@@ -113,4 +113,43 @@ class LinkAwareAuthorizationRequestResolverTest {
         verify(socialLinkStateCache, never()).save(any(), any());
     }
 
+    @Test
+    @DisplayName("registrationId를 명시 인자로 받는 오버로드도 link_token이 있으면 컨텍스트를 저장한다")
+    void explicitRegistrationId_withLinkToken_savesContext() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod("GET");
+        request.setParameter(OAuth2Const.PARAM_LINK_TOKEN, "link-token");
+        given(socialLinkTokenUtil.validate("link-token")).willReturn(7L);
+
+        OAuth2AuthorizationRequest result = resolver.resolve(request, "kakao-link");
+
+        assertThat(result).isNotNull();
+        verify(socialLinkStateCache).save(eq(result.getState()), eq(7L));
+    }
+
+    @Test
+    @DisplayName("registrationId 명시 오버로드도 link_token이 없으면 컨텍스트를 저장하지 않는다")
+    void explicitRegistrationId_withoutLinkToken_noSave() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod("GET");
+
+        OAuth2AuthorizationRequest result = resolver.resolve(request, "kakao-link");
+
+        assertThat(result).isNotNull();
+        verify(socialLinkStateCache, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("등록되지 않은 registrationId를 명시하면 delegate 예외가 전파되고 컨텍스트를 저장하지 않는다")
+    void explicitRegistrationId_unknown_propagatesAndNoSave() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setMethod("GET");
+        request.setParameter(OAuth2Const.PARAM_LINK_TOKEN, "link-token");
+
+        assertThatThrownBy(() -> resolver.resolve(request, "unregistered"))
+                .isInstanceOf(RuntimeException.class);
+
+        verify(socialLinkStateCache, never()).save(any(), any());
+    }
+
 }
