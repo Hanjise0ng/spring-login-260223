@@ -5,6 +5,7 @@ import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.response.ResponseStatus;
+import com.han.back.global.response.ResponseView;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -25,11 +26,13 @@ public class HttpResponseUtil {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
 
-            BaseResponse<Empty> body = (status == ResponseStatus.SUCCESS)
+            boolean success = (status == ResponseStatus.SUCCESS);
+            BaseResponse<Empty> body = success
                     ? BaseResponse.successBody()
                     : BaseResponse.errorBody(status);
 
-            objectMapper.writeValue(response.getWriter(), body);
+            Class<?> view = success ? ResponseView.Common.class : ResponseView.Error.class;
+            objectMapper.writerWithView(view).writeValue(response.getWriter(), body);
         } catch (IOException e) {
             throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
         }
@@ -41,7 +44,10 @@ public class HttpResponseUtil {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
 
-            objectMapper.writeValue(response.getWriter(), BaseResponse.body(status, result));
+            Class<?> view = (status == ResponseStatus.SUCCESS)
+                    ? ResponseView.Common.class
+                    : ResponseView.Error.class;
+            objectMapper.writerWithView(view).writeValue(response.getWriter(), BaseResponse.body(status, result));
         } catch (IOException e) {
             throw new CustomException(ResponseStatus.INTERNAL_SERVER_ERROR);
         }

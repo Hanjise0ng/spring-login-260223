@@ -1,6 +1,7 @@
 package com.han.back.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.global.trace.TraceContext;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -11,16 +12,20 @@ import org.springframework.http.ResponseEntity;
 public class BaseResponse<T> {
 
     @Schema(description = "응답 코드", example = "SUCCESS")
+    @JsonView(ResponseView.Common.class)
     private final String code;
 
     @Schema(description = "응답 메시지(개발자용)", example = "성공")
+    @JsonView(ResponseView.Common.class)
     private final String message;
 
-    @Schema(description = "요청 추적 식별자 (오류 응답에만 포함)", example = "3f9a1c2e-...")
+    @Schema(description = "요청 추적 식별자 (오류 응답에만 포함)", example = "3f9a1c2e-7b8d-4e2a-9c6f-1a2b3c4d5e6f")
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonView(ResponseView.Error.class)
     private final String traceId;
 
     @Schema(description = "응답 데이터 (없으면 빈 객체)")
+    @JsonView(ResponseView.Common.class)
     private final T result;
 
     private BaseResponse(ApiResponseStatus status, String message, String traceId, T result) {

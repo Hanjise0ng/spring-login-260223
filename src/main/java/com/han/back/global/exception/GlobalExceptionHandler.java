@@ -1,9 +1,11 @@
 package com.han.back.global.exception;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.global.response.ApiResponseStatus;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.response.ResponseStatus;
+import com.han.back.global.response.ResponseView;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -31,6 +33,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // Spring MVC 내부 예외 폴백 — 개별 오버라이드에서 처리되지 않은 나머지
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
 
@@ -53,6 +56,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // @RequestBody @Valid 검증 실패 — 필드 오류 메시지 추출 및 BaseResponse 포맷 적용
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
@@ -69,6 +73,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // @RequestBody 역직렬화 실패 — 잘못된 JSON 형식 또는 타입 불일치
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
@@ -81,6 +86,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // @RequestParam, @PathVariable 검증 실패 — 메서드 파라미터 레벨 @Valid 위반
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleHandlerMethodValidationException(
             HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
@@ -99,6 +105,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // HTTP 메서드 불일치 — 존재하는 엔드포인트에 허용되지 않은 메서드로 요청
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
             HttpRequestMethodNotSupportedException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
@@ -112,6 +119,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // 지원하지 않는 미디어 타입 — Content-Type 불일치
     @Override
+    @JsonView(ResponseView.Error.class)
     protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
             HttpMediaTypeNotSupportedException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
@@ -125,6 +133,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // 비즈니스 예외 — 서비스·도메인 레이어에서 명시적으로 던진 오류
     @ExceptionHandler(CustomException.class)
+    @JsonView(ResponseView.Error.class)
     public ResponseEntity<BaseResponse<Empty>> handleCustomException(
             CustomException ex, HttpServletRequest request) {
 
@@ -136,6 +145,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // Controller 레이어 인증 예외 — 필터 체인 외부에서 발생한 인증 오류
     @ExceptionHandler(CustomAuthenticationException.class)
+    @JsonView(ResponseView.Error.class)
     public ResponseEntity<BaseResponse<Empty>> handleCustomAuthenticationException(
             CustomAuthenticationException ex, HttpServletRequest request) {
 
@@ -147,6 +157,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // DB 접근 예외 — JPA·JDBC 오류, 내부 세부사항 추상화
     @ExceptionHandler(DataAccessException.class)
+    @JsonView(ResponseView.Error.class)
     public ResponseEntity<BaseResponse<Empty>> handleDataAccessException(
             DataAccessException ex, HttpServletRequest request) {
 
@@ -158,6 +169,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // 위 핸들러에서 처리되지 않은 모든 예외
     @ExceptionHandler(Exception.class)
+    @JsonView(ResponseView.Error.class)
     public ResponseEntity<BaseResponse<Empty>> handleException(
             Exception ex, HttpServletRequest request) {
 
