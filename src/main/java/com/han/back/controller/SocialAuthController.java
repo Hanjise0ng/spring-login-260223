@@ -1,5 +1,6 @@
 package com.han.back.controller;
 
+import com.han.back.controller.docs.SocialAuthApiDocs;
 import com.han.back.domain.auth.dto.SocialSignInResult;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
 import com.han.back.domain.auth.dto.request.SocialLinkRequestDto;
@@ -10,10 +11,6 @@ import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
 import com.han.back.global.security.oauth2.SignUpTokenCookieManager;
 import com.han.back.global.security.oauth2.SocialSignUpResponseWriter;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -29,31 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth/oauth2")
 @RequiredArgsConstructor
-@Tag(name = "OAuth2 Auth", description = "소셜 인증 API")
-public class SocialAuthController {
+public class SocialAuthController implements SocialAuthApiDocs {
 
     private final AuthService authService;
     private final DeviceInfoProvider deviceInfoProvider;
     private final SignUpTokenCookieManager signUpTokenCookieManager;
     private final SocialSignUpResponseWriter socialSignUpResponseWriter;
 
-    @Operation(summary = "소셜 회원가입 완료",
-            description = """
-                    이메일을 제공하지 않는 소셜 계정의 최초 가입을 완료합니다.
-                    임시 토큰은 HttpOnly 쿠키(social_signup_token)로 전달되며, 사용자가 입력한 이메일로 가입을 마무리합니다.
-                    
-                    - 가입 성공: AT(헤더) + RT(쿠키) + device 쿠키 직접 발급
-                    - 이메일이 기존 LOCAL 계정과 충돌: status=link_suggested 반환 (연동 유도)""")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = """
-                    - 가입 완료: AT(헤더), RT(쿠키) 발급
-                    - 연동 유도: { status: "link_suggested" }"""),
-            @ApiResponse(responseCode = "400", description = """
-                    - VALIDATION_FAIL: 유효성 검증 실패
-                    - VERIFY_NOT_COMPLETED: 이메일 인증 미완료"""),
-            @ApiResponse(responseCode = "401", description = "SOCIAL_SIGNUP_TOKEN_INVALID: 임시 가입 토큰이 유효하지 않거나 만료됨"),
-            @ApiResponse(responseCode = "409", description = "SOCIAL_ALREADY_LINKED: 이미 연동된 소셜 계정")
-    })
+    @Override
     @PostMapping("/complete")
     public ResponseEntity<? extends BaseResponse<?>> completeSocialSignUp(
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
@@ -66,15 +46,7 @@ public class SocialAuthController {
         return socialSignUpResponseWriter.write(result, httpRequest, httpResponse);
     }
 
-    @Operation(summary = "별도 계정으로 시작하기",
-            description = "이메일 충돌 상황에서 기존 계정과 합치지 않고 새 소셜 전용 계정을 생성합니다. "
-                    + "social_signup_token 쿠키와 이메일(요청 바디)이 필요합니다.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "별도 계정 생성 및 로그인 완료"),
-            @ApiResponse(responseCode = "400", description = "VERIFY_NOT_COMPLETED: 이메일 인증 미완료"),
-            @ApiResponse(responseCode = "401", description = "SOCIAL_SIGNUP_TOKEN_INVALID: 임시 토큰 무효"),
-            @ApiResponse(responseCode = "409", description = "SOCIAL_ALREADY_LINKED: 이미 사용 중인 소셜")
-    })
+    @Override
     @PostMapping("/separate")
     public ResponseEntity<? extends BaseResponse<?>> createSeparateAccount(
             @RequestBody @Valid OAuth2SignUpCompleteRequestDto request,
@@ -87,22 +59,7 @@ public class SocialAuthController {
         return socialSignUpResponseWriter.write(result, httpRequest, httpResponse);
     }
 
-    @Operation(summary = "소셜 연동 (기존 LOCAL 계정에 추가)",
-            description = """
-                    이메일 충돌 상황에서 기존 LOCAL 계정에 소셜 계정을 연동합니다.
-                    social_signup_token 쿠키와 LOCAL 계정 자격증명(아이디/비밀번호)이 필요합니다.
-                    
-                    연동만 수행하며 로그인 토큰을 발급하지 않습니다. 연동 완료 후 사용자가 다시 소셜 로그인하면 정상 로그인됩니다.""")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "연동 완료 (토큰 미발급)"),
-            @ApiResponse(responseCode = "401", description = """
-                    - AUTH_SIGN_IN_FAIL: 아이디 또는 비밀번호 불일치
-                    - SOCIAL_SIGNUP_TOKEN_INVALID: 임시 가입 토큰 무효"""),
-            @ApiResponse(responseCode = "409", description = """
-                    - CREDENTIAL_PROVIDER_ALREADY_LINKED: 이미 동일 제공자 연동됨
-                    - CREDENTIAL_SOCIAL_ALREADY_USED: 다른 계정에서 사용 중인 소셜
-                    - CREDENTIAL_SOCIAL_ONLY_ACCOUNT: 소셜 전용 계정""")
-    })
+    @Override
     @PostMapping("/link")
     public ResponseEntity<BaseResponse<Empty>> linkSocial(
             @RequestBody @Valid SocialLinkRequestDto request,
