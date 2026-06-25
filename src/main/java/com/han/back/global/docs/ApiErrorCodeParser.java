@@ -10,8 +10,7 @@ import java.util.List;
 
 public final class ApiErrorCodeParser {
 
-    private ApiErrorCodeParser() {
-    }
+    private ApiErrorCodeParser() {}
 
     public static void parse(Operation operation, HandlerMethod handlerMethod) {
         List<ApiErrorCode> errorCodes = collect(handlerMethod);

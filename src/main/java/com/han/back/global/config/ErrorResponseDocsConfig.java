@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("!prod")
-public class CommonErrorResponseDocsConfig {
+public class ErrorResponseDocsConfig {
 
     @Bean
-    public OpenApiCustomizer commonErrorResponseCustomizer() {
+    public OpenApiCustomizer errorResponseCustomizer() {
         return openApi -> {
             if (openApi.getPaths() == null) {
                 return;
