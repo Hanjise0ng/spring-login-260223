@@ -1,6 +1,5 @@
 package com.han.back.controller.docs;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.domain.auth.credential.exception.CredentialResponseStatus;
 import com.han.back.domain.auth.dto.request.OAuth2SignUpCompleteRequestDto;
 import com.han.back.domain.auth.dto.request.SocialLinkRequestDto;
@@ -11,7 +10,6 @@ import com.han.back.global.docs.ApiErrorCode;
 import com.han.back.global.docs.ApiErrorCodes;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.response.ResponseView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,7 +36,6 @@ public interface SocialAuthApiDocs {
             @ApiErrorCode(value = SocialResponseStatus.class, constant = "SOCIAL_SIGNUP_TOKEN_INVALID"),
             @ApiErrorCode(value = SocialResponseStatus.class, constant = "SOCIAL_ALREADY_LINKED")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<? extends BaseResponse<?>> completeSocialSignUp(
             @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse);
@@ -52,7 +49,6 @@ public interface SocialAuthApiDocs {
             @ApiErrorCode(value = SocialResponseStatus.class, constant = "SOCIAL_SIGNUP_TOKEN_INVALID"),
             @ApiErrorCode(value = SocialResponseStatus.class, constant = "SOCIAL_ALREADY_LINKED")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<? extends BaseResponse<?>> createSeparateAccount(
             @Valid OAuth2SignUpCompleteRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse);
@@ -71,7 +67,6 @@ public interface SocialAuthApiDocs {
             @ApiErrorCode(value = CredentialResponseStatus.class, constant = "CREDENTIAL_SOCIAL_ALREADY_USED"),
             @ApiErrorCode(value = CredentialResponseStatus.class, constant = "CREDENTIAL_SOCIAL_ONLY_ACCOUNT")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> linkSocial(
             @Valid SocialLinkRequestDto request,
             HttpServletRequest httpRequest, HttpServletResponse httpResponse);

@@ -1,6 +1,5 @@
 package com.han.back.controller.docs;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.domain.auth.dto.request.SignUpRequestDto;
 import com.han.back.domain.auth.dto.response.LoginIdCheckResponseDto;
 import com.han.back.domain.auth.exception.AuthResponseStatus;
@@ -10,7 +9,6 @@ import com.han.back.global.docs.ApiErrorCode;
 import com.han.back.global.docs.ApiErrorCodes;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.response.ResponseView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,7 +29,6 @@ public interface AuthApiDocs {
     @ApiErrorCodes({
             @ApiErrorCode(value = AccountResponseStatus.class, constant = "ACCOUNT_DUPLICATE_LOGIN_ID")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<LoginIdCheckResponseDto>> checkLoginId(
             @Parameter(description = "확인할 로그인 ID", example = "testuser01")
             @NotBlank String loginId);
@@ -45,7 +42,6 @@ public interface AuthApiDocs {
             @ApiErrorCode(value = AccountResponseStatus.class, constant = "ACCOUNT_DUPLICATE_LOGIN_ID"),
             @ApiErrorCode(value = AccountResponseStatus.class, constant = "ACCOUNT_DUPLICATE_EMAIL")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> signUp(@Valid SignUpRequestDto requestBody);
 
     @Operation(summary = "토큰 재발급",
@@ -60,7 +56,6 @@ public interface AuthApiDocs {
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_REFRESH_TOKEN_EXPIRED"),
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_REFRESH_TOKEN_INVALID")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> reissue(HttpServletRequest request, HttpServletResponse response);
 
 }

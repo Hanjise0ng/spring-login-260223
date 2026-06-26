@@ -1,6 +1,5 @@
 package com.han.back.controller.docs;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.domain.auth.exception.AuthResponseStatus;
 import com.han.back.domain.device.dto.response.DeviceDetailResponseDto;
 import com.han.back.domain.device.exception.DeviceResponseStatus;
@@ -8,7 +7,6 @@ import com.han.back.global.docs.ApiErrorCode;
 import com.han.back.global.docs.ApiErrorCodes;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.response.ResponseView;
 import com.han.back.global.security.principal.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,7 +29,6 @@ public interface DeviceApiDocs {
     @ApiErrorCodes({
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_AUTHENTICATION_FAIL")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<List<DeviceDetailResponseDto>>> getMyDevices(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails);
 
@@ -44,7 +41,6 @@ public interface DeviceApiDocs {
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_NOT_FOUND"),
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_TRUSTED_LIMIT_EXCEEDED")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> trustDevice(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             String devicePublicId);
@@ -55,7 +51,6 @@ public interface DeviceApiDocs {
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_AUTHENTICATION_FAIL"),
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_NOT_FOUND")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> untrustDevice(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             String devicePublicId);
@@ -69,7 +64,6 @@ public interface DeviceApiDocs {
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_AUTHENTICATION_FAIL"),
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_NOT_FOUND")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> forceLogoutDevice(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "디바이스 공개 ID (UUID)", example = "550e8400-e29b-41d4-a716-446655440000")
@@ -84,7 +78,6 @@ public interface DeviceApiDocs {
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_NOT_FOUND"),
             @ApiErrorCode(value = DeviceResponseStatus.class, constant = "DEVICE_ACTIVE_DELETE_FORBIDDEN")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> deleteDevice(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "디바이스 공개 ID (UUID)", example = "550e8400-e29b-41d4-a716-446655440000")

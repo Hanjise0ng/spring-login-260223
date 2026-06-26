@@ -29,10 +29,6 @@ public final class TraceContext {
         return UNTRACED;
     }
 
-    public static String getTraceIdOrNull() {
-        return MDC.get(KEY);
-    }
-
     public static void setTraceId(String traceId) {
         MDC.put(KEY, traceId);
     }

@@ -16,7 +16,6 @@ import java.util.Map;
 public final class ApiErrorCodeWriter {
 
     private static final String JSON_MEDIA_TYPE = "application/json";
-    private static final String TRACE_ID_EXAMPLE = "3f9a1c2e-7b8d-4e2a-9c6f-1a2b3c4d5e6f";
 
     private ApiErrorCodeWriter() {}
 
@@ -61,7 +60,6 @@ public final class ApiErrorCodeWriter {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", code);
         body.put("message", message);
-        body.put("traceId", TRACE_ID_EXAMPLE);
         body.put("result", Map.of());
         return body;
     }

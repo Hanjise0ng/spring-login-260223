@@ -1,6 +1,5 @@
 package com.han.back.controller.docs;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.domain.auth.credential.dto.request.LocalCredentialCreateRequestDto;
 import com.han.back.domain.auth.credential.dto.response.LinkedCredentialResponseDto;
 import com.han.back.domain.auth.credential.dto.response.SocialLinkStartResponseDto;
@@ -13,7 +12,6 @@ import com.han.back.global.docs.ApiErrorCode;
 import com.han.back.global.docs.ApiErrorCodes;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.response.ResponseView;
 import com.han.back.global.security.principal.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,7 +34,6 @@ public interface CredentialLinkApiDocs {
     @ApiErrorCodes({
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_AUTHENTICATION_FAIL")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<List<LinkedCredentialResponseDto>>> getLinkedSocials(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails);
 
@@ -49,7 +46,6 @@ public interface CredentialLinkApiDocs {
             @ApiErrorCode(value = CredentialResponseStatus.class, constant = "CREDENTIAL_NOT_LINKED"),
             @ApiErrorCode(value = CredentialResponseStatus.class, constant = "CREDENTIAL_SOCIAL_ONLY_ACCOUNT")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> unlinkSocial(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "해제할 소셜 제공자", example = "KAKAO") AuthProvider provider);
@@ -64,7 +60,6 @@ public interface CredentialLinkApiDocs {
             @ApiErrorCode(value = CredentialResponseStatus.class, constant = "CREDENTIAL_LOCAL_ALREADY_EXISTS"),
             @ApiErrorCode(value = AccountResponseStatus.class, constant = "ACCOUNT_DUPLICATE_LOGIN_ID")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> promoteToLocal(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid LocalCredentialCreateRequestDto request);
@@ -78,7 +73,6 @@ public interface CredentialLinkApiDocs {
     @ApiErrorCodes({
             @ApiErrorCode(value = AuthResponseStatus.class, constant = "AUTH_AUTHENTICATION_FAIL")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<SocialLinkStartResponseDto>> startSocialLink(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails);
 

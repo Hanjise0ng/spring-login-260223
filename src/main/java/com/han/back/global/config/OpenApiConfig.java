@@ -53,7 +53,6 @@ public class OpenApiConfig {
                         |------|------|------|
                         | code | String | 응답 코드 (SUCCESS / 도메인별 에러 코드) |
                         | message | String | 응답 메시지 |
-                        | traceId | String | 요청 추적 식별자 (오류 응답에만 포함) |
                         | result | Object | 응답 데이터 (없으면 빈 객체) |
 
                         > 각 엔드포인트가 반환할 수 있는 에러 코드는 해당 API의 응답 예시에서 확인

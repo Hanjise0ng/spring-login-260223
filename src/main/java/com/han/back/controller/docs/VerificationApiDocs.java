@@ -1,6 +1,5 @@
 package com.han.back.controller.docs;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.han.back.domain.verification.dto.request.VerificationConfirmRequestDto;
 import com.han.back.domain.verification.dto.request.VerificationSendRequestDto;
 import com.han.back.domain.verification.dto.response.VerificationSendResponseDto;
@@ -9,7 +8,6 @@ import com.han.back.global.docs.ApiErrorCode;
 import com.han.back.global.docs.ApiErrorCodes;
 import com.han.back.global.response.BaseResponse;
 import com.han.back.global.response.Empty;
-import com.han.back.global.response.ResponseView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +28,6 @@ public interface VerificationApiDocs {
             @ApiErrorCode(value = VerificationResponseStatus.class, constant = "VERIFY_MAIL_SEND_FAIL"),
             @ApiErrorCode(value = VerificationResponseStatus.class, constant = "VERIFY_SMS_SEND_FAIL")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<VerificationSendResponseDto>> sendCode(
             @Valid VerificationSendRequestDto request);
 
@@ -42,7 +39,6 @@ public interface VerificationApiDocs {
             @ApiErrorCode(value = VerificationResponseStatus.class, constant = "VERIFY_CODE_MISMATCH"),
             @ApiErrorCode(value = VerificationResponseStatus.class, constant = "VERIFY_CODE_EXPIRED")
     })
-    @JsonView(ResponseView.Common.class)
     ResponseEntity<BaseResponse<Empty>> confirmCode(
             @Valid VerificationConfirmRequestDto request);
 
