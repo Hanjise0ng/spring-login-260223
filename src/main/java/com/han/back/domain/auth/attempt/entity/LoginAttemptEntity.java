@@ -20,6 +20,9 @@ import lombok.experimental.SuperBuilder;
                         columnList = "user_id, created_at DESC")
         }
 )
+@AttributeOverrides({
+        @AttributeOverride(name = "id", column = @Column(name = "login_attempt_id"))
+})
 public class LoginAttemptEntity extends BaseTime {
 
     @Column(name = "user_id", nullable = false)

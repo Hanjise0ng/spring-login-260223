@@ -28,6 +28,9 @@ import java.time.LocalDateTime;
                         columnList = "session_id")
         }
 )
+@AttributeOverrides({
+        @AttributeOverride(name = "id", column = @Column(name = "device_id"))
+})
 public class DeviceEntity extends BaseTime {
 
     @Column(name = "user_id", nullable = false)

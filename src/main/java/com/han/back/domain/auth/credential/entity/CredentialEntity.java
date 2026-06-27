@@ -28,6 +28,9 @@ import lombok.experimental.SuperBuilder;
                 @Index(name = "idx_credentials_user_id", columnList = "user_id")
         }
 )
+@AttributeOverrides({
+        @AttributeOverride(name = "id", column = @Column(name = "credential_id"))
+})
 public class CredentialEntity extends BaseTime {
 
     @Column(name = "user_id", nullable = false)

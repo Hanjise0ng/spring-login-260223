@@ -22,6 +22,9 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_users_nickname_tag", columnList = "nickname, tag")
         }
 )
+@AttributeOverrides({
+        @AttributeOverride(name = "id", column = @Column(name = "user_id"))
+})
 public class UserEntity extends BaseTime {
 
     @Builder.Default
