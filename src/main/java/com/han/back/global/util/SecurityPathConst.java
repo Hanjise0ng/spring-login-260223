@@ -15,6 +15,8 @@ public final class SecurityPathConst {
             "/api/v*/auth/reissue",
             "/api/v*/auth/check-login-id",
             "/api/v*/auth/oauth2/complete",
+            "/api/v*/auth/oauth2/separate",
+            "/api/v*/auth/oauth2/link",
             "/api/v*/verification/**",
             "/oauth2/authorization/**",
             "/login/oauth2/code/**",
@@ -26,7 +28,7 @@ public final class SecurityPathConst {
     };
 
     public static final String[] USER_PATHS = {
-            "/api/v*/user/**",
+            "/api/v*/users/**",
             "/api/v*/devices/**"
     };
 
