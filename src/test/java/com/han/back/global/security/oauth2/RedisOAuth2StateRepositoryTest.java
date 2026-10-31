@@ -93,6 +93,30 @@ class RedisOAuth2StateRepositoryTest {
     }
 
     @Test
+    @DisplayName("Map 필드가 없는 저장본(이전 스키마)도 빈 Map으로 복원된다 — 배포 직후 TTL 내 state 하위 호환")
+    void loadPayloadWithoutOptionalMaps_restoresEmptyMaps() {
+        String legacyJson = """
+                {"authorizationUri":"https://kauth.kakao.com/oauth/authorize",
+                 "clientId":"test-client-id",
+                 "redirectUri":"https://service.com/login/oauth2/code/kakao",
+                 "scopes":["profile_nickname"],
+                 "state":"%s",
+                 "authorizationRequestUri":"https://kauth.kakao.com/oauth/authorize?state=%s"}
+                """.formatted(STATE, STATE);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter(OAuth2Const.PARAM_STATE, STATE);
+        given(redisUtil.getData(KEY)).willReturn(Optional.of(legacyJson));
+
+        OAuth2AuthorizationRequest restored = repository.loadAuthorizationRequest(request);
+
+        assertThat(restored).isNotNull();
+        assertThat(restored.getState()).isEqualTo(STATE);
+        assertThat(restored.getAdditionalParameters()).isEmpty();
+        assertThat(restored.getAttributes()).isEmpty();
+    }
+
+    @Test
     @DisplayName("저장되지 않은 state로 조회하면 null을 반환한다 (콜백 위조/직접 접근 방어)")
     void loadUnknownState_returnsNull() {
         MockHttpServletRequest request = new MockHttpServletRequest();
