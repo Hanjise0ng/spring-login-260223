@@ -61,6 +61,7 @@ public abstract class IntegrationTestBase {
             AuthConst.TOKEN_SESSION_BLACKLIST_PREFIX,
             "verification:",
             "login:fail:",
+            "idempotency:",
     };
 
     @BeforeEach
