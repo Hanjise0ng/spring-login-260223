@@ -26,7 +26,7 @@ class LoginAttemptRepositoryTest {
         loginHistoryRepository.saveAndFlush(LoginAttemptEntity.success(1L, "10.0.0.3", "fp-c"));
 
         Page<LoginAttemptEntity> page = loginHistoryRepository
-                .findAllByUserIdOrderByCreatedAtDesc(1L, PageRequest.of(0, 10));
+                .findAllByUserIdOrderByCreatedAtDescIdDesc(1L, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(3);
         assertThat(page.getContent().get(0).getIp()).isEqualTo("10.0.0.3");
@@ -39,7 +39,7 @@ class LoginAttemptRepositoryTest {
         loginHistoryRepository.saveAndFlush(LoginAttemptEntity.success(2L, "10.0.0.2", "fp-b"));
 
         Page<LoginAttemptEntity> page = loginHistoryRepository
-                .findAllByUserIdOrderByCreatedAtDesc(1L, PageRequest.of(0, 10));
+                .findAllByUserIdOrderByCreatedAtDescIdDesc(1L, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().get(0).getUserId()).isEqualTo(1L);

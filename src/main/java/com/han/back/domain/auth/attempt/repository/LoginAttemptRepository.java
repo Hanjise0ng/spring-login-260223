@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LoginAttemptRepository extends JpaRepository<LoginAttemptEntity, Long> {
 
-    Page<LoginAttemptEntity> findAllByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Page<LoginAttemptEntity> findAllByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
 
 }
