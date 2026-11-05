@@ -1,6 +1,5 @@
 package com.han.back.global.security.filter;
 
-import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.util.AuthHttpUtil;
@@ -31,8 +30,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return Arrays.stream(SecurityPathConst.PUBLIC_PATHS)
-                .anyMatch(pattern -> pathMatcher.match(pattern, request.getRequestURI()));
+        String requestUri = request.getRequestURI();
+        return isPublicPath(requestUri) || isLogoutRequest(requestUri);
     }
 
     @Override
@@ -44,31 +43,25 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-        try {
-            CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken.get());
-            Authentication authToken = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities()
-            );
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+        CustomUserDetails userDetails = tokenService.authenticateAccessToken(accessToken.get());
+        Authentication authToken = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities()
+        );
+        SecurityContextHolder.getContext().setAuthentication(authToken);
 
-            log.debug("JWT Context Setup - UserPK: {} | SessionId: {} | ClientIP: {}",
-                    userDetails.getId(), userDetails.getSessionId(), ClientIpResolver.resolve(request));
-
-        } catch (CustomAuthenticationException e) {
-            if (isLogoutRequest(request)) { // 로그아웃 요청은 AT 만료·블랙리스트 시에도 통과, LogoutHandler에서 RT 기반 fallback으로 사용자 식별
-                log.debug("JWT auth failed on logout path - deferring to LogoutHandler | ClientIP: {}",
-                        ClientIpResolver.resolve(request));
-                filterChain.doFilter(request, response);
-                return;
-            }
-            throw e;
-        }
+        log.debug("JWT Context Setup - UserPK: {} | SessionId: {} | ClientIP: {}",
+                userDetails.getId(), userDetails.getSessionId(), ClientIpResolver.resolve(request));
 
         filterChain.doFilter(request, response);
     }
 
-    private boolean isLogoutRequest(HttpServletRequest request) {
-        return SecurityPathConst.LOGOUT_PATH.equals(request.getRequestURI());
+    private boolean isPublicPath(String requestUri) {
+        return Arrays.stream(SecurityPathConst.PUBLIC_PATHS)
+                .anyMatch(pattern -> pathMatcher.match(pattern, requestUri));
+    }
+
+    private boolean isLogoutRequest(String requestUri) {
+        return SecurityPathConst.LOGOUT_PATH.equals(requestUri);
     }
 
 }
