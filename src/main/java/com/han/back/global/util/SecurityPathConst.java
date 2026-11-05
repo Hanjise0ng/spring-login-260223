@@ -29,7 +29,8 @@ public final class SecurityPathConst {
 
     public static final String[] USER_PATHS = {
             "/api/v*/users/**",
-            "/api/v*/devices/**"
+            "/api/v*/devices/**",
+            "/api/v*/auth/credentials/**"
     };
 
     public static final String[] ADMIN_PATHS = {
