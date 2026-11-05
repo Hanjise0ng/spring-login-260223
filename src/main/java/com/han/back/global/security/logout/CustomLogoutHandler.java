@@ -1,11 +1,11 @@
 package com.han.back.global.security.logout;
 
 import com.han.back.domain.device.service.DeviceService;
+import com.han.back.global.exception.CustomAuthenticationException;
 import com.han.back.global.exception.CustomException;
 import com.han.back.global.security.principal.CustomUserDetails;
 import com.han.back.global.security.service.TokenService;
 import com.han.back.global.security.token.util.AuthHttpUtil;
-import com.han.back.global.security.token.AuthToken;
 import com.han.back.global.security.token.transport.TokenTransportResolver;
 import com.han.back.global.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +29,7 @@ public class CustomLogoutHandler implements LogoutHandler {
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        Optional<CustomUserDetails> userDetails = resolveUser(authentication, request);
+        Optional<CustomUserDetails> userDetails = resolveUser(request);
 
         if (userDetails.isEmpty()) {
             log.warn("Logout Failed - Unable to identify user | ClientIP: {}", ClientIpResolver.resolve(request));
@@ -55,18 +55,27 @@ public class CustomLogoutHandler implements LogoutHandler {
         }
     }
 
-    private Optional<CustomUserDetails> resolveUser(Authentication authentication, HttpServletRequest request) {
-        // JwtFilter가 AT 검증 성공한 경우
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return Optional.of(userDetails);
-        }
+    // JwtFilter는 로그아웃 경로를 건너뛰므로 여기서 AT → RT 순서로 사용자를 직접 식별한다
+    private Optional<CustomUserDetails> resolveUser(HttpServletRequest request) {
+        return AuthHttpUtil.extractAccessToken(request)
+                .flatMap(this::authenticateAccessTokenQuietly)
+                .or(() -> resolveUserFromRefreshToken(request));
+    }
 
-        // AT 만료 상태에서의 로그아웃
-        log.debug("SecurityContext authentication unavailable - attempting RT fallback | ClientIP: {}",
+    private Optional<CustomUserDetails> authenticateAccessTokenQuietly(String accessToken) {
+        try {
+            return Optional.of(tokenService.authenticateAccessToken(accessToken));
+        } catch (CustomAuthenticationException e) { // AT 만료·블랙리스트·위조 → RT로 식별 시도
+            return Optional.empty();
+        }
+    }
+
+    private Optional<CustomUserDetails> resolveUserFromRefreshToken(HttpServletRequest request) {
+        log.debug("Access token unavailable - attempting RT fallback | ClientIP: {}",
                 ClientIpResolver.resolve(request));
 
-        AuthToken tokens = AuthHttpUtil.extractTokenPairLeniently(request);
-        return tokenService.extractUserFromTokens(tokens.getAccessToken(), tokens.getRefreshToken());
+        return AuthHttpUtil.extractRefreshToken(request)
+                .flatMap(tokenService::extractUserFromRefreshToken);
     }
 
 }

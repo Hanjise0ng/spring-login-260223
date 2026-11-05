@@ -64,7 +64,7 @@ public class SignInProcessor {
         if (previousTokens == null || previousTokens.isEmpty()) return;
 
         tokenService
-                .extractUserFromTokens(previousTokens.getAccessToken(), previousTokens.getRefreshToken())
+                .extractUserFromRefreshToken(previousTokens.getRefreshToken())
                 .filter(prev -> prev.getSessionId() != null)
                 .ifPresent(prev -> {
                     tokenService.invalidateSession(userId, prev.getSessionId());

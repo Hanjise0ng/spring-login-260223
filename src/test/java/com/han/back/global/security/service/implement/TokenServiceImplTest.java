@@ -345,72 +345,38 @@ class TokenServiceImplTest {
     }
 
     @Nested
-    @DisplayName("extractUserFromTokens()")
-    class ExtractUserFromTokens {
+    @DisplayName("extractUserFromRefreshToken()")
+    class ExtractUserFromRefreshToken {
 
         @Test
-        @DisplayName("AT 만료 + 유효한 RT → RT에서 사용자 정보를 추출한다")
-        void expiredAt_validRt_extractsFromRt() {
-            // AT 파싱 실패 → orElseGet 분기 → getSessionId(rtClaims) 호출됨
+        @DisplayName("서명이 유효한 RT(만료 포함)면 RT의 userId, role, sessionId로 사용자를 만든다")
+        void validRt_extractsUserFromRtOnly() {
             Claims rtClaims = fullClaimsMock(AuthConst.TOKEN_TYPE_REFRESH);
-            given(jwtUtil.extractClaimsLeniently(FAKE_AT)).willReturn(Optional.empty());
             given(jwtUtil.extractClaimsLeniently(FAKE_RT)).willReturn(Optional.of(rtClaims));
 
-            Optional<CustomUserDetails> result =
-                    tokenService.extractUserFromTokens(FAKE_AT, FAKE_RT);
+            Optional<CustomUserDetails> result = tokenService.extractUserFromRefreshToken(FAKE_RT);
 
             assertThat(result).isPresent();
             assertThat(result.get().getId()).isEqualTo(USER_PK);
+            assertThat(result.get().getRole()).isEqualTo(ROLE);
             assertThat(result.get().getSessionId()).isEqualTo(SESSION_ID);
         }
 
         @Test
-        @DisplayName("AT와 RT 모두 파싱 불가 → Optional.empty() 반환")
-        void bothTokensInvalid_returnsEmpty() {
-            given(jwtUtil.extractClaimsLeniently(any())).willReturn(Optional.empty());
+        @DisplayName("RT를 파싱할 수 없으면(위조·손상·빈 값) Optional.empty()를 반환한다")
+        void unparsableRt_returnsEmpty() {
+            given(jwtUtil.extractClaimsLeniently(FAKE_RT)).willReturn(Optional.empty());
 
-            Optional<CustomUserDetails> result =
-                    tokenService.extractUserFromTokens(FAKE_AT, FAKE_RT);
-
-            assertThat(result).isEmpty();
+            assertThat(tokenService.extractUserFromRefreshToken(FAKE_RT)).isEmpty();
         }
 
         @Test
-        @DisplayName("RT category 가 'refresh'가 아니면 Optional.empty() 반환")
-        void rtWithWrongCategory_returnsEmpty() {
-            // 실행 경로: extractLeniently(RT) 성공 → getCategory → "access" → 즉시 return empty
-            Claims fakeClaims = claimsMock(AuthConst.TOKEN_TYPE_ACCESS);
-            given(jwtUtil.extractClaimsLeniently(FAKE_RT)).willReturn(Optional.of(fakeClaims));
+        @DisplayName("category가 refresh가 아니면(AT를 RT 자리에 넣은 경우) Optional.empty()를 반환한다")
+        void nonRefreshCategory_returnsEmpty() {
+            Claims atClaims = claimsMock(AuthConst.TOKEN_TYPE_ACCESS);
+            given(jwtUtil.extractClaimsLeniently(FAKE_RT)).willReturn(Optional.of(atClaims));
 
-            Optional<CustomUserDetails> result =
-                    tokenService.extractUserFromTokens(FAKE_AT, FAKE_RT);
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        @DisplayName("AT도 유효하면 AT의 sessionId를 우선 사용한다")
-        void bothValid_usesAtSessionId() {
-            String atSessionId = "at-session-id";
-
-            // AT: sessionId 제공
-            Claims atClaims = mock(Claims.class);
-            given(jwtUtil.getSessionId(atClaims)).willReturn(atSessionId);
-
-            // RT: id/role 제공
-            Claims rtClaims = mock(Claims.class);
-            given(jwtUtil.getCategory(rtClaims)).willReturn(AuthConst.TOKEN_TYPE_REFRESH);
-            given(jwtUtil.getId(rtClaims)).willReturn(USER_PK);
-            given(jwtUtil.getRole(rtClaims)).willReturn(ROLE);
-
-            given(jwtUtil.extractClaimsLeniently(FAKE_AT)).willReturn(Optional.of(atClaims));
-            given(jwtUtil.extractClaimsLeniently(FAKE_RT)).willReturn(Optional.of(rtClaims));
-
-            Optional<CustomUserDetails> result =
-                    tokenService.extractUserFromTokens(FAKE_AT, FAKE_RT);
-
-            assertThat(result).isPresent();
-            assertThat(result.get().getSessionId()).isEqualTo(atSessionId);
+            assertThat(tokenService.extractUserFromRefreshToken(FAKE_RT)).isEmpty();
         }
     }
 

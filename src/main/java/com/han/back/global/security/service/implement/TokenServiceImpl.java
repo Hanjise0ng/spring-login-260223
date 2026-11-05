@@ -99,23 +99,11 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public Optional<CustomUserDetails> extractUserFromTokens(String accessToken, String refreshToken) {
-        Optional<Claims> rtClaims = jwtUtil.extractClaimsLeniently(refreshToken);
-        if (rtClaims.isEmpty()) return Optional.empty();
-
-        Claims rt = rtClaims.get();
-        if (!AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(rt))) {
-            return Optional.empty();
-        }
-
-        Long id = jwtUtil.getId(rt);
-        Role role = jwtUtil.getRole(rt);
-
-        String sessionId = jwtUtil.extractClaimsLeniently(accessToken)
-                .map(jwtUtil::getSessionId)
-                .orElseGet(() -> jwtUtil.getSessionId(rt));
-
-        return Optional.of(CustomUserDetails.fromToken(id, role, sessionId));
+    public Optional<CustomUserDetails> extractUserFromRefreshToken(String refreshToken) {
+        return jwtUtil.extractClaimsLeniently(refreshToken)
+                .filter(claims -> AuthConst.TOKEN_TYPE_REFRESH.equals(jwtUtil.getCategory(claims)))
+                .map(claims -> CustomUserDetails.fromToken(
+                        jwtUtil.getId(claims), jwtUtil.getRole(claims), jwtUtil.getSessionId(claims)));
     }
 
     private AuthToken createAndStoreTokens(Long id, Role role, String sessionId) {

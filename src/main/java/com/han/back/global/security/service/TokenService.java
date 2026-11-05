@@ -29,7 +29,7 @@ public interface TokenService {
     /** 세션 블랙리스트 확인 */
     boolean isSessionBlacklisted(String sessionId);
 
-    /** AT/RT에서 사용자 정보 추출 — 로그아웃 시 AT 만료 fallback용 */
-    Optional<CustomUserDetails> extractUserFromTokens(String accessToken, String refreshToken);
+    /** RT에서 사용자 정보 추출 — 서명은 검증하고 만료는 허용 (로그아웃·재로그인 시 이전 세션 식별용) */
+    Optional<CustomUserDetails> extractUserFromRefreshToken(String refreshToken);
 
 }
