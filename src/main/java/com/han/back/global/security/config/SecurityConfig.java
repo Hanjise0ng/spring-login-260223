@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,7 +31,6 @@ import tools.jackson.databind.ObjectMapper;
 public class SecurityConfig {
 
     private final CorsConfigurationSource corsConfig;
-    private final AuthenticationConfiguration authConfig;
 
     private final ObjectMapper objectMapper;
 
@@ -54,7 +52,6 @@ public class SecurityConfig {
 
     public SecurityConfig(
             @Qualifier("appCorsConfigurationSource") CorsConfigurationSource corsConfig,
-            AuthenticationConfiguration authConfig,
             ObjectMapper objectMapper,
             JwtFilter jwtFilter,
             JwtExceptionFilter jwtExceptionFilter,
@@ -71,7 +68,6 @@ public class SecurityConfig {
             OAuth2LoginFailureHandler oAuth2LoginFailureHandler
     ) {
         this.corsConfig = corsConfig;
-        this.authConfig = authConfig;
         this.objectMapper = objectMapper;
         this.jwtFilter = jwtFilter;
         this.jwtExceptionFilter = jwtExceptionFilter;
@@ -89,16 +85,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager() {
-        return authConfig.getAuthenticationManager();
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authenticationManager) throws Exception {
         configureCors(http);
         configureSecurity(http);
         configureAuthorization(http);
-        configureFilters(http, buildLoginFilter(authenticationManager()));
+        configureFilters(http, buildLoginFilter(authenticationManager));
         configureOAuth2Login(http);
         configureExceptionHandling(http);
         configureLogout(http);
